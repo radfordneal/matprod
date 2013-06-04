@@ -333,7 +333,7 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
                          helpers_var_ptr sx, helpers_var_ptr sy)
 {
     double *x = REAL(sx), *y = REAL(sy), *z = REAL(sz);
-    double *oy = y, *oz = z;
+    double *oy = y;
     helpers_size_t k = op;
     helpers_size_t n_times_k = LENGTH(sx);
     helpers_size_t k_times_m = LENGTH(sy);
