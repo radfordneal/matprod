@@ -303,8 +303,10 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
             q = z;
             b = *y++;
             b2 = *y++;
-            for (i = n; i > 0; i--)
-                *q++ = (*q + (*x++ * b)) + (*p++ * b2);
+            for (i = n; i > 0; i--) {
+                *q = (*q + (*x++ * b)) + (*p++ * b2);
+                q += 1;
+            }
             x = p;
         }
         if (j < k) HELPERS_WAIT_IN2 (a, j+1, k);
@@ -448,8 +450,10 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
             q = z;
             b = *y++;
             b2 = *y++;
-            for (i = n; i > 0; i--)
-                *q++ = (*q + (*r++ * b)) + (*p++ * b2);
+            for (i = n; i > 0; i--) {
+                *q = (*q + (*r++ * b)) + (*p++ * b2);
+                q += 1;
+            }
             r = p;
             j -= 2;
         }
