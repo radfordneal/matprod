@@ -22,33 +22,35 @@ progs=matprod-test matprod-alt-test piped-matprod-test piped-matprod-test-d \
 
 all:	$(progs)
 
-matprod-test:		test.h test.c matprod-test.c matprod.h matprod.c
-	gcc -O2 test.c matprod-test.c matprod.c \
+matprod-test:		test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	gcc -I.. -I. -O2 test.c matprod-test.c ../matprod.c \
 		-o matprod-test
 
-matprod-alt-test:	test.h test.c matprod-test.c matprod.h matprod.c
-	gcc -O2 -DALT_MULT_VEC_VEC -DALT_MULT_MAT_VEC \
+matprod-alt-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	gcc -I.. -I. -O2 \
+		-DALT_MULT_VEC_VEC -DALT_MULT_MAT_VEC \
 		-DALT_MULT_VEC_MAT -DALT_MULT_MAT_MAT \
-		test.c matprod-test.c matprod.c \
+		test.c matprod-test.c ../matprod.c \
 		-o matprod-alt-test
 
-piped-matprod-test:	test.h test.c piped-matprod-test.c piped-matprod.h \
-			piped-matprod.c helpers-app.h helpers.h helpers.c
-	gcc -O2 -fopenmp test.c piped-matprod-test.c piped-matprod.c helpers.c \
+piped-matprod-test:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
+			../piped-matprod.c helpers-app.h helpers.h helpers.c
+	gcc -I.. -I. -O2 -fopenmp \
+		test.c piped-matprod-test.c ../piped-matprod.c helpers.c \
 		-o piped-matprod-test
 
-piped-matprod-test-d:	test.h test.c piped-matprod-test.c piped-matprod.h \
-			piped-matprod.c helpers-app.h helpers.h helpers.c
-	gcc -O2 -fopenmp -DHELPERS_DISABLED \
-		test.c piped-matprod-test.c piped-matprod.c helpers.c \
+piped-matprod-test-d:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
+			../piped-matprod.c helpers-app.h helpers.h helpers.c
+	gcc -I.. -I. -O2 -fopenmp -DHELPERS_DISABLED \
+		test.c piped-matprod-test.c ../piped-matprod.c helpers.c \
 		-o piped-matprod-test-d
 
 blas-test:		test.h test.c blas-test.c ddot.f dgemm.f dgemv.f lsame.f
-	gcc -O2 test.c blas-test.c ddot.f dgemm.f dgemv.f lsame.f \
+	gcc -I.. -I. -O2 test.c blas-test.c ddot.f dgemm.f dgemv.f lsame.f \
 		-o blas-test
 
 blas2-test:		test.h test.c blas-test.c blas.f
-	gcc -O2 test.c blas-test.c blas.f \
+	gcc -I.. -I. -O2 test.c blas-test.c blas.f \
 		-lm -o blas2-test
 
 clean:
