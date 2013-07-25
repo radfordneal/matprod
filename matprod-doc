@@ -211,9 +211,9 @@ If the last argument to piped-matprod-test is "V" (only, not "v"), the
 final matrix (a column vector) will be supplied as pipelined output
 from a task procedure that delivers elements in groups of 17 (or fewer
 for the last group), with variable time lags.  This allows pipelining
-to be tested for the mat_vec and vec_vec procedures, for which pipeled
-input cannot otherwise be arranged.  (Of course, this is slower than
-just accessing the already-initialized matrix.)
+to be tested for the mat_vec and vec_vec procedures, for which
+pipelined input cannot otherwise be arranged.  (Of course, this is
+slower than just accessing the already-initialized matrix.)
 
 The shell file run-tests runs a series of tests, with the test program
 specified by its first argument (eg, matprod-test) and a setting of an
