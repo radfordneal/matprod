@@ -342,10 +342,10 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
 
         if (n == 2) {
     
-            /* Compute one column of the result each time around this loop, 
-               updating y, z, and m accordingly. */
+            /* If m is odd, compute the first column of the result, and
+               update y, z, and m accordingly. */
     
-            while (m > 0) {
+            if (m & 1) {
     
                 double s1, s2;
                 double *r;
@@ -390,6 +390,68 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
     
                 z += 2;
                 m -= 1;
+    
+            }
+    
+            /* Compute two columns of the result each time around this loop, 
+               updating y, z, and m accordingly. */
+    
+            while (m > 0) {
+    
+                double s11, s12, s21, s22;
+                double *y2 = y + k;
+                double *r;
+    
+                r = x;   /* r set to x, and then modified */
+                j = k;   /* j set to k, and then modified */
+    
+                /* Initialize sums for columns to zero, if k is even, or to the 
+                   products of the first element of the next column of y with
+                   the first column of x.  Adjust x, y, and j accordingly. */
+    
+                if (j & 1) {
+                    double b = *y++;
+                    s11 = r[0] * b;
+                    s12 = r[1] * b;
+                    double b2 = *y2++;
+                    s21 = r[0] * b2;
+                    s22 = r[1] * b2;
+                    r += 2;
+                    j -= 1;
+                }
+                else
+                    s11 = s12 = s21 = s22 = 0.0;
+    
+                /* Each time around this loop, add the products of two columns
+                   of x with two elements of the next two columns of y to the 
+                   sums.  Adjust r, y, and j to account for this.  Note that 
+                   j will be even. */
+    
+                while (j > 0) {
+                    double b11 = *y++;
+                    double b12 = *y++;
+                    double b21 = *y2++;
+                    double b22 = *y2++;
+                    s11 = (s11 + (r[0] * b11)) + (r[2] * b12);
+                    s12 = (s12 + (r[1] * b11)) + (r[3] * b12);
+                    s21 = (s21 + (r[0] * b21)) + (r[2] * b22);
+                    s22 = (s22 + (r[1] * b21)) + (r[3] * b22);
+                    r += 4;
+                    j -= 2;
+                }
+    
+                /* Store sums in the next two result columns. */
+    
+                z[0] = s11;
+                z[1] = s12;
+                z[2] = s21;
+                z[3] = s22;
+
+                /* Move to next column of the result. */
+
+                y = y2;
+                z += 4;
+                m -= 2;
     
             }
     
