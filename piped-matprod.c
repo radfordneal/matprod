@@ -284,32 +284,34 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
         b = *y++;
         for (i = n; i > 0; i--)
             *q++ = *x++ * b;
-        j = 1;
+        j = 3;
     }
     else {
         for (i = n; i > 0; i--)
             *q++ = 0.0;
-        j = 0;
+        j = 1;
     }
 
     /* Each time around this loop, add the products of two columns of x 
        with two elements of y to the result vector, z.  Adjust x, y, and
        j to account for this.  Note that k-j will be even when we start. */
 
-    while (j < k) {
-        while (j+2 <= a) {
-            j += 2;
-            p = x + n;
-            q = z;
-            b = *y++;
-            b2 = *y++;
-            for (i = n; i > 0; i--) {
-                double tmp = *q + (*x++ * b);  /* ensure order of addition */
-                *q++ = tmp + (*p++ * b2);
-            }
-            x = p;
+    for (;;) {
+        if (j > a) {
+            if (j >= k)
+                break;
+            HELPERS_WAIT_IN2 (a, j-1, k);
         }
-        if (j < k) HELPERS_WAIT_IN2 (a, j+1, k);
+        p = x + n;
+        q = z;
+        b = *y++;
+        b2 = *y++;
+        for (i = n; i > 0; i--) {
+            *q = (*q + (*x++ * b)) + (*p++ * b2);
+            q += 1;
+        }
+        x = p;
+        j += 2;
     }
 }
 
