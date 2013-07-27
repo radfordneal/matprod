@@ -310,8 +310,8 @@ void matprod_mat_vec (double *x, double *y, double *z, int n, int k)
         b = *y++;
         b2 = *y++;
         for (i = n; i > 0; i--) {
-            double tmp = *q + (*x++ * b);  /* ensure order of addition */
-            *q++ = tmp + (*p++ * b2);
+            *q = (*q + (*x++ * b)) + (*p++ * b2);
+            q += 1;
         }
         x = p;
         k -= 2;
