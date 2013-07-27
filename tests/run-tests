@@ -76,6 +76,8 @@ echo " "; time $prog 100 2031 1 3201
 
 echo " "; echo SEQUENCE
 
+echo " "; time $prog 40000 2 2 40 381
+
 echo " "; time $prog 20000 25 36 38 29 28
 echo " "; time $prog 500 55 145 81 93
 
