@@ -354,12 +354,13 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
 
     if (n == 2) { /* Treated specially */
 
-        /* Compute one column of the result each time around this loop, 
-           updating y and z accordingly. */
+        /* If m is odd, compute the first column of the result, and
+           update y, z, and m accordingly. */
 
-        for (;;) {
+        if (m & 1) {
 
             double s1, s2;
+            double *r;
 
             r = x;   /* r set to x, and then modified */
             j = k;   /* j set to k, and then modified */
@@ -369,7 +370,7 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
                the first column of x.  Adjust x, y, and j accordingly. */
 
             if (j & 1) {
-                b = *y++;
+                double b = *y++;
                 s1 = *r++ * b;
                 s2 = *r++ * b;
                 j -= 1;
@@ -383,10 +384,11 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
                be even when we start. */
 
             while (j > 0) {
-                b = *y++;
+                double b1, b2;
+                b1 = *y++;
                 b2 = *y++;
-                s1 = (s1 + (r[0] * b)) + (r[2] * b2);
-                s2 = (s2 + (r[1] * b)) + (r[3] * b2);
+                s1 = (s1 + (r[0] * b1)) + (r[2] * b2);
+                s2 = (s2 + (r[1] * b1)) + (r[3] * b2);
                 r += 4;
                 j -= 2;
             }
@@ -398,20 +400,83 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
 
             /* Signal that a column of z has been computed. */
 
-            HELPERS_BLOCK_OUT (done, n);
+            HELPERS_BLOCK_OUT (done, 2);
 
-            /* Exit if we've done it all. */
-
-            if (done == n_times_m)
-                break;
-
-            /* Move to the next column of z. */
+            /* Move to next column of the result. */
 
             z += 2;
+            m -= 1;
 
-            /* Wait for the next column of y to become available. */
+        }
 
-            if (a < y-oy+k) HELPERS_WAIT_IN2 (a, y-oy+k-1, k_times_m);
+        /* Compute two columns of the result each time around this loop, 
+           updating y, z, and m accordingly. */
+
+        while (m > 0) {
+
+            double s11, s12, s21, s22;
+            double *y2 = y + k;
+            double *r;
+
+            r = x;   /* r set to x, and then modified */
+            j = k;   /* j set to k, and then modified */
+
+            /* Wait for the next two columns of y to become available. */
+
+            if (a < y2-oy+k) HELPERS_WAIT_IN2 (a, y2-oy+k-1, k_times_m);
+
+            /* Initialize sums for columns to zero, if k is even, or to the 
+               products of the first element of the next column of y with
+               the first column of x.  Adjust x, y, and j accordingly. */
+
+            if (j & 1) {
+                double b = *y++;
+                s11 = r[0] * b;
+                s12 = r[1] * b;
+                double b2 = *y2++;
+                s21 = r[0] * b2;
+                s22 = r[1] * b2;
+                r += 2;
+                j -= 1;
+            }
+            else
+                s11 = s12 = s21 = s22 = 0.0;
+
+            /* Each time around this loop, add the products of two columns
+               of x with two elements of the next two columns of y to the 
+               sums.  Adjust r, y, and j to account for this.  Note that 
+               j will be even. */
+
+            while (j > 0) {
+                double b11 = *y++;
+                double b12 = *y++;
+                double b21 = *y2++;
+                double b22 = *y2++;
+                s11 = (s11 + (r[0] * b11)) + (r[2] * b12);
+                s12 = (s12 + (r[1] * b11)) + (r[3] * b12);
+                s21 = (s21 + (r[0] * b21)) + (r[2] * b22);
+                s22 = (s22 + (r[1] * b21)) + (r[3] * b22);
+                r += 4;
+                j -= 2;
+            }
+
+            /* Store sums in the next two result columns. */
+
+            z[0] = s11;
+            z[1] = s12;
+            z[2] = s21;
+            z[3] = s22;
+
+            /* Signal that two columns of z have been computed. */
+
+            HELPERS_BLOCK_OUT (done, 4);
+
+            /* Move to next column of the result. */
+
+            y = y2;
+            z += 4;
+            m -= 2;
+
         }
 
         return;
@@ -480,12 +545,12 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
         double *y2 = y + k;
         double *r;
 
+        r = x;   /* r set to x, and then modified as columns of x are summed */
+        j = k;   /* j set to k, and then modified as values are read from y */
+
         /* Wait for the next two columns of y to become available. */
 
         if (a < y2-oy+k) HELPERS_WAIT_IN2 (a, y2-oy+k-1, k_times_m);
-
-        r = x;   /* r set to x, and then modified as columns of x are summed */
-        j = k;   /* j set to k, and then modified as values are read from y */
 
         /* Initialize sums in next two columns of z to zero, if k is even, 
            or to the products of the first elements of the next two columns
