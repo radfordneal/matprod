@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "helpers-app.h"
-#include "piped-matprod.h"
+
 
 char *prog_name = "piped-matprod-test";
 

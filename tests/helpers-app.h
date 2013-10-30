@@ -38,10 +38,9 @@ typedef int helpers_var_ptr;
 
 /* Macro giving the name of a task. */
 
-extern helpers_task_proc task_piped_matprod_vec_vec, task_piped_matprod_mat_vec,
-                         task_piped_matprod_vec_mat, task_piped_matprod,
-                         task_piped_matprod_trans1,  task_piped_matprod_trans2,
-                         task_output_vector;
+#include "piped-matprod.h"
+
+extern helpers_task_proc task_output_vector;
 
 #define helpers_task_name(p) \
 ( p==task_piped_matprod_vec_vec ? "matprod_vec_vec" : \
