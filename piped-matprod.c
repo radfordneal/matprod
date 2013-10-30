@@ -614,3 +614,28 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
     }
 
 }
+
+
+/* Product of the transpose of a k x n matrix (x) and a k x m matrix (y) 
+   with result stored in z, with pipelining of the input y and the output
+   (by column).
+
+   The value of k (taken from op) must be greater than zero. */
+
+void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz, 
+                                helpers_var_ptr sx, helpers_var_ptr sy)
+{
+    double *x = REAL(sx), *y = REAL(sy), *z = REAL(sz);
+}
+
+
+/* Product of an n x k matrix (x) and the transpose of an m x k matrix (y) 
+   with result stored in z, with pipelining of the output (by column).
+
+   The value of k (taken from op) must be greater than zero. */
+
+void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz, 
+                                helpers_var_ptr sx, helpers_var_ptr sy)
+{
+    double *x = REAL(sx), *y = REAL(sy), *z = REAL(sz);
+}

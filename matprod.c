@@ -583,3 +583,19 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
         m -= 2;
     }
 }
+
+
+/* Product of the transpose of a k x n matrix (x) and a k x m matrix (y) 
+   with result stored in z. */
+
+void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
+{
+}
+
+
+/* Product of an n x k matrix (x) and the transpose of an m x k matrix (y) 
+   with result stored in z. */
+
+void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
+{
+}
