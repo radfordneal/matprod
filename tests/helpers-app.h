@@ -40,14 +40,17 @@ typedef int helpers_var_ptr;
 
 extern helpers_task_proc task_piped_matprod_vec_vec, task_piped_matprod_mat_vec,
                          task_piped_matprod_vec_mat, task_piped_matprod,
+                         task_piped_matprod_trans1,  task_piped_matprod_trans2,
                          task_output_vector;
 
 #define helpers_task_name(p) \
 ( p==task_piped_matprod_vec_vec ? "matprod_vec_vec" : \
   p==task_piped_matprod_mat_vec ? "matprod_mat_vec" : \
   p==task_piped_matprod_vec_mat ? "matprod_vec_mat" : \
-  p==task_piped_matprod ? "matprod" : \
-  p==task_output_vector ? "output_vector" : "?" \
+  p==task_piped_matprod_trans1  ? "matprod_trans1" : \
+  p==task_piped_matprod_trans2  ? "matprod_trans2" : \
+  p==task_piped_matprod         ? "matprod" : \
+  p==task_output_vector         ? "output_vector" : "?" \
 )
 
 /* Macro giving the name of a variable. */
