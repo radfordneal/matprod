@@ -115,9 +115,9 @@ non-pipelined procedures above, and are as follows:
       Matrix-vector multiply, with element-by-element pipelining of
       the second operand.
 
-    task_piped_matprod_mat_mat
+    task_piped_matprod
 
-      Vector-matrix multiply, with column-by-column pipelining of the
+      Matrix-matrix multiply, with column-by-column pipelining of the
       second operand, and column-by-column pipelining of the output.
 
 There are no alternative algorithms implemented for these procedures.
