@@ -41,8 +41,7 @@ void xerbla_ (char *e, int i)
 
 void do_test (int rep)
 {
-  char *N1 = "N", *N2 = "N";
-  char *T1 = "T";
+  char *N = "N", *T = "T";
   int ione = 1;
   double one = 1.0;
   double zero = 0.0;
@@ -57,18 +56,22 @@ void do_test (int rep)
       { *product[i] = ddot_(&matcols[i],matrix[i],&ione,product[i+1],&ione);
       }
       else if (v && matcols[nmat-1]==1)
-      { dgemv_(N1, &matrows[i], &matcols[i], &one, matrix[i], &matrows[i],
+      { dgemv_(N, &matrows[i], &matcols[i], &one, matrix[i], &matrows[i],
                product[i+1], &ione, &zero, product[i], &ione);
       }
       else if (vec[i] && matrows[i]==1)
-      { dgemv_(T1, &matcols[i], &matcols[nmat-1], &one, 
+      { dgemv_(T, &matcols[i], &matcols[nmat-1], &one, 
                product[i+1], &matcols[i], matrix[i], &ione, &zero, 
                product[i], &ione);
       }
       else
-      { dgemm_(N1, N2, &matrows[i], &matcols[nmat-1], &matcols[i], 
-               &one, matrix[i], &matrows[i], product[i+1], &matcols[i], &zero,
-               product[i], &matrows[i]);
+      { int t1 = i==0 && trans1;
+        int t2 = i==nmat-2 && trans2;
+        dgemm_(t1 ? T : N, t2 ? T : N, 
+               &matrows[i], &matcols[nmat-1], &matcols[i], &one, 
+               matrix[i], t1 ? &matcols[i] : &matrows[i], 
+               product[i+1], t2 ? &matcols[nmat-1] : &matcols[i],
+               &zero, product[i], &matrows[i]);
       }
     }
   }  

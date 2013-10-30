@@ -28,7 +28,8 @@
 
 static usage(void)
 { 
-  fprintf (stderr, "Usage: %s rep dim dim dim { dim }\n", prog_name);
+  fprintf (stderr, "Usage: %s rep [ \"t\" ] dim dim dim { dim } [ \"t\" ]\n", 
+                    prog_name);
   exit(1);
 }
 
@@ -40,11 +41,24 @@ int main (int argc, char **argv)
 
   /* Process arguments. */
 
-  nmat = argc-3;
-
-  if (nmat<2) usage();
+  if (argc<5) usage();
 
   if (sscanf(argv[1],"%d%c",&rep,&junk)!=1 || rep<=0) usage();
+
+  trans1 = trans2 = 0;
+  if (strcmp(argv[2],"t")==0)
+  { trans1 = 1;
+    argv += 1;
+    argc -= 1;
+  }
+  if (strcmp(argv[argc-1],"t")==0)
+  { trans2 = 1;
+    argc -= 1;
+  }
+
+  nmat = argc-3;
+
+  if (nmat<2 || nmat==2 && trans1 && trans2) usage();
 
   if (nmat>MAX_MATRICES)
   { fprintf(stderr,"Too many matrices specified\n");
