@@ -159,7 +159,7 @@ are primarily intended for testing speed.
 
 These programs are invoked by a command such as the following:
 
-    matprod-test rep [ "t" ] A B C D [ "t" ]
+    matprod-test rep [ "t" | "T" ] A B C D [ "t" | "T" ]
 
 Where the arguments (other than the optional "t" arguments) are
 positive integers.  In this example, three matrices of dimensions AxB,
@@ -171,20 +171,30 @@ and lower-left elements of the result are then printed on standard
 output (except that only one element is printed if the result is
 scalar, that is of dimensions 1x1).  
 
-If an optional "t" argument is present before the matrix dimensions,
-the final multiply by the AxB matrix is done by multiplying by the
-transpose of a BxA matrix (eg, using matprod_trans1).  Similarly, if
-the optional final "t" argument is present, the first multiply of a
-CxD matrix is done on the transpose of a DxC matrix (eg, using
-matprod_trans2).  If only one multiplication is done (ie, only three
-matrix dimensions are specified), "t" must not be on both the left and
-right (ie, a multiply with both operands transposed is not allowed).
+In general, n>2 arguments (other than "t" or "T") follow the rep
+argument, defining the dimensions of n-1 matrices, which are used as
+operands in n-2 matrix multiplication operations, which associate to
+the right.  The result of each of these products will be a matrix with
+number of columns equal to the last argument.
 
-In general, n>2 arguments (other than "t") follow the rep argument,
-defining the dimensions of n-1 matrices, which are used as operands in
-n-2 matrix multiplication operations, which associate to the right.
-The result of each of these products will be a matrix with number of
-columns equal to the last argument.
+If an optional "t" or "T" argument precedes the matrix dimensions, the
+final multiply by the AxB matrix is done by multiplying by the
+transpose of a BxA matrix (eg, using matprod_trans1).  Similarly, if
+the optional final "t" or "T" argument is present, the first multiply
+of a CxD matrix is done on the transpose of a DxC matrix (eg, using
+matprod_trans2).  If only one multiplication is done (ie, only three
+matrix dimensions are specified), "t" or "T" must not be on both the
+left and right (ie, a multiply with both operands transposed is not
+allowed).  
+
+If "T" is used for this option on the right, the two matrices
+multiplied will be the same matrix if possible (ie, for the example
+above, when B = D), which may allow for the multiply to be done more
+quickly (eg, by exploiting the fact that the result is symmetric).  If
+"T" is used for this option on the left, the matrices of dimensions
+BxA and BxC will be the same if A=C, but this will result in the final
+multiply having the same matrix for both operands only if this is the
+only multiply done.
 
 An argument after rep with the value "1" may be replaced with the
 argument "v" or "V", which has the same effect as "1", except that the

@@ -46,13 +46,13 @@ int main (int argc, char **argv)
   if (sscanf(argv[1],"%d%c",&rep,&junk)!=1 || rep<=0) usage();
 
   trans1 = trans2 = 0;
-  if (strcmp(argv[2],"t")==0)
-  { trans1 = 1;
+  if (strcmp(argv[2],"t")==0 || strcmp(argv[2],"T")==0)
+  { trans1 = 1 + (strcmp(argv[2],"T")==0);
     argv += 1;
     argc -= 1;
   }
-  if (strcmp(argv[argc-1],"t")==0)
-  { trans2 = 1;
+  if (strcmp(argv[argc-1],"t")==0 || strcmp(argv[argc-1],"T")==0)
+  { trans2 = 1 + (strcmp(argv[argc-1],"T")==0);
     argc -= 1;
   }
 
@@ -81,7 +81,8 @@ int main (int argc, char **argv)
 
   last_V = strcmp(argv[argc-1],"V")==0;
 
-  /* For each matrix, compute matlen and allocate space. */
+  /* For each matrix, compute matlen and allocate space, or re-use space
+     (if possible) when a "T" option applies. */
 
   for (i = 0; i<nmat; i++)
   { matlen[i] = matrows[i] * matcols[i];
@@ -89,10 +90,15 @@ int main (int argc, char **argv)
     { fprintf(stderr,"Matrix is too large\n");
       exit(2);
     }
-    matrix[i] = calloc (sizeof (double), matlen[i]);
-    if (matrix[i]==0)
-    { fprintf(stderr,"Couldn't allocate space for matrix\n");
-      exit(2);
+    if ((i==1 && trans1>1 || i==nmat-1 && trans2>1) && matrows[i-1]==matcols[i])
+    { matrix[i] = matrix[i-1];
+    }
+    else
+    { matrix[i] = calloc (sizeof (double), matlen[i]);
+      if (matrix[i]==0)
+      { fprintf(stderr,"Couldn't allocate space for matrix\n");
+        exit(2);
+      }
     }
   }
 
