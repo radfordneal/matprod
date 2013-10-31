@@ -586,10 +586,133 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
 
 
 /* Product of the transpose of a k x n matrix (x) and a k x m matrix (y) 
-   with result stored in z. */
+   with result stored in z.  
+
+   Each element of the result is the dot product of a column of x and a
+   column of y.  The result is computed two columns at a time, which 
+   allows the memory accesses to columns of x to be used for two such
+   dot products (with two columns of y).  Two columns of x are also done 
+   at once, again so memory accesses can be re-used.  The result is that,
+   except perhaps for the first column or first element in a column, four
+   elements of the result are computed at a time, using four accesses to
+   columns of x and y (half the number of accesses that would be needed
+   for doing four dot products in the obvious way).
+*/
 
 void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
 {
+
+  /* If m is odd, compute the first column of the result, updating y, z, and 
+     m to account for this column having been computed (so that the situation
+     is the same as if m had been even to start with). */
+
+  if (m & 1) {
+
+      double *r = x;
+      int h = n;
+      int j;
+
+      /* If n is odd, compute the first element of the first column of the
+         result here.  Also, move r to point to the second column of x, and
+         increment z. */
+
+      if (h & 1) {
+          double s = 0;
+          double *q = y;
+          for (j = k; j > 0; j--)
+              s += *r++ * *q++;
+          *z++ = s;
+          h -= 1;
+      }
+
+      /* Compute the remainder of the first column of the result two
+         elements at a time (looking at two columns of x).  Note that 
+         h will be even. */
+
+      while (h > 0) {
+          double s0 = 0;
+          double s1 = 0;
+          double *r2 = r+k;
+          double *q = y;
+          for (j = k; j > 0; j--) {
+              double t = *q++;
+              s0 += *r++ * t;
+              s1 += *r2++ * t;
+          }
+          *z++ = s0;
+          *z++ = s1;
+          r = r2;
+          h -= 2;
+      }
+
+      y += k;
+      m -= 1;
+  }
+
+  /* Compute two columns of the result each time around this loop, updating
+     y, z, and m accordingly.  Note that m will be even.  (At the start
+     of each loop iteration, the work remaining to be done is the same as 
+     if y, z, and m (and x, n, and k, which don't change) had been the 
+     original arguments.) */
+
+  while (m > 0) {
+
+      double *z2 = z+n;
+      double *r = x;
+      int h = n;
+      int j;
+
+      /* If n is odd, compute the first elements of the two columns here. 
+         Also, move r to point to the second column of x, and update z. */
+
+      if (h & 1) {
+          double s0 = 0;
+          double s1 = 0;
+          double *q = y;
+          double *q2 = q+k;
+          for (j = k; j > 0; j--) {
+              double t = *r++;
+              s0 += t * *q++;
+              s1 += t * *q2++;
+          }
+          *z++ = s0;
+          *z2++ = s1;
+          h -= 1;
+      }
+
+      /* Compute the remainder of the two columns of the result, two elements
+         at a time.  Note that h will be even. */
+
+      while (h > 0) {
+          double s00 = 0;
+          double s01 = 0;
+          double s10 = 0;
+          double s11 = 0;
+          double *q = y;
+          double *q2 = q+k;
+          double *r2 = r+k;
+          for (j = k; j > 0; j--) {
+              double t = *r++;
+              double t2 = *r2++;
+              double u = *q++;
+              double u2 = *q2++;
+              s00 += t * u;
+              s01 += t * u2;
+              s10 += t2 * u;
+              s11 += t2 * u2;
+          }
+          *z++ = s00;
+          *z2++ = s01;
+          *z++ = s10;
+          *z2++ = s11;
+          r = r2;
+          h -= 2;
+      }
+
+      z = z2;
+      y += 2*k;
+      m -= 2;
+  }
 }
 
 
