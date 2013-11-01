@@ -90,8 +90,12 @@ int main (int argc, char **argv)
     { fprintf(stderr,"Matrix is too large\n");
       exit(2);
     }
-    if ((i==1 && trans1>1 || i==nmat-1 && trans2>1) && matrows[i-1]==matcols[i])
-    { matrix[i] = matrix[i-1];
+    if (i==1 && trans1>1 || i==nmat-1 && trans2>1)
+    { if (matrows[i-1]!=matcols[i])
+      { fprintf(stderr,"\"T\" option used when dimensions don't match\n");
+        exit(1);
+      }
+      matrix[i] = matrix[i-1];
     }
     else
     { matrix[i] = calloc (sizeof (double), matlen[i]);
@@ -126,8 +130,10 @@ int main (int argc, char **argv)
 
   for (i = 0; i<nmat; i++)
   { for (j = 0; j<matlen[i]; j++) 
-    { matrix[i][j] = i + j + 0.1;
+    { matrix[i][j] = 3.1*(matrows[i]+matcols[i]) + 0.01*(matrows[i]*matcols[i]);
     }
+    matrix[i][0] += 1234;
+    matrix[i][matlen[i]-1] += 5678;
   }
 
   /* Run test on these matrices (do_test may or may not return). */

@@ -188,13 +188,15 @@ left and right (ie, a multiply with both operands transposed is not
 allowed).  
 
 If "T" is used for this option on the right, the two matrices
-multiplied will be the same matrix if possible (ie, for the example
-above, when B = D), which may allow for the multiply to be done more
-quickly (eg, by exploiting the fact that the result is symmetric).  If
-"T" is used for this option on the left, the matrices of dimensions
-BxA and BxC will be the same if A=C, but this will result in the final
-multiply having the same matrix for both operands only if this is the
-only multiply done.
+multiplied first must have properly matching dimensions (eg, B = D in
+the example above). These two matrices will then be set to be the same
+matrix, which may allow for the multiply to be done more quickly (eg,
+by exploiting the fact that the result is symmetric).  If "T" is used
+for this option on the left, there must be only two matrices (ie,
+three dimensions, one multiply) and the dimensions of the two matrices
+must match properly (ie, first dimension same as last dimension).  The
+two matrices will then be set to be the same matrix, again allowing
+for possibly faster multiplication.
 
 An argument after rep with the value "1" may be replaced with the
 argument "v" or "V", which has the same effect as "1", except that the
@@ -207,11 +209,12 @@ mat_vec procedure, except if the first operand was also specified
 using "v" or "V", in which case the vec_vec procedure will be used.
 
 The matrices created by the test programs have elements that are set
-to the index of the matrix (from 0), plus the index of the element
-(from 0, down each column in succession), plus 0.1.  Note that when
-the first or last matrix is transposed, this is how the matrix that is
-transposed is initialized, so the results will differ from those
-obtained with no "t" arguments.
+to 3.1 times the sum of the number of rows and columns in the matrix,
+plus 0.01 times the product of the number of rows and columns in the
+matrix.  Furthermore, 1234 is then added to the top-left element and
+5678 is added to the bottom-right element.  With this initialization,
+the results obtained should be the same whether or not "t" or "T"
+options are used, on either the left or right.
 
 Several test programs can be compiled using the supplied Makefile, as
 follows:
@@ -242,9 +245,11 @@ follows:
 
     blas-test
 
-      Uses BLAS routines in ddot.f, dgemm.f, dgemv.f, and lsame.f.  
-      A xerbla routine for BLAS error reporting is provided as part 
-      of the test program.
+      Uses BLAS routines in ddot.f, dgemv.f, dgemm.f, dsyrk.f, and
+      lsame.f.  A xerbla routine for BLAS error reporting is provided
+      as part of the test program.  The dsyrk routine is used when the
+      "T" option is specified, along with a C routine for filling in
+      the lower triangle of the matrix from the upper triangle.
 
     blas2-test
 

@@ -47,9 +47,10 @@ piped-matprod-test-d:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
 		test.c piped-matprod-test.c ../piped-matprod.c helpers.c \
 		-o piped-matprod-test-d
 
-blas-test:		test.h test.c blas-test.c ddot.f dgemm.f dgemv.f lsame.f
+blas-test:		test.h test.c blas-test.c \
+			ddot.f dgemm.f dgemv.f dsyrk.f lsame.f
 	gcc -I.. -I. $(CFLAGS) \
-		test.c blas-test.c ddot.f dgemm.f dgemv.f lsame.f \
+		test.c blas-test.c ddot.f dgemm.f dgemv.f dsyrk.f lsame.f \
 		-o blas-test
 
 blas2-test:		test.h test.c blas-test.c blas.f
