@@ -166,12 +166,10 @@ positive integers.  In this example, three matrices of dimensions AxB,
 BxC, and CxD are created, and the product of the first of these
 matrices with the product of the second and third matrices is computed
 (note the right associativity), with this computation repeated rep
-times (with identical results each time, one hopes).  The first
-(upper-right), second (one down from upper-right), second-to-last (one
-up from lower-left), and last (lower-left) elements of the result are
-then printed on standard output (except that only one element is
-printed if the result is scalar, that is of dimensions 1x1, and only
-two elements when the result is of dimension 1x2 or 2x1).
+times (with identical results each time, one hopes).  The first,
+second, second-to-last, and last elements of the result are then
+printed on standard output, with elements ordered downwards by column,
+except that fewer elements are printed when only fewer exist.
 
 In general, n>2 arguments (other than "t" or "T") follow the rep
 argument, defining the dimensions of n-1 matrices, which are used as
