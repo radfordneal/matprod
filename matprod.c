@@ -589,10 +589,17 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
    elements of the result are computed at a time, using four accesses to
    columns of x and y (half the number of accesses that would be needed
    for doing four dot products in the obvious way).
+
+   When the two operands are the same, the result will be a symmetric
+   matrix.  Only the lower-triangular part of the result is computed,
+   with the upper-triangular part being copied from the lower triangle
+   as columns of the result are produced.
 */
 
 void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
 {
+  int sym = x==y && n==m;  /* same operands, so symmetric result? */
+  int j = 0;               /* number of columns of result produced so far */
 
   /* If m is odd, compute the first column of the result, updating y, z, and 
      m to account for this column having been computed (so that the situation
@@ -602,7 +609,7 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
 
       double *r = x;
       int h = n;
-      int j;
+      int kt;
 
       /* If n is odd, compute the first element of the first column of the
          result here.  Also, move r to point to the second column of x, and
@@ -611,7 +618,7 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
       if (h & 1) {
           double s = 0;
           double *q = y;
-          for (j = k; j > 0; j--)
+          for (kt = k; kt > 0; kt--)
               s += *r++ * *q++;
           *z++ = s;
           h -= 1;
@@ -625,7 +632,7 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
           double s0 = 0;
           double s1 = 0;
           double *q = y;
-          for (j = k; j > 0; j--) {
+          for (kt = k; kt > 0; kt--) {
               double t = *q++;
               s0 += *r * t;
               s1 += *(r+k) * t;
@@ -638,21 +645,18 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
       }
 
       y += k;
-      m -= 1;
+      j += 1;
   }
 
   /* Compute two columns of the result each time around this loop, updating
-     y, z, and m accordingly.  Note that m will be even.  (At the start
-     of each loop iteration, the work remaining to be done is the same as 
-     if y, z, and m (and x, n, and k, which don't change) had been the 
-     original arguments.) */
+     y, z, and j accordingly.  Note that m-j will be even. */
 
-  while (m > 0) {
+  while (j < m) {
 
       double *z2 = z+n;
       double *r = x;
       int h = n;
-      int j;
+      int kt;
 
       /* If n is odd, compute the first elements of the two columns here. 
          Also, move r to point to the second column of x, and update z. */
@@ -661,7 +665,7 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
           double s0 = 0;
           double s1 = 0;
           double *q = y;
-          for (j = k; j > 0; j--) {
+          for (kt = k; kt > 0; kt--) {
               double t = *r++;
               s0 += t * *q;
               s1 += t * *(q+k);
@@ -681,7 +685,7 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
           double s10 = 0;
           double s11 = 0;
           double *q = y;
-          for (j = k; j > 0; j--) {
+          for (kt = k; kt > 0; kt--) {
               double t = *r;
               double t2 = *(r+k);
               double u = *q;
@@ -703,7 +707,7 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
 
       z = z2;
       y += 2*k;
-      m -= 2;
+      j += 2;
   }
 }
 
@@ -719,16 +723,19 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
 
 void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 {
+  int sym = x==y && n==m;  /* same operands, so symmetric result? */
+  int j = 0;               /* number of columns of result produced so far */
+
 #   ifndef ALT_MATPROD_MAT_TRANS2
 
         if (n == 2) {
 
-            int mt = m;
+            int j = 0;
     
             /* If m is odd, compute the first column of the result, and
                update y, z, and mt accordingly. */
     
-            if (mt & 1) {
+            if (m & 1) {
     
                 double s1, s2;
                 double *q = y;
@@ -775,14 +782,14 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 
                 z += 2;
                 y += 1;
-                mt -= 1;
+                j += 1;
     
             }
     
             /* Compute two columns of the result each time around this loop, 
-               updating y, z, and mt accordingly.  Note that mt is now even. */
+               updating y, z, and j accordingly.  Note that m-j is now even. */
     
-            while (mt > 0) {
+            while (j < m) {
     
                 double s11, s12, s21, s22;
                 double *q = y;
@@ -840,7 +847,7 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 
                 z += 4;
                 y += 2;
-                mt -= 2;
+                j += 2;
             }
     
             return;
@@ -848,13 +855,10 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 
 #   endif
 
-    int mt = m;
-
     /* If m is odd, compute the first column of the result, updating y, z, and 
-       mt to account for this column having been computed (so that the situation
-       is the same as if m had been even to start with). */
+       j to account for this column having been computed. */
 
-    if (mt & 1) {
+    if (m & 1) {
 
         double *q = y;
         double *r = x;
@@ -904,16 +908,13 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 
         z += n;
         y += 1;
-        mt -= 1;
+        j += 1;
     }
 
     /* Compute two columns of the result each time around this loop, updating
-       y, z, and mt accordingly.  Note that mt will be even.  (At the start
-       of each loop iteration, the work remaining to be done is the same as 
-       if y, z, and mt (and x, n, and k, which don't change) had been the 
-       original arguments.) */
+       y, z, and j accordingly.  Note that m-j will be even. */
 
-    while (mt > 0) {
+    while (j < m) {
 
         double *q = y;
         double *r = x;
@@ -975,6 +976,6 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 
         z += 2*n;
         y += 2;
-        mt -= 2;
+        j += 2;
     }
 }
