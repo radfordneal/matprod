@@ -343,8 +343,6 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t n = n_times_k / k;
     helpers_size_t m = k_times_m / k;
     helpers_size_t a;
-    double *p, *q, *r;
-    double b, b2;
     int i, j;
 
     if (n_times_m == 0)  return;
