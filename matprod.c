@@ -489,15 +489,15 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
 
         while (j > 0) {
             double *q = z;
-            double *r2 = r + n;
             double b = *y++;
             double b2 = *y++;
             int i;
             for (i = n; i > 0; i--) {
-                *q =  (*q + (*r++ * b)) + (*r2++ * b2);
+                *q = (*q + (*r * b)) + (*(r+n) * b2);
+                r += 1;
                 q += 1;
             }
-            r = r2;
+            r += n;
             j -= 2;
         }
 
@@ -549,9 +549,7 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
            for this.  Note that j will be even. */
 
         while (j > 0) {
-            double *r2 = r + n;
-            double *q1 = z;
-            double *q2 = z + n;
+            double *q = z;
             double b11 = *y++;
             double b12 = *y++;
             double b21 = *y2++;
@@ -559,15 +557,13 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
             int i;
             for (i = n; i > 0; i--) {
                 double t = *r;
-                double t2 = *r2;
-                *q1 = (*q1 + (t * b11)) + (t2 * b12);
-                q1 += 1;
-                *q2 = (*q2 + (t * b21)) + (t2 * b22);
-                q2 += 1;
+                double t2 = *(r+n);
+                *q = (*q + (t * b11)) + (t2 * b12);
+                *(q+n) = (*(q+n) + (t * b21)) + (t2 * b22);
+                q += 1;
                 r += 1;
-                r2 += 1;
             }
-            r = r2;
+            r += n;
             j -= 2;
         }
 
@@ -627,16 +623,16 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
       while (h > 0) {
           double s0 = 0;
           double s1 = 0;
-          double *r2 = r+k;
           double *q = y;
           for (j = k; j > 0; j--) {
               double t = *q++;
-              s0 += *r++ * t;
-              s1 += *r2++ * t;
+              s0 += *r * t;
+              s1 += *(r+k) * t;
+              r += 1;
           }
           *z++ = s0;
           *z++ = s1;
-          r = r2;
+          r += k;
           h -= 2;
       }
 
@@ -664,11 +660,11 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
           double s0 = 0;
           double s1 = 0;
           double *q = y;
-          double *q2 = q+k;
           for (j = k; j > 0; j--) {
               double t = *r++;
-              s0 += t * *q++;
-              s1 += t * *q2++;
+              s0 += t * *q;
+              s1 += t * *(q+k);
+              q += 1;
           }
           *z++ = s0;
           *z2++ = s1;
@@ -684,23 +680,23 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
           double s10 = 0;
           double s11 = 0;
           double *q = y;
-          double *q2 = q+k;
-          double *r2 = r+k;
           for (j = k; j > 0; j--) {
-              double t = *r++;
-              double t2 = *r2++;
-              double u = *q++;
-              double u2 = *q2++;
+              double t = *r;
+              double t2 = *(r+k);
+              double u = *q;
+              double u2 = *(q+k);
               s00 += t * u;
               s01 += t * u2;
               s10 += t2 * u;
               s11 += t2 * u2;
+              q += 1;
+              r += 1;
           }
           *z++ = s00;
           *z2++ = s01;
           *z++ = s10;
           *z2++ = s11;
-          r = r2;
+          r += k;
           h -= 2;
       }
 
@@ -888,7 +884,6 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
            when we start. */
 
         while (kt > 0) {
-            double *r2 = r + n;
             double *t = z;
             double b1, b2;
             b1 = *q;
@@ -896,10 +891,11 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
             b2 = *q;
             q += m;
             for (i = n; i > 0; i--) {
-                *t = (*t + (*r++ * b1)) + (*r2++ * b2);
+                *t = (*t + (*r * b1)) + (*(r+n) * b2);
+                r += 1;
                 t += 1;
             }
-            r = r2;
+            r += n;
             kt -= 2;
         }
 
@@ -956,7 +952,6 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
             double b11, b12, b21, b22;
             double *t1 = z;
             double *t2 = z + n;
-            double *r2 = r + n;
             b11 = *q;
             b21 = *(q+1);
             q += m;
@@ -964,14 +959,13 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
             b22 = *(q+1);
             q += m;
             for (i = n; i > 0; i--) {
-                *t1 = (*t1 + (*r * b11)) + (*r2 * b12);
-                *t2 = (*t2 + (*r * b21)) + (*r2 * b22);
+                *t1 = (*t1 + (*r * b11)) + (*(r+n) * b12);
+                *t2 = (*t2 + (*r * b21)) + (*(r+n) * b22);
                 t1 += 1;
                 t2 += 1;
                 r += 1;
-                r2 += 1;
             }
-            r = r2;
+            r += n;
             kt -= 2;
         }
 
