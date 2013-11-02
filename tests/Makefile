@@ -30,8 +30,8 @@ matprod-test:		test.h test.c matprod-test.c ../matprod.h ../matprod.c
 
 matprod-alt-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	gcc -I.. -I. $(CFLAGS) \
-		-DALT_MULT_VEC_VEC -DALT_MULT_MAT_VEC \
-		-DALT_MULT_VEC_MAT -DALT_MULT_MAT_MAT \
+		-DALT_MATPROD_VEC_VEC -DALT_MATPROD_MAT_VEC \
+		-DALT_MATPROD_VEC_MAT -DALT_MATPROD -DALT_MATPROD_TRANS2 \
 		test.c matprod-test.c ../matprod.c \
 		-o matprod-alt-test
 

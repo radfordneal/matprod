@@ -30,12 +30,12 @@
    initialized either to zero or to the result from the first pair, if
    the number of pairs is odd. 
 
-   Use -DALT_MULT_VEC_VEC to switch between these two implementations.
+   Use -DALT_MATPROD_VEC_VEC to switch between these two implementations.
    Change #ifdef to #ifndef or vice versa below to change the default. */
 
 double matprod_vec_vec (double *x, double *y, int k)
 {
-#   ifdef ALT_MULT_VEC_VEC
+#   ifdef ALT_MATPROD_VEC_VEC
 
         double s;
         int i;
@@ -87,7 +87,7 @@ double matprod_vec_vec (double *x, double *y, int k)
    better job of this).  The loop unrolling to do two dot products at
    one time is done manually in both implementations.
 
-   Use -DALT_MULT_VEC_MAT to switch between these two implementations.
+   Use -DALT_MATPROD_VEC_MAT to switch between these two implementations.
    Change #ifdef to #ifndef or vice versa below to change the default. */
 
 void matprod_vec_mat (double *x, double *y, double *z, int k, int m)
@@ -102,7 +102,7 @@ void matprod_vec_mat (double *x, double *y, double *z, int k, int m)
 
     if (m & 1) {
 
-#       ifdef ALT_MULT_VEC_MAT
+#       ifdef ALT_MATPROD_VEC_MAT
 
             s = 0.0;
 
@@ -154,7 +154,7 @@ void matprod_vec_mat (double *x, double *y, double *z, int k, int m)
 
         y2 = y + k;
 
-#       ifdef ALT_MULT_VEC_MAT
+#       ifdef ALT_MATPROD_VEC_MAT
 
             s2 = s = 0.0;
 
@@ -233,7 +233,7 @@ void matprod_vec_mat (double *x, double *y, double *z, int k, int m)
    The case of n=2 may be handled specially, accumulating sums in two
    local variables rather than in the result vector, and then storing
    them in the result at the end.  Whether this is done can be controlled
-   using -DALT_MULT_MAT_VEC.  Change #ifdef to #ifndef or vice versa below 
+   using -DALT_MATPROD_MAT_VEC.  Change #ifdef to #ifndef or vice versa below 
    to change the default. */
 
 void matprod_mat_vec (double *x, double *y, double *z, int n, int k)
@@ -242,7 +242,7 @@ void matprod_mat_vec (double *x, double *y, double *z, int n, int k)
     double b, b2;
     int i;
 
-#   ifndef ALT_MULT_MAT_VEC
+#   ifndef ALT_MATPROD_MAT_VEC
 
         if (n == 2) { 
 
@@ -331,12 +331,12 @@ void matprod_mat_vec (double *x, double *y, double *z, int n, int k)
    The case of n=2 may be handled specially, accumulating sums in two
    local variables rather than in a column of the result, and then storing
    them in the result column at the end.  Whether this is done can be 
-   controlled using -DALT_MULT_MAT_MAT.  Change #ifdef to #ifndef or 
+   controlled using -DALT_MATPROD.  Change #ifdef to #ifndef or 
    vice versa below to change the default. */
 
 void matprod (double *x, double *y, double *z, int n, int k, int m)
 {
-#   ifndef ALT_MULT_MAT_MAT
+#   ifndef ALT_MATPROD
 
         if (n == 2) {
     
@@ -717,12 +717,12 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
    The case of n=2 may be handled specially, accumulating sums in two
    local variables rather than in a column of the result, and then storing
    them in the result column at the end.  Whether this is done can be 
-   controlled using -DALT_MULT_MAT_MAT_TRANS2.  Change #ifdef to #ifndef or
+   controlled using -DALT_MATPROD_TRANS2.  Change #ifdef to #ifndef or
    vice versa below to change the default. */
 
 void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 {
-#   ifndef ALT_MULT_MAT_MAT_TRANS2
+#   ifndef ALT_MATPROD_MAT_TRANS2
 
         if (n == 2) {
 
