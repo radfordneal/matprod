@@ -740,7 +740,7 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
     
                 /* Initialize s1 and s2 to zero, if k is even, or to the 
                    products of the first element of the first row of y with
-                   the first column of x.  Adjust x, q, and j accordingly. */
+                   the first column of x.  Adjust r, q, and j accordingly. */
     
                 if (kt & 1) {
                     double b = *q;
@@ -754,7 +754,7 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
     
                 /* Each time around this loop, add the products of two columns
                    of x and two elements of the first row of y to s1 and s2.
-                   Adjust x, q, and j to account for this.  Note that kt will 
+                   Adjust r, q, and j to account for this.  Note that kt will 
                    be even when we start. */
     
                 while (kt > 0) {
@@ -850,69 +850,72 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
         }
 
 #   endif
-#if 0
+
     int mt = m;
 
     /* If m is odd, compute the first column of the result, updating y, z, and 
-       m to account for this column having been computed (so that the situation
+       mt to account for this column having been computed (so that the situation
        is the same as if m had been even to start with). */
 
-    if (m & 1) {
+    if (mt & 1) {
 
-        double *r;
-
-        r = x;   /* r set to x, and then modified as columns of x are summed */
-        j = k;   /* j set to k, and then modified as values are read from y */
+        double *q = y;
+        double *r = x;
+        int kt = k;
+        int i;
 
         /* Initialize sums in z to zero, if k is even, or to the product of
-           the first element of the next column of y with the first column 
-           of x (in which case adjust r, y, and j accordingly). */
+           the first element of the first row of y with the first column 
+           of x (in which case adjust r, q, and kt accordingly). */
 
-        if (j & 1) {
-            double *q = z;
-            double b = *y++;
+        if (kt & 1) {
+            double *t = z;
+            double b = *q;
             for (i = n; i > 0; i--)
-                *q++ = *r++ * b;
-            j -= 1;
+                *t++ = *r++ * b;
+            q += m;
+            kt -= 1;
         }
         else {
-            double *q = z;
+            double *t = z;
             for (i = n; i > 0; i--)
-                *q++ = 0;
+                *t++ = 0;
         }
 
         /* Each time around this loop, add the products of two columns of x 
-           with two elements of the next column of y to the result vector, z.
-           Adjust r, y, and j to account for this.  Note that j will be even 
+           with two elements of the first row of y to the result vector, z.
+           Adjust r, y, and j to account for this.  Note that kt will be even 
            when we start. */
 
-        while (j > 0) {
-            double *q = z;
+        while (kt > 0) {
             double *r2 = r + n;
-            double b = *y++;
-            double b2 = *y++;
-            int i;
+            double *t = z;
+            double b1, b2;
+            b1 = *q;
+            q += m;
+            b2 = *q;
+            q += m;
             for (i = n; i > 0; i--) {
-                *q =  (*q + (*r++ * b)) + (*r2++ * b2);
-                q += 1;
+                *t = (*t + (*r++ * b1)) + (*r2++ * b2);
+                t += 1;
             }
             r = r2;
-            j -= 2;
+            kt -= 2;
         }
 
         /* Move to next column of the result. */
 
         z += n;
-        m -= 1;
+        mt -= 1;
     }
-
+#if 0
     /* Compute two columns of the result each time around this loop, updating
-       y, z, and m accordingly.  Note that m will be even.  (At the start
+       y, z, and mt accordingly.  Note that mt will be even.  (At the start
        of each loop iteration, the work remaining to be done is the same as 
-       if y, z, and m (and x, n, and k, which don't change) had been the 
+       if y, z, and mt (and x, n, and k, which don't change) had been the 
        original arguments.) */
 
-    while (m > 0) {
+    while (mt > 0) {
 
         double *y2 = y + k;
         double *r;
@@ -973,7 +976,7 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 
         y = y2;
         z += 2*n;
-        m -= 2;
+        mt -= 2;
     }
 #endif
 }
