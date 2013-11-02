@@ -725,37 +725,39 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 #   ifndef ALT_MULT_MAT_MAT_TRANS2
 
         if (n == 2) {
+
+            int mt = m;
     
             /* If m is odd, compute the first column of the result, and
-               update y, z, and m accordingly. */
+               update y, z, and mt accordingly. */
     
-            if (m & 1) {
+            if (mt & 1) {
     
                 double s1, s2;
                 double *q = y;
                 double *r = x;
-                int j = k;
+                int kt = k;
     
                 /* Initialize s1 and s2 to zero, if k is even, or to the 
                    products of the first element of the first row of y with
                    the first column of x.  Adjust x, q, and j accordingly. */
     
-                if (j & 1) {
+                if (kt & 1) {
                     double b = *q;
                     s1 = *r++ * b;
                     s2 = *r++ * b;
                     q += m;
-                    j -= 1;
+                    kt -= 1;
                 }
                 else
                     s1 = s2 = 0.0;
     
                 /* Each time around this loop, add the products of two columns
                    of x and two elements of the first row of y to s1 and s2.
-                   Adjust x, q, and j to account for this.  Note that j will 
+                   Adjust x, q, and j to account for this.  Note that kt will 
                    be even when we start. */
     
-                while (j > 0) {
+                while (kt > 0) {
                     double b1, b2;
                     b1 = *q;
                     q += m;
@@ -764,7 +766,7 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
                     s1 = (s1 + (r[0] * b1)) + (r[2] * b2);
                     s2 = (s2 + (r[1] * b1)) + (r[3] * b2);
                     r += 4;
-                    j -= 2;
+                    kt -= 2;
                 }
     
                 /* Store s1 and s2 in the result column. */
@@ -776,25 +778,25 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 
                 z += 2;
                 y += 1;
-                m -= 1;
+                mt -= 1;
     
             }
     
             /* Compute two columns of the result each time around this loop, 
-               updating y, z, and m accordingly.  Note that m is now even. */
+               updating y, z, and mt accordingly.  Note that mt is now even. */
     
-            while (m > 0) {
+            while (mt > 0) {
     
                 double s11, s12, s21, s22;
                 double *q = y;
                 double *r = x;
-                int j = k;
-    
+                int kt = k;
+
                 /* Initialize sums for columns to zero, if k is even, or to the 
                    products of the first elements of the next two rows of y with
                    the first column of x.  Adjust x, q, and j accordingly. */
     
-                if (j & 1) {
+                if (kt & 1) {
                     double b = *q;
                     double b2 = *(q+1);
                     q += m;
@@ -803,17 +805,17 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
                     s21 = r[0] * b2;
                     s22 = r[1] * b2;
                     r += 2;
-                    j -= 1;
+                    kt -= 1;
                 }
                 else
                     s11 = s12 = s21 = s22 = 0.0;
     
                 /* Each time around this loop, add the products of two columns
                    of x with elements of the next two rows of y to the sums.
-                   Adjust r, q, and j to account for this.  Note that j will 
-                   be even. */
+                   Adjust r, q, and j to account for this.  Note that kt will 
+                   be even here. */
     
-                while (j > 0) {
+                while (kt > 0) {
                     double b11, b12, b21, b22;
                     b11 = *q;
                     b21 = *(q+1);
@@ -826,7 +828,7 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
                     s21 = (s21 + (r[0] * b21)) + (r[2] * b22);
                     s22 = (s22 + (r[1] * b21)) + (r[3] * b22);
                     r += 4;
-                    j -= 2;
+                    kt -= 2;
                 }
     
                 /* Store sums in the next two result columns. */
@@ -841,7 +843,7 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 
                 z += 4;
                 y += 2;
-                m -= 2;
+                mt -= 2;
             }
     
             return;
@@ -849,6 +851,8 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 
 #   endif
 #if 0
+    int mt = m;
+
     /* If m is odd, compute the first column of the result, updating y, z, and 
        m to account for this column having been computed (so that the situation
        is the same as if m had been even to start with). */
