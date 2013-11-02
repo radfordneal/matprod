@@ -46,6 +46,7 @@ void print_result (void)
 
 #if 0
   { int i, j;
+    printf("\n");
     for (i = 0; i<matrows[0]; i++)
     { for (j = 0; j<matcols[nmat-1]; j++)
       { printf(" %f",product[0][i+j*matrows[0]]);

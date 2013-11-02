@@ -599,6 +599,7 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
 void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
 {
   int sym = x==y && n==m;  /* same operands, so symmetric result? */
+  double *oz = z;          /* original value of z */
   int j = 0;               /* number of columns of result produced so far */
 
   /* If m is odd, compute the first column of the result, updating y, z, and 
@@ -655,31 +656,50 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
 
       double *z2 = z+n;
       double *r = x;
-      int h = n;
+      int h = 0;
       int kt;
 
-      /* If n is odd, compute the first elements of the two columns here. 
+      /* If n is odd, compute the first elements of the two columns here,
+         or copy them if they have already been computed from symmetry.
          Also, move r to point to the second column of x, and update z. */
 
-      if (h & 1) {
-          double s0 = 0;
-          double s1 = 0;
-          double *q = y;
-          for (kt = k; kt > 0; kt--) {
-              double t = *r++;
-              s0 += t * *q;
-              s1 += t * *(q+k);
-              q += 1;
+      if (n & 1) {
+          if (sym && j > 0) {
+              *z++ = oz[j];
+              *z2++ = oz[j+1];
+              r += k;
           }
-          *z++ = s0;
-          *z2++ = s1;
-          h -= 1;
+          else {
+              double s0 = 0;
+              double s1 = 0;
+              double *q = y;
+              for (kt = k; kt > 0; kt--) {
+                  double t = *r++;
+                  s0 += t * *q;
+                  s1 += t * *(q+k);
+                  q += 1;
+              }
+              *z++ = s0;
+              *z2++ = s1;
+          }
+          h += 1;
       }
 
       /* Compute the remainder of the two columns of the result, two elements
-         at a time.  Note that h will be even. */
+         at a time.  Note that n-h will be even. */
 
-      while (h > 0) {
+      if (sym) {
+          double *q = h ? oz+j+n : oz+j;
+          while (h < j) {
+              *z++ = *q;
+              *z2++ = *(q+1);
+              q += n;
+              r += k;
+              h += 1;
+          }
+      }
+
+      while (h < n) {
           double s00 = 0;
           double s01 = 0;
           double s10 = 0;
@@ -702,7 +722,7 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
           *z++ = s10;
           *z2++ = s11;
           r += k;
-          h -= 2;
+          h += 2;
       }
 
       z = z2;
@@ -724,6 +744,7 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
 void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 {
   int sym = x==y && n==m;  /* same operands, so symmetric result? */
+  double *oz = z;          /* original value of z */
   int j = 0;               /* number of columns of result produced so far */
 
 #   ifndef ALT_MATPROD_MAT_TRANS2
