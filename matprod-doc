@@ -166,10 +166,12 @@ positive integers.  In this example, three matrices of dimensions AxB,
 BxC, and CxD are created, and the product of the first of these
 matrices with the product of the second and third matrices is computed
 (note the right associativity), with this computation repeated rep
-times (with identical results each time, one hopes).  The upper-right
-and lower-left elements of the result are then printed on standard
-output (except that only one element is printed if the result is
-scalar, that is of dimensions 1x1).  
+times (with identical results each time, one hopes).  The first
+(upper-right), second (one down from upper-right), second-to-last (one
+up from lower-left), and last (lower-left) elements of the result are
+then printed on standard output (except that only one element is
+printed if the result is scalar, that is of dimensions 1x1, and only
+two elements when the result is of dimension 1x2 or 2x1).
 
 In general, n>2 arguments (other than "t" or "T") follow the rep
 argument, defining the dimensions of n-1 matrices, which are used as
@@ -177,26 +179,22 @@ operands in n-2 matrix multiplication operations, which associate to
 the right.  The result of each of these products will be a matrix with
 number of columns equal to the last argument.
 
-If an optional "t" or "T" argument precedes the matrix dimensions, the
-final multiply by the AxB matrix is done by multiplying by the
-transpose of a BxA matrix (eg, using matprod_trans1).  Similarly, if
-the optional final "t" or "T" argument is present, the first multiply
-of a CxD matrix is done on the transpose of a DxC matrix (eg, using
-matprod_trans2).  If only one multiplication is done (ie, only three
-matrix dimensions are specified), "t" or "T" must not be on both the
-left and right (ie, a multiply with both operands transposed is not
-allowed).  
+If the optional "t" or "T" argument precedes the matrix dimensions,
+the final multiply (by the AxB matrix in the example above) is done by
+multiplying by the transpose of this matrix (eg, with matprod_trans1).
+Similarly, if the optional final "t" or "T" argument is present, the
+first multiply (of a CxD matrix in the example above) is done on the
+transpose of this matrix (eg, using matprod_trans2).  If only one
+multiplication is done (ie, only three matrix dimensions are
+specified), "t" or "T" must not be on both the left and right (ie, a
+multiply with both operands transposed is not allowed).
 
-If "T" is used for this option on the right, the two matrices
-multiplied first must have properly matching dimensions (eg, B = D in
-the example above). These two matrices will then be set to be the same
-matrix, which may allow for the multiply to be done more quickly (eg,
-by exploiting the fact that the result is symmetric).  If "T" is used
-for this option on the left, there must be only two matrices (ie,
-three dimensions, one multiply) and the dimensions of the two matrices
-must match properly (ie, first dimension same as last dimension).  The
-two matrices will then be set to be the same matrix, again allowing
-for possibly faster multiplication.
+If "T" is specified instead of "t" on either the right or left, the
+result of the multiply must be a square matrix (eg, for "T" on the
+right, B must be the same as D in the example above).  The two
+operands of this multiply will then be set to be the same matrix,
+which may allow for the multiply to be done more quickly (eg, by
+exploiting the fact that the result is symmetric).  
 
 An argument after rep with the value "1" may be replaced with the
 argument "v" or "V", which has the same effect as "1", except that the
@@ -209,12 +207,15 @@ mat_vec procedure, except if the first operand was also specified
 using "v" or "V", in which case the vec_vec procedure will be used.
 
 The matrices created by the test programs have elements that are set
-to 3.1 times the sum of the number of rows and columns in the matrix,
+to 0.1 times the sum of the number of rows and columns in the matrix,
 plus 0.01 times the product of the number of rows and columns in the
-matrix.  Furthermore, 1234 is then added to the top-left element and
-5678 is added to the bottom-right element.  With this initialization,
-the results obtained should be the same whether or not "t" or "T"
-options are used, on either the left or right.
+matrix, plus 0.01 times the product of the row and column indexes for
+each element.  A matrix whose transpose will be used as an operand
+will be initialized so that this is its value after transposition, so
+the results obtained should be the same with or without the "t"
+option, on either the left or right.  Since the initialization is
+invariant to transposition, the result with "T" instead of "t" is also
+the same.
 
 Several test programs can be compiled using the supplied Makefile, as
 follows:

@@ -60,6 +60,5 @@ void do_test (int rep)
     }
   }  
 
-  if (prodlen[0]!=1) printf ("%.16g ", product[0][0]);
-  printf ("%.16g\n", product[0][prodlen[0]-1]);
+  print_result();
 }

@@ -41,4 +41,6 @@ EXTERN double *product[MAX_MATRICES];/* Pointers to storage for products */
 EXTERN int prodlen[MAX_MATRICES];    /* Length of each product matrix */
 
 extern char *prog_name;              /* Name of test program (for usage msg) */
+
 extern void do_test(int);            /* Procedure to do the test (repeatedly) */
+extern void print_result (void);     /* Print part of final result matrix */

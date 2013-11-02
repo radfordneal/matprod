@@ -32,6 +32,9 @@ extern void dgemv_ (char *, int *, int *, double *, double *, int *,
 extern void dgemm_ (char *, char *, int *, int *, int *, double *,
                     double *, int *, double *, int *, double *, 
                     double *, int *);
+extern void dsyrk_ (char *, char *, int *, int *, double *, double *,
+                    int *, double *, double *, int *);
+                    
 
 void xerbla_ (char *e, int i)
 {
@@ -119,6 +122,5 @@ void do_test (int rep)
     }
   }  
 
-  if (prodlen[0]!=1) printf ("%.16g ", product[0][0]);
-  printf ("%.16g\n", product[0][prodlen[0]-1]);
+  print_result();
 }

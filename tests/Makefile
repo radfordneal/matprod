@@ -20,7 +20,7 @@
 progs=matprod-test matprod-alt-test piped-matprod-test piped-matprod-test-d \
       blas-test blas2-test
 
-CFLAGS=-g -O2
+CFLAGS=-g -O2 -march=native -mtune=native -mfpmath=sse
 
 all:	$(progs)
 
