@@ -229,6 +229,8 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
     double *p, *q;
     double b, b2;
 
+    if (n <= 0) return;
+
     HELPERS_WAIT_IN2 (a, 0, k);
 
     if (n == 2) { 
@@ -297,19 +299,18 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
        j to account for this.  Note that k-j will be even when we start. */
 
     for (;;) {
+        double *e;
         if (j > a) {
             if (j >= k)
                 break;
             HELPERS_WAIT_IN2 (a, j-1, k);
         }
-        p = x + n;
         q = z;
+        e = z+n;
+        p = x + n;
         b = *y++;
         b2 = *y++;
-        for (i = n; i > 0; i--) {
-            *q = (*q + (*x++ * b)) + (*p++ * b2);
-            q += 1;
-        }
+        do { *q = (*q + (*x++ * b)) + (*p++ * b2); } while (++q < e);
         x = p;
         j += 2;
     }
