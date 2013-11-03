@@ -353,7 +353,7 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
                    products of the first element of the first column of y with
                    the first column of x.  Adjust x, y, and kt accordingly. */
     
-                if (kt & 1) {
+                if (k & 1) {
                     double b = *y++;
                     s1 = *r++ * b;
                     s2 = *r++ * b;
@@ -404,7 +404,7 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
                    of y with the first column of x. Adjust x, y, and kt 
                    accordingly. */
     
-                if (kt & 1) {
+                if (k & 1) {
                     double b = *y++;
                     double b2 = *y2++;
                     s11 = r[0] * b;
@@ -468,7 +468,7 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
            the first element of the next column of y with the first column 
            of x (in which case adjust r, y, and kt accordingly). */
 
-        if (kt & 1) {
+        if (k & 1) {
             double *q = z;
             double b = *y++;
             int i;
@@ -525,7 +525,7 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
            of y with the first column of x, if k is odd (in which case adjust 
            r, y, and kt accordingly). */
 
-        if (kt & 1) {
+        if (k & 1) {
             double *q = z;
             double b = *y++;
             double b2 = *y2++;
@@ -557,10 +557,10 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
             double b22 = *y2++;
             int i;
             for (i = n; i > 0; i--) {
-                double t = *r;
-                double t2 = *(r+n);
-                *q = (*q + (t * b11)) + (t2 * b12);
-                *(q+n) = (*(q+n) + (t * b21)) + (t2 * b22);
+                double s1 = *r;
+                double s2 = *(r+n);
+                *q = (*q + (s1 * b11)) + (s2 * b12);
+                *(q+n) = (*(q+n) + (s1 * b21)) + (s2 * b22);
                 q += 1;
                 r += 1;
             }
@@ -767,7 +767,7 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
                    products of the first element of the first row of y with
                    the first column of x.  Adjust r, q, and kt accordingly. */
     
-                if (kt & 1) {
+                if (k & 1) {
                     double b = *q;
                     s1 = *r++ * b;
                     s2 = *r++ * b;
@@ -821,7 +821,7 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
                    products of the first elements of the next two rows of y with
                    the first column of x.  Adjust x, q, and kt accordingly. */
     
-                if (kt & 1) {
+                if (k & 1) {
                     double b = *q;
                     double b2 = *(q+1);
                     q += m;
@@ -890,7 +890,7 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
            the first element of the first row of y with the first column 
            of x (in which case adjust r, q, and kt accordingly). */
 
-        if (kt & 1) {
+        if (k & 1) {
             double *t = z;
             double b = *q;
             for (i = n; i > 0; i--)
@@ -937,33 +937,60 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 
     while (j < m) {
 
+        /* These set here for the non-symmetric case, modifed if symmetric */
+        double *xs = x;  /* Where to start fetching for sums */
+        double *zs = z;  /* Where to start storing sums */
+        int u = n;       /* Number of elements to sum */
+
         double *q = y;
-        double *r = x;
         int kt = k;
         int i;
+
+        /* If result is known to be symmetric, fill in upper part of the
+           next two columns from already computed elements (unless these
+           are the first two columns).  Adjust xs, zs, and u so that later
+           sums are for only elements after those filled in here. */
+
+        if (sym && j > 0) {
+            double *s = oz+j;
+            double *t1 = z;
+            double *t2 = t1 + n;
+            for (i = 0; i < j; i++) {
+                *t1++ = *s;
+                *t2++ = *(s+1);
+                s += n;
+            }
+            u = n-j;
+            xs += j;
+            zs += j;
+        }
 
         /* Initialize sums in the next two columns of z to zero, if k is 
            even, or to the products of the first elements of the next two
            rows of y with the first column of x (in which case adjust r, 
            q, and kt accordingly). */
 
-        if (kt & 1) {
-            double *t1 = z;
-            double *t2 = z + n;
-            double b = *q;
+        double *t1 = zs;
+        double *t2 = t1 + n;
+
+        if (k & 1) {
+            double b1 = *q;
             double b2 = *(q+1);
-            for (i = n; i > 0; i--) {
+            double *r = xs;
+            for (i = u; i > 0; i--) {
                 double s = *r++;
-                *t1++ = s * b;
+                *t1++ = s * b1;
                 *t2++ = s * b2;
             }
+            xs += n;
             q += m;
             kt -= 1;
         }
         else {
-            double *t = z;
-            for (i = 2*n; i > 0; i--)
-                *t++ = 0;
+            for (i = u; i > 0; i--) {
+                *t1++ = 0;
+                *t2++ = 0;
+            }
         }
 
         /* Each time around this loop, add the products of two columns of x 
@@ -973,22 +1000,25 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 
         while (kt > 0) {
             double b11, b12, b21, b22;
-            double *t1 = z;
-            double *t2 = z + n;
+            double *t1 = zs;
+            double *t2 = t1 + n;
+            double *r = xs;
             b11 = *q;
             b21 = *(q+1);
             q += m;
             b12 = *q;
             b22 = *(q+1);
             q += m;
-            for (i = n; i > 0; i--) {
-                *t1 = (*t1 + (*r * b11)) + (*(r+n) * b12);
-                *t2 = (*t2 + (*r * b21)) + (*(r+n) * b22);
+            for (i = u; i > 0; i--) {
+                double s1 = *r;
+                double s2 = *(r+n);
+                *t1 = (*t1 + (s1 * b11)) + (s2 * b12);
+                *t2 = (*t2 + (s1 * b21)) + (s2 * b22);
                 t1 += 1;
                 t2 += 1;
                 r += 1;
             }
-            r += n;
+            xs += 2*n;
             kt -= 2;
         }
 
