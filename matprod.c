@@ -112,7 +112,7 @@ void matprod_vec_mat (double *x, double *y, double *z, int k, int m)
         }
 #       else
         {
-            double *p = x;    /* pointer goes down column of x */
+            double *p = x;    /* pointer that goes along vector x */
             double *e = x+k;  /* point where p stops */
 
             /* Initialize sum to first product, if k odd; otherwise to 0. */
@@ -166,12 +166,12 @@ void matprod_vec_mat (double *x, double *y, double *z, int k, int m)
         }
 #       else
         {
-            double *p = x;    /* pointer goes down pair of columns of x */
+            double *p = x;    /* pointer that goes along vector x */
             double *e = x+k;  /* point where p stops */
 
             /* If the two dot products sum an odd number of products, set
-               the sums, s and s2, to the first products here, and adjust p, 
-               y, and y2.  Otherwise, initialize s and s2 to zero. */
+               the sums, s1 and s2, to the first products here, and adjust p, 
+               y, and y2.  Otherwise, initialize s1 and s2 to zero. */
 
             if (k & 1) {
                 t = *p++;
