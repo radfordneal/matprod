@@ -141,7 +141,10 @@ non-pipelined procedures above, and are as follows:
 
       Multiplies the first operand matrix and the transpose of the
       second operand matrix, with column-by-column pipelining of the
-      output, but no pipelining of the operands.
+      output, but no pipelining of the operands.  (However, this task
+      procedure does explicitly wait for the second operand to become
+      available, in case it has been scheduled with pipelining of this 
+      operand, since it is pipelined for all the other task procedures.)
 
 Note that, to reduce overhead, columns or elements of pipelined output
 may not always be made available immediately after being computed.
