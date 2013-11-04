@@ -646,6 +646,10 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
         return;
     }
 
+    HELPERS_SETUP_OUT (k < 10 ? 6 : k < 100 ? 5 : 4);
+
+    helpers_size_t done = 0;
+
     HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);  /* GET IT ALL FOR NOW */
 
     /* If m is odd, compute the first column of the result, updating y, z, and 
@@ -689,6 +693,10 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
             *z++ = s0;
             *z++ = s1;
         }
+
+        /* Signal that a column of z has been computed. */
+
+        HELPERS_BLOCK_OUT (done, n);
 
         y += k;
         j += 1;
@@ -773,6 +781,10 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
             r += k;
         }
 
+        /* Signal that two columns of z have been computed. */
+
+        HELPERS_BLOCK_OUT (done, 2*n);
+
         z = z2;
         y += 2*k;
         j += 2;
@@ -801,6 +813,10 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     int j = 0;                  /* number of columns of result produced so far */
 
     if (n <= 0) return;
+
+    HELPERS_SETUP_OUT (k < 10 ? 6 : k < 100 ? 5 : 4);
+
+    helpers_size_t done = 0;
 
 #   ifndef ALT_MATPROD_MAT_TRANS2
     {
@@ -850,6 +866,10 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     
                 z[0] = s1;
                 z[1] = s2;
+
+                /* Signal that a column of z has been computed. */
+
+                HELPERS_BLOCK_OUT (done, 2);
     
                 /* Move to next column of the result, and next row of y. */
 
@@ -910,6 +930,10 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
                 z[2] = s21;
                 z[3] = s22;
 
+                /* Signal that two columns of z have been computed. */
+
+                HELPERS_BLOCK_OUT (done, 4);
+
                 /* Move forward two to the next column of the result and 
                    the next row of y. */
 
@@ -967,6 +991,10 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
             } while (t < f);
             r += n;
         }
+
+        /* Signal that a column of z has been computed. */
+
+        HELPERS_BLOCK_OUT (done, n);
 
         /* Move to next column of the result and the next row of y. */
 
@@ -1062,5 +1090,9 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
         z += 2*n;
         y += 2;
         j += 2;
+
+        /* Signal that two columns of z have been computed. */
+
+        HELPERS_BLOCK_OUT (done, 2*n);
     }
 }
