@@ -583,149 +583,149 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
 
 void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
 {
-  int sym = x==y && n==m;  /* same operands, so symmetric result? */
-  double *oz = z;          /* original value of z */
-  int j = 0;               /* number of columns of result produced so far */
+    int sym = x==y && n==m;  /* same operands, so symmetric result? */
+    double *oz = z;          /* original value of z */
+    int j = 0;               /* number of columns of result produced so far */
 
-  if (n <= 0) return;
+    if (n <= 0) return;
 
-  /* Set result to zeros if k is zero. */
+    /* Set result to zeros if k is zero. */
 
-  if (k <= 0) {
-      double *e = z + n*m;
-      while (z < e) *z++ = 0;
-      return;
-  }
+    if (k <= 0) {
+        double *e = z + n*m;
+        while (z < e) *z++ = 0;
+        return;
+    }
 
-  /* If m is odd, compute the first column of the result, updating y, z, and 
-     m to account for this column having been computed (so that the situation
-     is the same as if m had been even to start with). */
+    /* If m is odd, compute the first column of the result, updating y, z, and 
+       m to account for this column having been computed (so that the situation
+       is the same as if m had been even to start with). */
 
-  if (m & 1) {
+    if (m & 1) {
 
-      double *r = x;
-      double *e = z+n;
+        double *r = x;
+        double *e = z+n;
 
-      /* If n is odd, compute the first element of the first column of the
-         result here.  Also, move r to point to the second column of x, and
-         increment z. */
+        /* If n is odd, compute the first element of the first column of the
+           result here.  Also, move r to point to the second column of x, and
+           increment z. */
 
-      if (n & 1) {
-          double s = 0;
-          double *q = y;
-          double *e = y+k;
-          do { s += *r++ * *q++; } while (q < e);
-          *z++ = s;
-      }
+        if (n & 1) {
+            double s = 0;
+            double *q = y;
+            double *e = y+k;
+            do { s += *r++ * *q++; } while (q < e);
+            *z++ = s;
+        }
 
-      /* Compute the remainder of the first column of the result two
-         elements at a time (looking at two columns of x).  Note that 
-         e-z will be even. */
+        /* Compute the remainder of the first column of the result two
+           elements at a time (looking at two columns of x).  Note that 
+           e-z will be even. */
 
-      while (z < e) {
-          double s0 = 0;
-          double s1 = 0;
-          double *q = y;
-          double *f = y+k;
-          do {
-              double t = *q;
-              s0 += *r * t;
-              s1 += *(r+k) * t;
-              r += 1;
-              q += 1;
-          } while (q < f);
-          r += k;
-          *z++ = s0;
-          *z++ = s1;
-      }
+        while (z < e) {
+            double s0 = 0;
+            double s1 = 0;
+            double *q = y;
+            double *f = y+k;
+            do {
+                double t = *q;
+                s0 += *r * t;
+                s1 += *(r+k) * t;
+                r += 1;
+                q += 1;
+            } while (q < f);
+            r += k;
+            *z++ = s0;
+            *z++ = s1;
+        }
 
-      y += k;
-      j += 1;
-  }
+        y += k;
+        j += 1;
+    }
 
-  /* Compute two columns of the result each time around this loop, updating
-     y, z, and j accordingly.  Note that m-j will be even. */
+    /* Compute two columns of the result each time around this loop, updating
+       y, z, and j accordingly.  Note that m-j will be even. */
 
-  while (j < m) {
+    while (j < m) {
 
-      double *z2 = z+n;
-      double *e = z2;
-      double *r = x;
+        double *z2 = z+n;
+        double *e = z2;
+        double *r = x;
 
-      /* If n is odd, compute the first elements of the two columns here,
-         or copy them if they have already been computed from symmetry.
-         Also, move r to point to the second column of x, and update z. */
+        /* If n is odd, compute the first elements of the two columns here,
+           or copy them if they have already been computed from symmetry.
+           Also, move r to point to the second column of x, and update z. */
 
-      if (n & 1) {
-          if (sym && j > 0) {
-              *z++ = *(oz+j);
-              *z2++ = *(oz+j+1);
-              r += k;
-          }
-          else {
-              double s0 = 0;
-              double s1 = 0;
-              double *q = y;
-              double *f = y+k;
-              do {
-                  double t = *r++;
-                  s0 += t * *q;
-                  s1 += t * *(q+k);
-                  q += 1;
-              } while (q < f);
-              *z++ = s0;
-              *z2++ = s1;
-          }
-      }
+        if (n & 1) {
+            if (sym && j > 0) {
+                *z++ = *(oz+j);
+                *z2++ = *(oz+j+1);
+                r += k;
+            }
+            else {
+                double s0 = 0;
+                double s1 = 0;
+                double *q = y;
+                double *f = y+k;
+                do {
+                    double t = *r++;
+                    s0 += t * *q;
+                    s1 += t * *(q+k);
+                    q += 1;
+                } while (q < f);
+                *z++ = s0;
+                *z2++ = s1;
+            }
+        }
 
-      /* For the symmetric case, copy elements to the remainder of the upper 
-         part of these two columns.  We stop at the point where we would
-         copy a diagonal element to itself.  (Note that one pair of symmetric
-         elements will then be computed redundantly below twice.) */
-         
-      if (sym && j > 0) {
-          double *q = r==x ? oz+j : oz+j+n;
-          while (q != z) {
-              *z++ = *q;
-              *z2++ = *(q+1);
-              q += n;
-              r += k;
-          }
-      }
+        /* For the symmetric case, copy elements to the remainder of the upper 
+           part of these two columns.  We stop at the point where we would
+           copy a diagonal element to itself.  (Note that one pair of symmetric
+           elements will then be computed redundantly below twice.) */
+           
+        if (sym && j > 0) {
+            double *q = r==x ? oz+j : oz+j+n;
+            while (q != z) {
+                *z++ = *q;
+                *z2++ = *(q+1);
+                q += n;
+                r += k;
+            }
+        }
 
-      /* Compute the remainder of the two columns of the result, two elements
-         at a time. */
+        /* Compute the remainder of the two columns of the result, two elements
+           at a time. */
 
-      while (z < e) {
-          double s00 = 0.0;
-          double s01 = 0.0;
-          double s10 = 0.0;
-          double s11 = 0.0;
-          double *q = y;
-          int i = k;
-          do {
-              double t = *r;
-              double t2 = *(r+k);
-              double u = *q;
-              double u2 = *(q+k);
-              s00 += t * u;
-              s01 += t * u2;
-              s10 += t2 * u;
-              s11 += t2 * u2;
-              r += 1;
-              q += 1;
-          } while (--i > 0);
-          *z++ = s00;
-          *z2++ = s01;
-          *z++ = s10;
-          *z2++ = s11;
-          r += k;
-      }
+        while (z < e) {
+            double s00 = 0.0;
+            double s01 = 0.0;
+            double s10 = 0.0;
+            double s11 = 0.0;
+            double *q = y;
+            int i = k;
+            do {
+                double t = *r;
+                double t2 = *(r+k);
+                double u = *q;
+                double u2 = *(q+k);
+                s00 += t * u;
+                s01 += t * u2;
+                s10 += t2 * u;
+                s11 += t2 * u2;
+                r += 1;
+                q += 1;
+            } while (--i > 0);
+            *z++ = s00;
+            *z2++ = s01;
+            *z++ = s10;
+            *z2++ = s11;
+            r += k;
+        }
 
-      z = z2;
-      y += 2*k;
-      j += 2;
-  }
+        z = z2;
+        y += 2*k;
+        j += 2;
+    }
 }
 
 
