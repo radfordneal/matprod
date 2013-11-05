@@ -22,18 +22,26 @@ The matprod library provides double-precision real matrix/vector by
 matrix/vector multiplication routines.  These routines are written
 with some attention to cache performance and other efficiency issues,
 but they are probably not as efficient as some other matrix
-multiplication packages.  However, they do not bypass multiplications
-by zero, and therefore propagate Inf and NaN values properly, and the
-pipelined versions allow for possible parallel operation in the
-context of a program using the helpers library.
+multiplication packages.  
 
-There are two implementations of these routines, with different
-interfaces.  One set, in matprod.c, are called in ordinary C fashion.
-The other set, in piped-matprod.c, are task procedures for use with
-the helpers library for parallel computation.  These task procedures
-support pipelined input for the second operand (except for the matrix
-times transposed matrix operation), and pipelined output in the case
-of matrix-matrix and vector-matrix multiplication.
+However, these routines have been written to produce the same results
+as the obvious matrix multiplication algorithms.  They do not bypass
+multiplications by zero, and therefore propagate Inf and NaN values
+properly.  They do not re-group additions assuming associativity
+holds, so round-off errors will be the same as for the obvious
+algorithms.
+
+There are pipelined versions of these routines that allow for possible
+parallel operation in the context of a program using the helpers
+library.
+
+The non-pipelined routines, in matprod.c, are called in ordinary C
+fashion.  The pipelined routines, in piped-matprod.c, are task
+procedures for use with the helpers library for parallel computation.
+These task procedures support pipelined input for the second operand
+(except for the matrix times transposed matrix operation), and
+pipelined output in the case of matrix-matrix and vector-matrix
+multiplication.
 
 Note that matrices are assumed to be stored in FORTRAN memory order,
 proceeding down columns (not across rows).  To use the matprod
