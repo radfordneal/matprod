@@ -17,7 +17,7 @@
 #   with this program; if not, write to the Free Software Foundation, Inc.,
 #   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-progs=matprod-test matprod-alt-test piped-matprod-test piped-matprod-test-d \
+progs=matprod-test matprod-alt-test piped-matprod-test piped-matprod-d-test \
       blas-test blas2-test
 
 CFLAGS=-g -O2 -march=native -mtune=native -mfpmath=sse
@@ -41,11 +41,11 @@ piped-matprod-test:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
 		test.c piped-matprod-test.c ../piped-matprod.c helpers.c \
 		-o piped-matprod-test
 
-piped-matprod-test-d:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
+piped-matprod-d-test:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
 			../piped-matprod.c helpers-app.h helpers.h helpers.c
 	gcc -I.. -I. $(CFLAGS) -fopenmp -DHELPERS_DISABLED \
 		test.c piped-matprod-test.c ../piped-matprod.c helpers.c \
-		-o piped-matprod-test-d
+		-o piped-matprod-d-test
 
 blas-test:		test.h test.c blas-test.c \
 			ddot.f dgemm.f dgemv.f dsyrk.f lsame.f

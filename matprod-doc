@@ -238,7 +238,7 @@ follows:
       is defined, trace output from the helpers library is enabled.
       See below for the special role of a last argument of "V".
 
-    piped-matprod-test-d
+    piped-matprod-d-test
 
       The same as piped-matprod-test, except that helper threads are
       disabled, which allows the overhead of providing for helper
