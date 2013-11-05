@@ -84,7 +84,7 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t k_times_m = LENGTH(sy);
     helpers_size_t k = LENGTH(sx);
     helpers_size_t m = LENGTH(sz);
-    helpers_size_t i, j, a, k_times_j;
+    helpers_size_t j, a, k_times_j;
 
     /* Set up the mask that determines how often helpers_amount_out is called.
        Done less often if computing an element of the result takes less time. */
@@ -217,7 +217,7 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t a;
     helpers_size_t j;
     double *p, *q;
-    double *e, *f;
+    double *f;
 
     if (n <= 0) return;
 
@@ -272,7 +272,6 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
        and j accordingly. */
 
     q = z;
-    e = y+k;
 
     f = z+n;
     if (k & 1) {
@@ -335,7 +334,7 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t n = n_times_k / k;
     helpers_size_t m = k_times_m / k;
     helpers_size_t a = 0;
-    int i, j;
+    int j;
 
     if (n_times_m == 0)  return;
 
@@ -785,6 +784,8 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
         /* Signal that two columns of z have been computed. */
 
         HELPERS_BLOCK_OUT (done, 2*n);
+
+        /* Go on to next two columns of y. */
 
         z = z2;
         y += 2*k;

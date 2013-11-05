@@ -722,6 +722,8 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
             r += k;
         }
 
+        /* Go on to next two columns of y. */
+
         z = z2;
         y += 2*k;
         j += 2;
