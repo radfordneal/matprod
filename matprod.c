@@ -332,7 +332,7 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
 
 #   ifndef ALT_MATPROD
 
-        if (n == 2) {
+        if (n == 2) { /* Treated specially */
     
             /* If m is odd, compute the first column of the result, and
                update y, z, and m accordingly. */
