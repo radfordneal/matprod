@@ -797,6 +797,11 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
 /* Product of an n x k matrix (x) and the transpose of an m x k matrix (y) 
    with result stored in z, with pipelining of the output (by column).
 
+   When the two operands are the same, the result will be a symmetric
+   matrix.  Only the lower-triangular part of the result is computed,
+   with the upper-triangular part being copied from the lower triangle
+   as columns of the result are produced.
+
    The value of k (taken from op) must be greater than zero. */
 
 void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz, 

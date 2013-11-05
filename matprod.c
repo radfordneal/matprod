@@ -579,6 +579,8 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
    matrix.  Only the lower-triangular part of the result is computed,
    with the upper-triangular part being copied from the lower triangle
    as columns of the result are produced.
+
+   There is no alternate implementation for this procedure.
 */
 
 void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
@@ -733,6 +735,11 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
 
 /* Product of an n x k matrix (x) and the transpose of an m x k matrix (y) 
    with result stored in z.
+
+   When the two operands are the same, the result will be a symmetric
+   matrix.  Only the lower-triangular part of the result is computed,
+   with the upper-triangular part being copied from the lower triangle
+   as columns of the result are produced.
 
    The case of n=2 may be handled specially, accumulating sums in two
    local variables rather than in a column of the result, and then storing

@@ -82,7 +82,7 @@ may overlap.
 
 See the comments in matprod.c for details on the algorithms used,
 including compile options for selecting an alternative algorithm for
-each procedure.
+most of the procedures.
 
 
 Task procedures in piped-matprod.c:
