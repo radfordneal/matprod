@@ -38,9 +38,8 @@ void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
 
     k = LENGTH(sx);
 
-    /* If k is odd, initialize sum to the first product, and adjust x,
-       y, and i to account for this.  If k is even, just initialize
-       sum to zero. */
+    /* If k is odd, initialize sum to the first product, and adjust x and
+       y to account for this.  If k is even, just initialize sum to zero. */
 
     if (k & 1) {
         HELPERS_WAIT_IN2 (a, 0, k);
@@ -86,8 +85,6 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t k = LENGTH(sx);
     helpers_size_t m = LENGTH(sz);
     helpers_size_t i, j, a, k_times_j;
-    double s, s2, t;
-    double *p, *y2;
 
     /* Set up the mask that determines how often helpers_amount_out is called.
        Done less often if computing an element of the result takes less time. */
@@ -102,24 +99,22 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
 
         HELPERS_WAIT_IN2 (a, k-1, k_times_m);
 
-        p = x;
-        i = k;
+        double *p = x;    /* pointer goes along vector x */
+        double *e = x+k;  /* point where p stops */
+        double s;
 
         /* Initialize sum to first product, if k odd; otherwise to 0. */
 
-        if (i & 1) {
+        if (k & 1)
             s = *p++ * *y++;
-            i -= 1;
-        }
         else
             s = 0.0;
 
-        /* Add two products each time around loop. Note: i is even. */
+        /* Add two products each time around loop. */
 
-        while (i > 0) {
+        while (p < e) {
             s += *p++ * *y++;
             s += *p++ * *y++;
-            i -= 2;
         }
 
         /* Store result of dot product as first element of result. */
@@ -141,6 +136,9 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
 
     while (k_times_j < k_times_m) {
 
+        double s1, s2, t;
+        double *y2 = y+k;
+
         j += 2;
         k_times_j += 2*k;
 
@@ -148,50 +146,42 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
 
         if (a < k_times_j) HELPERS_WAIT_IN2 (a, k_times_j-1, k_times_m);
 
-        /* Set y and y2 to point to the starts of the two columns.  Note
-           that y was modified in the previous dot product operation 
-           so that it is now pointing at the next column to do. */
-
-        y2 = y + k;
-
-        /* Set p to point initially to x, and i to initially be k.  Both
-           will be changed as the two dot products are computed. */
-
-        p = x;
-        i = k;
+        double *p = x;    /* pointer that goes along vector x */
+        double *e = x+k;  /* point where p stops */
 
         /* If the two dot products sum an odd number of products, set
-           the sums, s and s2, to the first products here, and adjust p, 
-           y, y2, and i.  Otherwise, initialize s and s2 to zero. */
+           the sums, s1 and s2, to the first products here, and adjust p,
+           y, and y2.  Otherwise, initialize s1 and s2 to zero. */
 
-        if (i & 1) {
+        if (k & 1) {
             t = *p++;
-            s = t * *y++;
+            s1 = t * *y++;
             s2 = t * *y2++;
-            i -= 1;
         }
         else
-            s2 = s = 0.0;
+            s1 = s2 = 0.0;
 
-        /* Each time around this loop, add two products for each of the 
-           two dot products, adjusting p, y, y2, and i as we go.  Note
-           that i will be even when we start. */
+        /* Each time around this loop, add two products for each of the
+           two dot products, adjusting p, y, and y2 as we go.  Note that
+           e-p will be even when we start. */
 
-        while (i > 0) {
-            t = *p++;
-            s += t * *y++;
-            s2 += t * *y2++;
-            t = *p++;
-            s += t * *y++;
-            s2 += t * *y2++;
-            i -= 2;
+        while (p < e) {
+            t = p[0];
+            s1 += t * y[0];
+            s2 += t * y2[0];
+            t = p[1];
+            s1 += t * y[1];
+            s2 += t * y2[1];
+            y += 2;
+            y2 += 2;
+            p += 2;
         }
 
         y = y2;
 
         /* Store the two dot products in the result vector. */
 
-        *z++ = s;
+        *z++ = s1;
         *z++ = s2;
 
         /* Signal what elements of the result have been computed, but not
