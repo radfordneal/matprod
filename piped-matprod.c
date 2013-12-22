@@ -318,9 +318,7 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
 
    The case of n=2 is handled specially, accumulating sums in two
    local variables rather than in a column of the result, and then storing
-   them in the result column at the end. 
-
-   The value of k (taken from op) must be greater than zero. */
+   them in the result column at the end. */
 
 void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz, 
                          helpers_var_ptr sx, helpers_var_ptr sy)
@@ -333,6 +331,7 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t n_times_m = LENGTH(sz);
     helpers_size_t n = n_times_k / k;
     helpers_size_t m = k_times_m / k;
+    helpers_size_t done = 0;
     helpers_size_t a = 0;
     int j;
 
@@ -340,7 +339,16 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
 
     HELPERS_SETUP_OUT (k < 10 ? 6 : k < 100 ? 5 : 4);
 
-    helpers_size_t done = 0;
+    /* Set result to zeros if k is zero. */
+
+    if (k <= 0) {
+        int i, j;
+        for (j = 0; j < m; j++) {
+            for (i = 0; i < n; i++) *z++ = 0.0;
+            HELPERS_BLOCK_OUT(done,n);
+        }
+        return;
+    }
 
     if (n == 2) { /* Treated specially */
 
@@ -606,9 +614,7 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
 
 /* Product of the transpose of a k x n matrix (x) and a k x m matrix (y) 
    with result stored in z, with pipelining of the input y and the output
-   (by column).
-
-   The value of k (taken from op) must be greater than zero. */
+   (by column). */
 
 void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz, 
                                 helpers_var_ptr sx, helpers_var_ptr sy)
@@ -800,9 +806,7 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
    When the two operands are the same, the result will be a symmetric
    matrix.  Only the lower-triangular part of the result is computed,
    with the upper-triangular part being copied from the lower triangle
-   as columns of the result are produced.
-
-   The value of k (taken from op) must be greater than zero. */
+   as columns of the result are produced. */
 
 void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz, 
                                 helpers_var_ptr sx, helpers_var_ptr sy)
@@ -825,6 +829,17 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     if (n <= 0) return;
 
     HELPERS_SETUP_OUT (k < 10 ? 6 : k < 100 ? 5 : 4);
+
+    /* Set result to zeros if k is zero. */
+
+    if (k <= 0) {
+        int i, j;
+        for (j = 0; j < m; j++) {
+            for (i = 0; i < n; i++) *z++ = 0.0;
+            HELPERS_BLOCK_OUT(done,n);
+        }
+        return;
+    }
 
     /* Wait for second operand, just in case we were scheduled with pipelining
        for it (since the other piped_matprod task procedures do this). */
