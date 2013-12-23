@@ -44,7 +44,7 @@ void print_result (void)
   if (s>2) printf (" %.16g", m[s-1]);
   printf("\n");
 
-#if 0
+#if 0  /* enable to print entire result */
   { int i, j;
     printf("\n");
     for (i = 0; i<matrows[0]; i++)
