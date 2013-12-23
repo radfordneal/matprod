@@ -576,9 +576,9 @@ void matprod (double *x, double *y, double *z, int n, int k, int m)
    for doing four dot products in the obvious way).
 
    When the two operands are the same, the result will be a symmetric
-   matrix.  Only the lower-triangular part of the result is computed,
-   with the upper-triangular part being copied from the lower triangle
-   as columns of the result are produced.
+   matrix.  After computation of each column or pair of columns, they are
+   copied to the corresponding rows; hence each column need be computed
+   only from the diagonal element down.
 
    There is no alternate implementation for this procedure.
 */
@@ -601,16 +601,19 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
 
     /* If m is odd, compute the first column of the result, updating y, z, and 
        m to account for this column having been computed (so that the situation
-       is the same as if m had been even to start with). */
+       is the same as if m had been even to start with).  If the result is
+       symmetric, also copy the first column to the first row. */
 
     if (m & 1) {
 
         double *r = x;
         double *e = z+n;
+        double *rz = z;
 
         /* If n is odd, compute the first element of the first column of the
            result here.  Also, move r to point to the second column of x, and
-           increment z. */
+           increment z.  For use if result is symmetric, advance rz to second
+           element of the first row (no need to copy 1st element to itself). */
 
         if (n & 1) {
             double s = 0;
@@ -618,11 +621,13 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
             double *e = y+k;
             do { s += *r++ * *q++; } while (q < e);
             *z++ = s;
+            rz += n;
         }
 
         /* Compute the remainder of the first column of the result two
            elements at a time (looking at two columns of x).  Note that 
-           e-z will be even. */
+           e-z will be even.  If result is symmetric, copy elements to
+           the first row as well. */
 
         while (z < e) {
             double s0 = 0;
@@ -639,6 +644,12 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
             r += k;
             *z++ = s0;
             *z++ = s1;
+            if (sym) {
+                *rz = s0;
+                rz += n;
+                *rz = s1;
+                rz += n;
+            }
         }
 
         y += k;
@@ -653,50 +664,44 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
         double *z2 = z+n;
         double *e = z2;
         double *r = x;
+        double *rz = z;
+        int nn = n;
 
-        /* If n is odd, compute the first elements of the two columns here,
-           or copy them if they have already been computed from symmetry.
-           Also, move r to point to the second column of x, and update z. */
-
-        if (n & 1) {
-            if (sym && j > 0) {
-                *z++ = *(oz+j);
-                *z2++ = *(oz+j+1);
-                r += k;
-            }
-            else {
-                double s0 = 0;
-                double s1 = 0;
-                double *q = y;
-                double *f = y+k;
-                do {
-                    double t = *r++;
-                    s0 += t * *q;
-                    s1 += t * *(q+k);
-                    q += 1;
-                } while (q < f);
-                *z++ = s0;
-                *z2++ = s1;
-            }
+        /* If the result is symmetric, skip down to the diagonal element
+           of the first column.  Also, let nn be the number of elements to 
+           compute for these column, and set r too the start of the column
+           of x to use. */
+           
+        if (sym) {
+            z += j;
+            z2 += j;
+            nn -= j;
+            r += j*k;
         }
 
-        /* For the symmetric case, copy elements to the remainder of the upper 
-           part of these two columns.  We stop at the point where we would
-           copy a diagonal element to itself.  (Note that one pair of symmetric
-           elements will then be computed redundantly below twice.) */
-           
-        if (sym && j > 0) {
-            double *q = r==x ? oz+j : oz+j+n;
-            while (q != z) {
-                *z++ = *q;
-                *z2++ = *(q+1);
-                q += n;
-                r += k;
-            }
+        /* If an odd number of elements are to be computed in the two columns,
+           compute the first elements here.  Also advance rz (but no need to
+           store, since would be redundant). */
+
+        if (nn & 1) {
+            double s0 = 0;
+            double s1 = 0;
+            double *q = y;
+            double *f = y+k;
+            do {
+                double t = *r++;
+                s0 += t * *q;
+                s1 += t * *(q+k);
+                q += 1;
+            } while (q < f);
+            *z++ = s0;
+            *z2++ = s1;
+            rz += n;
         }
 
         /* Compute the remainder of the two columns of the result, two elements
-           at a time. */
+           at a time.  Copy them to the corresponding rows too, if the result
+           is symmetric. */
 
         while (z < e) {
             double s00 = 0.0;
@@ -721,6 +726,14 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
             *z2++ = s01;
             *z++ = s10;
             *z2++ = s11;
+            if (sym) {
+                rz[0] = s00;
+                rz[1] = s01;
+                rz += n;
+                rz[0] = s10;
+                rz[1] = s11;
+                rz += n;
+            }
             r += k;
         }
 
