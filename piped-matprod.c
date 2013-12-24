@@ -834,8 +834,12 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
 
    When the two operands are the same, the result will be a symmetric
    matrix.  Only the lower-triangular part of the result is computed,
-   with the upper-triangular part being copied from the lower triangle
-   as columns of the result are produced. */
+   with the elements in columns that are computed then being copied to
+   the corresponding elements in rows above the diagonal.
+
+   The case of n=2 is handled specially, accumulating sums in two local
+   variables rather than in a column of the result, and then storing
+   them in the result column at the end. */
 
 void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz, 
                                 helpers_var_ptr sx, helpers_var_ptr sy)
@@ -876,8 +880,6 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
 
     if (n == 2) {
-
-        int j = 0;
 
         /* If m is odd, compute the first column of the result, and
            update y, z, and mt accordingly. */
@@ -1001,12 +1003,14 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     }
 
     /* If m is odd, compute the first column of the result, updating y, z, and 
-       j to account for this column having been computed. */
+       j to account for this column having been computed.  Also, if result
+       is symmetric, copy this column to the first row. */
 
     if (m & 1) {
 
         double *q = y;
         double *r = x;
+        double *ez = z+n;
 
         /* Initialize sums in z to zero, if k is even, or to the product of
            the first element of the first row of y with the first column 
@@ -1031,7 +1035,6 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
 
         while (r < ex) {
             double *t = z;
-            double *f = z+n;
             double b1, b2;
             b1 = *q;
             q += m;
@@ -1041,13 +1044,25 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
                 *t = (*t + (*r * b1)) + (*(r+n) * b2);
                 r += 1;
                 t += 1;
-            } while (t < f);
+            } while (t < ez);
             r += n;
         }
 
         /* Signal that a column of z has been computed. */
 
         HELPERS_BLOCK_OUT (done, n);
+
+        /* Copy first column to first row, if result is symmetric. */
+
+        if (sym) {
+            double *t = z+1;
+            double *q = z+n;
+            while (t < ez) {
+                *q = *t;
+                t += 1;
+                q += n;
+            }
+        }
 
         /* Move to next column of the result and the next row of y. */
 
@@ -1057,34 +1072,20 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     }
 
     /* Compute two columns of the result each time around this loop, updating
-       y, z, and j accordingly.  Note that m-j will be even. */
+       y, z, and j accordingly.  Note that m-j will be even.  If the result
+       is symmetric, only the parts of the columns at and below the diagonal
+       are computed (except one element above the diagonal is computed for
+       the second column), and these parts are then copied to the corresponding
+       rows. */
 
     while (j < m) {
 
-        /* These set here for the non-symmetric case, modifed if symmetric */
-        double *xs = x;        /* Where to start fetching for sums */
-        double *zs = z;        /* Where to start storing sums */
-
-        double *ez = z+n;      /* Where we stop storing sums */
-        double *t1 = z;
+        double *zs = sym ? z+j : z;   /* Where to start storing sums */
+        double *ez = z+n;             /* Where we stop storing sums */
+        double *xs = x;
+        double *t1 = zs;
         double *t2 = t1 + n;
         double *q = y;
-
-        /* If result is known to be symmetric, fill in upper part of the
-           next two columns from already computed elements (unless these
-           are the first two columns).  Adjust xs and zs so that later
-           sums are for only elements after those filled in here. */
-
-        if (sym && j > 0) {
-            double *s = oz+j;
-            while (s != t1) {
-                *t1++ = *s;
-                *t2++ = *(s+1);
-                s += n;
-            }
-            xs += j;
-            zs += j;
-        }
 
         /* Initialize sums in the next two columns of z to zero, if k is 
            even, or to the products of the first elements of the next two
@@ -1094,7 +1095,7 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
         if (k & 1) {
             double b1 = *q;
             double b2 = *(q+1);
-            double *r = xs;
+            double *r = sym ? xs+j : xs;
             do {
                 double s = *r++;
                 *t1++ = s * b1;
@@ -1118,7 +1119,7 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
             double b11, b12, b21, b22;
             double *t1 = zs;
             double *t2 = t1 + n;
-            double *r = xs;
+            double *r = sym ? xs+j : xs;
             b11 = *q;
             b21 = *(q+1);
             q += m;
@@ -1137,15 +1138,31 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
             xs += 2*n;
         }
 
+        /* Signal that two columns of z have been computed. */
+
+        HELPERS_BLOCK_OUT (done, 2*n);
+
+        /* If the result is symmetric, copy the columns just computed
+           to the corresponding rows. */
+
+        if (sym) {
+            double *t1 = zs + 2;
+            double *t2 = t1 + n;
+            double *q = zs + 2*n;
+            while (t1 < ez) {
+                q[0] = *t1;
+                q[1] = *t2;
+                t1 += 1;
+                t2 += 1;
+                q += n;
+            }
+        }
+
         /* Move forward two to the next column of the result and the
            next row of y. */
 
         z += 2*n;
         y += 2;
         j += 2;
-
-        /* Signal that two columns of z have been computed. */
-
-        HELPERS_BLOCK_OUT (done, 2*n);
     }
 }
