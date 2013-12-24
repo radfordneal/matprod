@@ -664,12 +664,12 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
         double *z2 = z+n;
         double *e = z2;
         double *r = x;
-        double *rz = z;
         int nn = n;
+        double *rz;
 
         /* If the result is symmetric, skip down to the diagonal element
            of the first column.  Also, let nn be the number of elements to 
-           compute for these column, and set r too the start of the column
+           compute for these column, and set r to the start of the column
            of x to use. */
            
         if (sym) {
@@ -677,11 +677,12 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
             z2 += j;
             nn -= j;
             r += j*k;
+            rz = z;
         }
 
         /* If an odd number of elements are to be computed in the two columns,
-           compute the first elements here.  Also advance rz (but no need to
-           store, since would be redundant). */
+           compute the first elements here.  Also, if result is symmetric,
+           advance rz (but no need to store, since it would be redundant). */
 
         if (nn & 1) {
             double s0 = 0;
@@ -696,7 +697,7 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
             } while (q < f);
             *z++ = s0;
             *z2++ = s1;
-            rz += n;
+            if (sym) rz += n;
         }
 
         /* Compute the remainder of the two columns of the result, two elements
@@ -772,8 +773,6 @@ void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 #   ifndef ALT_MATPROD_MAT_TRANS2
     {
         if (n == 2) {
-
-            int j = 0;
     
             /* If m is odd, compute the first column of the result, and
                update y, z, and mt accordingly. */
