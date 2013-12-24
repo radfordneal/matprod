@@ -752,8 +752,8 @@ void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
 
    When the two operands are the same, the result will be a symmetric
    matrix.  Only the lower-triangular part of the result is computed,
-   with the upper-triangular part being copied from the lower triangle
-   as columns of the result are produced.
+   with the elements in columns that are computed then being copied to 
+   the corresponding elements in rows above the diagonal.
 
    The case of n=2 may be handled specially, accumulating sums in two
    local variables rather than in a column of the result, and then storing
