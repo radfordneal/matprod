@@ -614,7 +614,23 @@ void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz,
 
 /* Product of the transpose of a k x n matrix (x) and a k x m matrix (y) 
    with result stored in z, with pipelining of the input y and the output
-   (by column). */
+   (by column). 
+                                                                         
+   Each element of the result is the dot product of a column of x and a
+   column of y.  The result is computed two columns at a time, which
+   allows the memory accesses to columns of x to be used for two such
+   dot products (with two columns of y).  Two columns of x are also done
+   at once, again so memory accesses can be re-used.  The result is that,
+   except perhaps for the first column or first element in a column, four
+   elements of the result are computed at a time, using four accesses to
+   columns of x and y (half the number of accesses that would be needed
+   for doing four dot products in the obvious way).  
+                                                                         
+   When the two operands are the same, the result will be a symmetric
+   matrix.  After computation of each column or pair of columns, they are
+   copied to the corresponding rows; hence each column need be computed
+   only from the diagonal element down.
+*/
 
 void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz, 
                                 helpers_var_ptr sx, helpers_var_ptr sy)
@@ -657,6 +673,7 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
 
         double *r = x;
         double *e = z+n;
+        double *rz = z;
 
         /* Wait for first column of y to become available. */
 
@@ -664,7 +681,8 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
 
         /* If n is odd, compute the first element of the first column of the
            result here.  Also, move r to point to the second column of x, and
-           increment z. */
+           increment z.  For use if result is symmetric, advance rz to second
+           element of the first row (no need to copy 1st element to itself). */
 
         if (n & 1) {
             double s = 0;
@@ -672,11 +690,13 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
             double *e = y+k;
             do { s += *r++ * *q++; } while (q < e);
             *z++ = s;
+            rz += n;
         }
 
         /* Compute the remainder of the first column of the result two
            elements at a time (looking at two columns of x).  Note that 
-           e-z will be even. */
+           e-z will be even.  If result is symmetric, copy elements to
+           the first row as well. */
 
         while (z < e) {
             double s0 = 0;
@@ -693,6 +713,12 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
             r += k;
             *z++ = s0;
             *z++ = s1;
+            if (sym) {
+                *rz = s0;
+                rz += n;
+                *rz = s1;
+                rz += n;
+            }
         }
 
         /* Signal that a column of z has been computed. */
@@ -711,55 +737,50 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
         double *z2 = z+n;
         double *e = z2;
         double *r = x;
+        int nn = n;
+        double *rz;
+
+        /* If the result is symmetric, skip down to the diagonal element
+           of the first column.  Also, let nn be the number of elements to
+           compute for these column, and set r to the start of the column
+           of x to use. */
+
+        if (sym) {
+            z += j;
+            z2 += j;
+            nn -= j;
+            r += j*k;
+            rz = z;
+        }
 
         /* Wait for the next two columns of y to become available. */
 
         int needed = y - oy + 2*k;
         if (a < needed) HELPERS_WAIT_IN2 (a, needed-1, k_times_m);
 
-        /* If n is odd, compute the first elements of the two columns here,
-           or copy them if they have already been computed from symmetry.
-           Also, move r to point to the second column of x, and update z. */
+        /* If an odd number of elements are to be computed in the two columns,
+           compute the first elements here.  Also, if result is symmetric,
+           advance rz (but no need to store, since it would be redundant). */
 
-        if (n & 1) {
-            if (sym && j > 0) {
-                *z++ = *(oz+j);
-                *z2++ = *(oz+j+1);
-                r += k;
-            }
-            else {
-                double s0 = 0;
-                double s1 = 0;
-                double *q = y;
-                double *f = y+k;
-                do {
-                    double t = *r++;
-                    s0 += t * *q;
-                    s1 += t * *(q+k);
-                    q += 1;
-                } while (q < f);
-                *z++ = s0;
-                *z2++ = s1;
-            }
-        }
-
-        /* For the symmetric case, copy elements to the remainder of the upper 
-           part of these two columns.  We stop at the point where we would
-           copy a diagonal element to itself.  (Note that one pair of symmetric
-           elements will then be computed redundantly below twice.) */
-           
-        if (sym && j > 0) {
-            double *q = r==x ? oz+j : oz+j+n;
-            while (q != z) {
-                *z++ = *q;
-                *z2++ = *(q+1);
-                q += n;
-                r += k;
-            }
+        if (nn & 1) {
+            double s0 = 0;
+            double s1 = 0;
+            double *q = y;
+            double *f = y+k;
+            do {
+                double t = *r++;
+                s0 += t * *q;
+                s1 += t * *(q+k);
+                q += 1;
+            } while (q < f);
+            *z++ = s0;
+            *z2++ = s1;
+            if (sym) rz += n;
         }
 
         /* Compute the remainder of the two columns of the result, two elements
-           at a time. */
+           at a time.  Copy them to the corresponding rows too, if the result
+           is symmetric. */
 
         while (z < e) {
             double s00 = 0.0;
@@ -784,6 +805,14 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
             *z2++ = s01;
             *z++ = s10;
             *z2++ = s11;
+            if (sym) {
+                rz[0] = s00;
+                rz[1] = s01;
+                rz += n;
+                rz[0] = s10;
+                rz[1] = s11;
+                rz += n;
+            }
             r += k;
         }
 
