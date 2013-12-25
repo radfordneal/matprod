@@ -28,7 +28,7 @@
 
 static void usage(void)
 { 
-  fprintf (stderr, "Usage: %s rep [ \"t\" ] dim dim dim { dim } [ \"t\" ]\n", 
+  fprintf (stderr, "Usage: %s rep [ \"t\" | \"T\" ] dim dim dim { dim } [ \"t\" | \"T\" ]\n", 
                     prog_name);
   exit(1);
 }
