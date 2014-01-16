@@ -54,8 +54,8 @@ void do_test (int rep)
                         matrows[i], matcols[i], matcols[nmat-1]);
       }
       else
-      { matprod (matrix[i], product[i+1], product[i],
-                 matrows[i], matcols[i], matcols[nmat-1]);
+      { matprod_mat_mat (matrix[i], product[i+1], product[i],
+                         matrows[i], matcols[i], matcols[nmat-1]);
       }
     }
   }  

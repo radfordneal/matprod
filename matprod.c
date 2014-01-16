@@ -326,7 +326,7 @@ void matprod_mat_vec (double *x, double *y, double *z, int n, int k)
    controlled using -DALT_MATPROD.  Change #ifdef to #ifndef or 
    vice versa below to change the default. */
 
-void matprod (double *x, double *y, double *z, int n, int k, int m)
+void matprod_mat_mat (double *x, double *y, double *z, int n, int k, int m)
 {
     if (n <= 0) return;
 

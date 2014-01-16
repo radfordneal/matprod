@@ -320,8 +320,8 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
    local variables rather than in a column of the result, and then storing
    them in the result column at the end. */
 
-void task_piped_matprod (helpers_op_t op, helpers_var_ptr sz, 
-                         helpers_var_ptr sx, helpers_var_ptr sy)
+void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz, 
+                                 helpers_var_ptr sx, helpers_var_ptr sy)
 {
     double *x = REAL(sx), *y = REAL(sy), *z = REAL(sz);
     double *oy = y;

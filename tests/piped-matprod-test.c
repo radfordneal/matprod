@@ -100,7 +100,7 @@ void helpers_master (void)
                          matcols[i], -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
       }
       else
-      { helpers_do_task (HELPERS_PIPE_IN2_OUT, task_piped_matprod, 
+      { helpers_do_task (HELPERS_PIPE_IN2_OUT, task_piped_matprod_mat_mat,
                          matcols[i], -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
       }
     }
