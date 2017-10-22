@@ -19,6 +19,10 @@
 */
 
 
+#ifdef MATPROD_APP_INCLUDED
+#include "matprod-app.h"
+#endif
+
 #include "helpers-app.h"
 #include "piped-matprod.h"
 

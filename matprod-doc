@@ -31,17 +31,9 @@ properly.  They do not re-group additions assuming associativity
 holds, so round-off errors will be the same as for the obvious
 algorithms.
 
-There are pipelined versions of these routines that allow for possible
+There are also versions of these routines that allow for possible
 parallel operation in the context of a program using the helpers
-library.
-
-The non-pipelined routines, in matprod.c, are called in ordinary C
-fashion.  The pipelined routines, in piped-matprod.c, are task
-procedures for use with the helpers library for parallel computation.
-These task procedures support pipelined input for the second operand
-(except for the matrix times transposed matrix operation), and
-pipelined output in the case of matrix-matrix and vector-matrix
-multiplication.
+library for parallel computation.
 
 Note that matrices are assumed to be stored in FORTRAN memory order,
 proceeding down columns (not across rows).  To use the matprod
@@ -49,13 +41,29 @@ routines with matrices stored in standard C (row-major) order, just
 reverse the order of the operands (and exchange matprod_trans1 and
 matprod_trans2).
 
-The declarations below are written with pointers declared as simply
-"double *", but, the actual declaration will be "double * restrict"
-unless the matprod source is compiled with -DMATPROD_NO_RESTRICT.
+
+Using the procedures:
+
+The non-pipelined routines, in matprod.c, are called in ordinary C
+fashion.  The pipelined routines, in piped-matprod.c, are task
+procedures for use with the helpers library for parallel computation
+(available at https://github.com/radfordneal/helpers).
+
+The matprod.c and piped-matprod.c should be compiled and linked with
+the program using them in the usual fashion.  As mentioned below, some
+options can be set by defining pre-processor symbols with arguments to
+the compilation command, or, alternatively, by defining the symbol
+MATPROD_APP_INCLUDED (as anything), which will cause the file
+matprod-app.h to be included at the start of matprod.c and
+piped-matprod.c, which may then define symbols that set these options.
+
 
 Procedures in matprod.c:
 
-The procedures below are in matprod.c, with declarations in matprod.h:
+The procedures below are in matprod.c, with declarations in matprod.h.
+They are written with pointers declared as simply "double *", but, the
+actual declaration will be "double * restrict" unless the matprod
+source is compiled with -DMATPROD_NO_RESTRICT.
 
     double matprod_vec_vec (double *x, double *y, int k)
 
@@ -110,9 +118,11 @@ definitions required for the helpers routines, must define a LENGTH
 macro that returns the number of elements in an operand or result
 matrix (equal to the number of rows times the number of columns), and
 a REAL macro that returns a pointer to the double-precision data for
-an operand or result matrix.
+an operand or result matrix (or these macros can instead be defined in
+a matprod-app.h file, which is included if MATPROD_APP_INCLUDED is
+defined).
 
-These task procedures are declared in piped-matprod.h to be of type
+The task procedures are declared in piped-matprod.h to be of type
 helpers_task_proc, for which the arguments are an op value, a pointer
 to the result matrix, a pointer to the first operand matrix, and a
 pointer to the second operand matrix.  (For some of the task
