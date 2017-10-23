@@ -22,9 +22,37 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 
 #define EXTERN
 #include "test.h"
+
+#ifndef ALIGN
+
+#define ALLOC(n) calloc (sizeof (double), (n));
+
+#else
+
+#ifndef ALIGN_OFFSET
+#define ALIGN_OFFSET 0
+#endif
+
+static inline double *ALLOC (int n)
+{
+  double *a = malloc (n * sizeof (double) + ALIGN-1);
+  while ((((uintptr_t)a) & (ALIGN-1)) != ALIGN_OFFSET)
+  { a += 1;
+  }
+
+# if 0
+    printf ("Allocated matrix of %d doubles, aligned as %d,%d: %p\n", 
+             n, ALIGN, ALIGN_OFFSET, a);
+# endif
+
+  return a;
+}
+
+#endif
 
 static void usage(void)
 { 
@@ -122,7 +150,7 @@ int main (int argc, char **argv)
       matrix[i] = matrix[i-1];
     }
     else
-    { matrix[i] = calloc (sizeof (double), matlen[i]);
+    { matrix[i] = ALLOC(matlen[i]);
       if (matrix[i]==0)
       { fprintf(stderr,"Couldn't allocate space for matrix\n");
         exit(2);
@@ -138,7 +166,7 @@ int main (int argc, char **argv)
     { fprintf(stderr,"Product matrix is too large\n");
       exit(2);
     }
-    product[i] = calloc (sizeof (double), prodlen[i]);
+    product[i] = ALLOC(prodlen[i]);
     if (product[i]==0)
     { fprintf(stderr,"Couldn't allocate space for product matrix\n");
       exit(2);

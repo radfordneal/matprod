@@ -17,8 +17,9 @@
 #   with this program; if not, write to the Free Software Foundation, Inc.,
 #   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-progs=matprod-test matprod-norestrict-test matprod-alt-test \
-      piped-matprod-test piped-matprod-norestrict-test piped-matprod-d-test \
+progs=matprod-test matprod-aligned-test matprod-norestrict-test \
+      matprod-alt-test piped-matprod-test piped-matprod-aligned-test \
+      piped-matprod-norestrict-test piped-matprod-d-test
 
 blas-progs=blas1-test blas2-test blas3-test  # blas0-test omitted
 
@@ -34,6 +35,10 @@ blas:	$(blas-progs)
 matprod-test:		test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) test.c matprod-test.c ../matprod.c \
 		-o matprod-test
+
+matprod-aligned-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGS) -DALIGN=32 test.c matprod-test.c ../matprod.c \
+		-o matprod-aligned-test
 
 matprod-norestrict-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) -DMATPROD_NO_RESTRICT \
@@ -52,6 +57,12 @@ piped-matprod-test:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
 	$(CC) -I.. -I. $(CFLAGS) -fopenmp \
 		test.c piped-matprod-test.c ../piped-matprod.c helpers.c \
 		-o piped-matprod-test
+
+piped-matprod-aligned-test:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
+			../piped-matprod.c helpers-app.h helpers.h helpers.c
+	$(CC) -I.. -I. $(CFLAGS) -DALIGN=32 -fopenmp \
+		test.c piped-matprod-test.c ../piped-matprod.c helpers.c \
+		-o piped-matprod-aligned-test
 
 piped-matprod-norestrict-test:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
 			../piped-matprod.c helpers-app.h helpers.h helpers.c

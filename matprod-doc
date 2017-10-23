@@ -50,12 +50,36 @@ procedures for use with the helpers library for parallel computation
 (available at https://github.com/radfordneal/helpers).
 
 The matprod.c and piped-matprod.c should be compiled and linked with
-the program using them in the usual fashion.  As mentioned below, some
-options can be set by defining pre-processor symbols with arguments to
-the compilation command, or, alternatively, by defining the symbol
-MATPROD_APP_INCLUDED (as anything), which will cause the file
-matprod-app.h to be included at the start of matprod.c and
-piped-matprod.c, which may then define symbols that set these options.
+the program using them in the usual fashion.  Some options can be set
+by pre-processor symbols defined with arguments to the compiler, or
+alternatively, by defining the symbol MATPROD_APP_INCLUDED (as
+anything), which will cause the file matprod-app.h to be included at
+the start of matprod.c and piped-matprod.c, which may then define
+symbols that set these options.
+
+These options include the following:
+
+    ALIGN                If defined (must be a power of 2), the matprod
+                         and piped_matprod functions will assume that
+                         their arguments are aligned to such a
+                         boundary (plus ALIGN_OFFSET, if defined).
+                         This assumption may allow for faster and
+                         smaller code.
+
+    ALIGN_OFFSET         If ALIGN is defined, ALIGN_OFFSET gives the
+                         offset from an even mulitple of ALIGN that
+                         arguments are aligned to.  If ALIGN_OFFSET is
+                         not defined, zero is assumed.
+
+    MATPROD_NO_RESTRICT  If defined, the arguments of the matprod and
+                         piped_matprod functions will not be declared
+                         with the "restricted" keyword.  This is meant
+                         for testing - results are not guaranteed
+                         correct in any case if the output argument
+                         aliases with an input.
+
+There are also options for selecting amongst alternative
+implementations, documented in the source code.
 
 
 Procedures in matprod.c:
@@ -109,7 +133,8 @@ Task procedures in piped-matprod.c:
 In this version, the matprod routines are task procedures for use with
 the "helpers" facility, with pipelining of the second operand (except
 for matprod_trans2) and pipelining of the output for matrix-matrix and
-vector-matrix operations.
+vector-matrix operations.  If ALIGN and/or ALIGN_OFFSET is defined,
+the test program will allocate matrices with the specfied alignment.
 
 Using these routines requires the helpers.h and helpers.c files from
 the helpers library, available at github.com/radfordneal/helpers.  A
