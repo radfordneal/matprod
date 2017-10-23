@@ -29,7 +29,9 @@ as the obvious matrix multiplication algorithms.  They do not bypass
 multiplications by zero, and therefore propagate Inf and NaN values
 properly.  They do not re-group additions assuming associativity
 holds, so round-off errors will be the same as for the obvious
-algorithms.
+algorithms.  (Note that producing the exact same result as the obvious
+method requires disabling any contraction of floating-point operations
+(eg, fused multiply-add) that might be done by the compiler/processor.)
 
 There are also versions of these routines that allow for possible
 parallel operation in the context of a program using the helpers

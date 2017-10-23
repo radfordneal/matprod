@@ -44,6 +44,11 @@
 double matprod_vec_vec (double * MATPROD_RESTRICT x, 
                         double * MATPROD_RESTRICT y, int k)
 {
+#   if defined(ALIGN) && __GNUC__
+        x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
+        y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
+#   endif
+
 #   ifdef ALT_MATPROD_VEC_VEC
     {
         double s;
@@ -103,6 +108,12 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                       double * MATPROD_RESTRICT y, 
                       double * MATPROD_RESTRICT z, int k, int m)
 {
+#   if defined(ALIGN) && __GNUC__
+        x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
+        y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
+        z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
+#   endif
+
     /* If m is odd, compute the first element of the result (the dot product
        of x and the first column of y).  Adjust y, z, and m to account for 
        having handled the first column. */
@@ -244,10 +255,16 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                       double * MATPROD_RESTRICT y, 
                       double * MATPROD_RESTRICT z, int n, int k)
 {
+    if (n <= 0) return;
+
+#   if defined(ALIGN) && __GNUC__
+        x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
+        y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
+        z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
+#   endif
+
     double *p, *q;
     double *e, *f;
-
-    if (n <= 0) return;
 
 #   ifndef ALT_MATPROD_MAT_VEC
     {
@@ -344,6 +361,12 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                       double * MATPROD_RESTRICT z, int n, int k, int m)
 {
     if (n <= 0) return;
+
+#   if defined(ALIGN) && __GNUC__
+        x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
+        y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
+        z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
+#   endif
 
 #   ifndef ALT_MATPROD
 
@@ -602,10 +625,16 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                      double * MATPROD_RESTRICT y, 
                      double * MATPROD_RESTRICT z, int n, int k, int m)
 {
+    if (n <= 0) return;
+
+#   if defined(ALIGN) && __GNUC__
+        x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
+        y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
+        z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
+#   endif
+
     int sym = x==y && n==m;  /* same operands, so symmetric result? */
     int j = 0;               /* number of columns of result produced so far */
-
-    if (n <= 0) return;
 
     /* Set result to zeros if k is zero. */
 
@@ -781,11 +810,17 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                      double * MATPROD_RESTRICT y, 
                      double * MATPROD_RESTRICT z, int n, int k, int m)
 {
+    if (n <= 0) return;
+
+#   if defined(ALIGN) && __GNUC__
+        x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
+        y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
+        z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
+#   endif
+
     int sym = x==y && n==m;  /* same operands, so symmetric result? */
     double *ex = x + n*k;    /* point past end of x */
     int j = 0;               /* number of columns of result produced so far */
-
-    if (n <= 0) return;
 
 #   ifndef ALT_MATPROD_MAT_TRANS2
     {
