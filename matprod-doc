@@ -132,11 +132,10 @@ most of the procedures.
 
 Task procedures in piped-matprod.c:
 
-In this version, the matprod routines are task procedures for use with
-the "helpers" facility, with pipelining of the second operand (except
-for matprod_trans2) and pipelining of the output for matrix-matrix and
-vector-matrix operations.  If ALIGN and/or ALIGN_OFFSET is defined,
-the test program will allocate matrices with the specfied alignment.
+This source file defines the matprod routines that are task procedures
+for use with the "helpers" facility, with pipelining of the second
+operand (except for matprod_trans2) and pipelining of the output for
+matrix-matrix and vector-matrix operations.
 
 Using these routines requires the helpers.h and helpers.c files from
 the helpers library, available at github.com/radfordneal/helpers.  A
@@ -205,8 +204,10 @@ Test programs:
 Test programs are provided for the matprod and piped-matprod routines,
 in the directory "tests", which share a common framework, and which
 can also be used to test matrix multiply routines in a BLAS or other
-library.  These test programs allow some checks on correctness, but
-are primarily intended for testing speed.
+library.  These test programs can perform checks on correctness, but
+are mainly meant for testing speed.  If ALIGN and/or ALIGN_OFFSET is
+defined, the test program will allocate matrices with the specfied
+alignment.
 
 These programs are invoked by a command such as the following:
 
@@ -220,7 +221,12 @@ matrices with the product of the second and third matrices is computed
 times (with identical results each time, one hopes).  The first,
 second, second-to-last, and last elements of the result are then
 printed on standard output, with elements ordered downwards by column,
-except that fewer elements are printed when only fewer exist.
+except that fewer elements are printed when only fewer exist.  If the
+environment variable CHECK is defined (as anything), the results are
+checked against simple code, resulting in either "Check OK" being
+printed, or an error message followed by an abort.  Note that these
+checks take time, and so should not be done when running the test
+programs for performance evaluation.
 
 In general, n>2 arguments (other than "t" or "T") follow the rep
 argument, defining the dimensions of n-1 matrices, which are used as

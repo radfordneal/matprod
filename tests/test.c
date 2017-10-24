@@ -85,10 +85,87 @@ void print_result (void)
 #endif
 }
 
+/* Check that results are correct. */
+
+static double *product_check[MAX_MATRICES]; /* Pointers to storage for checks */
+
+static void check_results (void)
+{
+  int i, v;
+  
+  v = vec[nmat];
+
+  for (i = nmat-2; i>=0; i--)
+  { double *x = matrix[i];
+    double *y = product_check[i+1];
+    double *z = product_check[i];
+    int N = matrows[i];
+    int K = matcols[i];
+    int M = matcols[nmat-1];
+    int j, k, l;
+    double s;
+    v |= vec[i+1];
+    if (vec[i] && v && N==1 && M==1)  /* vec X vec */
+    { s = 0;
+      for (k = 0; k < K; k++) s += x[k] * y[k];
+      z[0] = s;
+    }
+    else if (v && M==1)               /* mat X vec */
+    { for (j = 0; j < N; j++)
+      { s = 0;
+        for (k = 0; k < K; k++) s += x[j+N*k] * y[k];
+        z[j] = s;
+      }
+    }
+    else if (vec[i] && matrows[i]==1) /* vec X mat */
+    { for (l = 0; l < M; l++)
+      { s = 0;
+        for (k = 0; k < K; k++) s += x[k] * y[k+K*l];
+        z[l] = s;
+      }
+    }
+    else if (i==0 && trans1)          /* t(mat) X mat */
+    { for (j = 0; j < N; j++)
+      { for (l = 0; l < M; l++)
+        { s = 0;
+          for (k = 0; k < K; k++) s += x[k+K*j] * y[k+K*l];
+          z[j+N*l] = s;
+        }
+      }
+    }
+    else if (i==nmat-2 && trans2)     /* mat X t(mat) */
+    { for (j = 0; j < N; j++)
+      { for (l = 0; l < M; l++)
+        { s = 0;
+          for (k = 0; k < K; k++) s += x[j+N*k] * y[l+M*k];
+          z[j+N*l] = s;
+        }
+      }
+    }
+    else                              /* mat X mat */
+    { for (j = 0; j < N; j++)
+      { for (l = 0; l < M; l++)
+        { s = 0;
+          for (k = 0; k < K; k++) s += x[j+N*k] * y[k+K*l];
+          z[j+N*l] = s;
+        }
+      }
+    }
+
+    if (memcmp (z, product[i], N*M*sizeof(double)) != 0)
+    { fprintf(stderr,"Check failed on computation of result %d\n",i);
+      abort();
+    }
+  }  
+
+  printf("Check OK\n");
+}
+
 int main (int argc, char **argv)
 {
   int rep;     /* Number of times to repeat test */
   char junk;   /* Junk variable for use in sscanf */
+  int do_check;  /* 1 if check should be done */
   int i, j, k;
 
   /* Process arguments. */
@@ -133,6 +210,8 @@ int main (int argc, char **argv)
 
   last_V = strcmp(argv[argc-1],"V")==0;
 
+  do_check = getenv("CHECK") != NULL;
+
   /* For each matrix, compute matlen and allocate space, or re-use space
      (if possible) when a "T" option applies. */
 
@@ -167,7 +246,8 @@ int main (int argc, char **argv)
       exit(2);
     }
     product[i] = ALLOC(prodlen[i]);
-    if (product[i]==0)
+    if (do_check) product_check[i] = ALLOC(prodlen[i]);
+    if (product[i]==0 || do_check && product_check[i]==0)
     { fprintf(stderr,"Couldn't allocate space for product matrix\n");
       exit(2);
     }
@@ -175,7 +255,7 @@ int main (int argc, char **argv)
 
   /* Last "product" is actually the last input matrix. */
 
-  product[nmat-1] = matrix[nmat-1];
+  product[nmat-1] = product_check[nmat-1] = matrix[nmat-1];
   prodlen[nmat-1] = matlen[nmat-1];
 
   /* Initialize the matrices.  With a "T" option, the same matrix will
@@ -197,6 +277,9 @@ int main (int argc, char **argv)
   /* Run test on these matrices (do_test may or may not return). */
 
   do_test(rep);
+  if (do_check)
+  { check_results();
+  }
 
   return 0;
 }
