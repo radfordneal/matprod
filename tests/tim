@@ -5,5 +5,5 @@
 # Creates prefix.timN from prefix.outN by extracting elpased time information,
 # plus headers.
 
-grep "^[a-zA-Z]" $1.out$2 | fgrep -v "user" | fgrep -v "sys" \
+grep "^[a-zA-Z]" $1.out$2 | fgrep -v "user" | fgrep -v "sys"| fgrep -v "Check" \
   | sed "s/real *//" | sed "s/0m//" | sed "s/s//" >$1.tim$2
