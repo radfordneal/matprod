@@ -2,10 +2,10 @@
 
 # Run all tests, except ones involving blas.
 
-for i in matprod matprod-aligned matprod-alt matprod-alt-aligned \
-         matprod-norestrict \
-         piped-matprod piped-matprod-aligned piped-matprod-d \
-         piped-matprod-norestrict; do
+for i in matprod matprod-aligned matprod-noavx matprod-norestrict \
+         matprod-alt matprod-alt-aligned \
+         piped-matprod piped-matprod-aligned piped-matprod-norestrict \
+         piped-matprod-d; do
   run-tests $i-test >& $i.out
   tim $i
 done

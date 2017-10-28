@@ -31,8 +31,10 @@ prog=$1
 echo " "; echo VEC_VEC
 
 echo " "; time $prog 30000000 v 23 v
-echo " "; time $prog 200000 v 2222 v
+echo " "; time $prog 500000 v  901 v
 echo " "; time $prog 50000 v 12345 v
+echo " "; time $prog 5000 v 123456 v
+echo " "; time $prog 500 v 1234567 v
 
 echo " "; echo MAT_VEC
 

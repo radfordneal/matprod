@@ -17,16 +17,19 @@
 #   with this program; if not, write to the Free Software Foundation, Inc.,
 #   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-progs=matprod-test matprod-aligned-test matprod-norestrict-test \
+progs=matprod-test matprod-aligned-test \
+      matprod-noavx-test matprod-norestrict-test \
       matprod-alt-test matprod-alt-aligned-test \
       piped-matprod-test piped-matprod-aligned-test \
       piped-matprod-norestrict-test piped-matprod-d-test
 
 blas-progs=blas1-test blas2-test blas3-test  # blas0-test omitted
 
-CC=gcc
+CC=gcc-7
 CFLAGS=-g -std=gnu99 -O3 -march=native -mtune=native -mfpmath=sse \
                          -ffp-contract=off
+
+ALIGN=-DALIGN=32
 
 all:	$(progs)
 	true
@@ -39,11 +42,16 @@ matprod-test:		test.h test.c matprod-test.c ../matprod.h ../matprod.c
 		-o matprod-test
 
 matprod-aligned-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGS) -DALIGN=32 test.c matprod-test.c ../matprod.c \
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) test.c matprod-test.c ../matprod.c \
 		-o matprod-aligned-test
 
+matprod-noavx-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DDISABLE_AVX_CODE \
+		test.c matprod-test.c ../matprod.c \
+		-o matprod-noavx-test
+
 matprod-norestrict-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGS) -DMATPROD_NO_RESTRICT \
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DMATPROD_NO_RESTRICT \
 		test.c matprod-test.c ../matprod.c \
 		-o matprod-norestrict-test
 
@@ -55,7 +63,7 @@ matprod-alt-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 		-o matprod-alt-test
 
 matprod-alt-aligned-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGS) -DALIGN=32 \
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) \
 		-DALT_MATPROD_VEC_VEC -DALT_MATPROD_MAT_VEC \
 		-DALT_MATPROD_VEC_MAT -DALT_MATPROD -DALT_MATPROD_TRANS2 \
 		test.c matprod-test.c ../matprod.c \
@@ -69,7 +77,7 @@ piped-matprod-test:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
 
 piped-matprod-aligned-test:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
 			../piped-matprod.c helpers-app.h helpers.h helpers.c
-	$(CC) -I.. -I. $(CFLAGS) -DALIGN=32 -fopenmp \
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -fopenmp \
 		test.c piped-matprod-test.c ../piped-matprod.c helpers.c \
 		-o piped-matprod-aligned-test
 
