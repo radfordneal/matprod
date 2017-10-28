@@ -29,14 +29,23 @@
 #define ALIGN_OFFSET 0
 #endif
 
+#if defined(ALIGN) && __GNUC__
+#define CAN_ASSUME_ALIGNED 1
+#else
+#define CAN_ASSUME_ALIGNED 0
+#endif
+
+#if __AVX__ && !defined(DISABLE_AVX_CODE)
+#include <immintrin.h>
+#endif
+
 
 /* Dot product of two vectors of length k. 
 
    Two implementations are provided.  One uses the obvious loop, which
    maybe the compiler will optimize well.  In the other, the loop is
-   unrolled to do two pairs of elements each iteration, with the sum
-   initialized either to zero or to the result from the first pair, if
-   the number of pairs is odd. 
+   unrolled to do four pairs of elements each iteration, perhaps using
+   AVX instructions.
 
    Use -DALT_MATPROD_VEC_VEC to switch between these two implementations.
    Change #ifdef to #ifndef or vice versa below to change the default. */
@@ -44,47 +53,75 @@
 double matprod_vec_vec (double * MATPROD_RESTRICT x, 
                         double * MATPROD_RESTRICT y, int k)
 {
-#   if defined(ALIGN) && __GNUC__
+#   if CAN_ASSUME_ALIGNED
         x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
         y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
 #   endif
 
 #   ifdef ALT_MATPROD_VEC_VEC
     {
-        double s;
+        double s = 0.0;
         int i;
 
-        s = 0.0;
-
-        for (i = 0; i<k; i++)
-            s += x[i]*y[i];
+        for (i = 0; i < k; i++)
+            s += x[i] * y[i];
 
         return s;
     }
 #   else
     {
-        double s;
-
-        /* If k is odd, initialize sum to the first product, and adjust x,
-           y, and k to account for this.  If k is even, just initialize
-           sum to zero. */
-
-        if (k & 1) {
-            s = *x++ * *y++;
+        double s = 0.0;
+        if (ALIGN_OFFSET & 8) {
+            s = x[0] * y[0];
+            x += 1;
+            y += 1;
             k -= 1;
         }
-        else
-            s = 0.0;
-
-        /* Add two products each time around loop, adjusting x, y, and k as
-           we go.  Note that k will be even when we start. */
-
-        while (k > 0) {
-            s += *x++ * *y++;
-            s += *x++ * *y++;
+        if (ALIGN_OFFSET & 16) {
+            s += x[0] * y[0];
+            s += x[1] * y[1];
+            x += 2;
+            y += 2;
             k -= 2;
         }
-
+#       if CAN_ASSUME_ALIGNED
+            x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET&~24);
+            y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET&~24);
+#       endif
+        double *e = x + ((unsigned)k&~3);
+#       if __AVX__ && !defined(DISABLE_AVX_CODE)
+            while (x < e) {
+                double t[4] __attribute__ ((aligned (32)));
+                __m256d A, B;
+                A = _mm256_load_pd (x);
+                B = _mm256_load_pd (y);
+                _mm256_store_pd (t, _mm256_mul_pd(A,B));
+                s += t[0];
+                s += t[1];
+                s += t[2];
+                s += t[3];
+                x += 4;
+                y += 4;
+            }
+#       else
+            while (x < e) {
+                s += x[0] * y[0];
+                s += x[1] * y[1];
+                s += x[2] * y[2];
+                s += x[3] * y[3];
+                x += 4;
+                y += 4;
+            }
+#       endif
+        if (k & 1) {
+            s += x[0] * y[0];
+            x += 1;
+            y += 1;
+        }
+        if (k & 2) {
+            s += x[0] * y[0];
+            s += x[1] * y[1];
+        }
         return s;
     }
 #   endif
@@ -108,17 +145,80 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                       double * MATPROD_RESTRICT y, 
                       double * MATPROD_RESTRICT z, int k, int m)
 {
-#   if defined(ALIGN) && __GNUC__
+#   if CAN_ASSUME_ALIGNED
         x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
         y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
         z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
 #   endif
 
-    /* If m is odd, compute the first element of the result (the dot product
-       of x and the first column of y).  Adjust y, z, and m to account for 
-       having handled the first column. */
+    /* In this loop, compute two consecutive elements of the result vector,
+       by doing two dot products of x with columns of y.  Adjust y, z, and
+       m as we go. */
 
-    if (m & 1) {
+    m -= 2;
+    while (m >= 0) {
+
+        double s[2], t;
+        double *y2 = y+k;
+
+#       ifdef ALT_MATPROD_VEC_MAT
+        {
+            int i;
+
+            s[0] = s[1] = 0.0;
+
+            /* Each time around this loop, add one product for each of the 
+               two dot products. */
+
+            for (i = 0; i<k; i++) {
+                t = x[i];
+                s[0] += t * y[i];
+                s[1] += t * y2[i];
+            }
+
+            y = y2 + k;
+        }
+#       else
+        {
+            double *p = x;         /* pointer that goes along vector x */
+            double *e = x+(k&~1);  /* point where p stops */
+
+            s[0] = s[1] = 0.0;
+
+            /* Each time around this loop, add two products for each of the 
+               two dot products, adjusting p, y, and y2 as we go. */
+
+            while (p < e) {
+                s[0] += p[0] * y[0];
+                s[1] += p[0] * y2[0];
+                s[0] += p[1] * y[1];
+                s[1] += p[1] * y2[1];
+                y += 2;
+                y2 += 2;
+                p += 2;
+            }
+
+            if (k & 1) {
+                s[0] += p[0] * *y;
+                s[1] += p[0] * *y2;
+                y2 += 1;
+            }
+
+            y = y2;
+        }
+#       endif
+
+        /* Store the two dot products in the result vector. */
+
+        *z++ = s[0];
+        *z++ = s[1];
+
+        m -= 2;
+    }
+
+    /* Compute the final dot product, if the number of columns is odd. */
+
+    if (m == -1) {
 
         double s;
 
@@ -129,106 +229,25 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             s = 0.0;
             for (i = 0; i<k; i++)
                 s += x[i] * y[i];
-
-            y += k;
         }
 #       else
         {
-            double *p = x;    /* pointer that goes along vector x */
-            double *e = x+k;  /* point where p stops */
+            double *p = x;         /* pointer that goes along vector x */
+            double *e = x+(k&~1);  /* point where p stops */
 
-            /* Initialize sum to first product, if k odd; otherwise to 0. */
-
-            if (k & 1)
-                s = *p++ * *y++;
-            else
-                s = 0.0;
-
-            /* Add two products each time around loop. */
-
+            s = 0.0;
             while (p < e) {
-                s += *p++ * *y++;
-                s += *p++ * *y++;
-            }
-        }
-#       endif
-
-        /* Store result of dot product as first element, decrement m. */
-
-        *z++ = s;
-        m -= 1;
-    }
-
-    /* In this loop, compute two consecutive elements of the result vector,
-       by doing two dot products of x with columns of y.  Adjust y, z, and
-       m as we go.  Note that m, the number of columns left to do, is even 
-       when we start. */
-
-    while (m > 0) {
-
-        double s1, s2, t;
-        double *y2 = y+k;
-
-#       ifdef ALT_MATPROD_VEC_MAT
-        {
-            int i;
-
-            s1 = s2 = 0.0;
-
-            /* Each time around this loop, add one product for each of the 
-               two dot products. */
-
-            for (i = 0; i<k; i++) {
-                t = x[i];
-                s1 += t * y[i];
-                s2 += t * y2[i];
-            }
-
-            y = y2 + k;
-        }
-#       else
-        {
-            double *p = x;    /* pointer that goes along vector x */
-            double *e = x+k;  /* point where p stops */
-
-            /* If the two dot products sum an odd number of products, set
-               the sums, s1 and s2, to the first products here, and adjust p, 
-               y, and y2.  Otherwise, initialize s1 and s2 to zero. */
-
-            if (k & 1) {
-                t = *p++;
-                s1 = t * *y++;
-                s2 = t * *y2++;
-            }
-            else
-                s1 = s2 = 0.0;
-
-            /* Each time around this loop, add two products for each of the 
-               two dot products, adjusting p, y, and y2 as we go.  Note that
-               e-p will be even when we start. */
-
-            while (p < e) {
-                t = p[0];
-                s1 += t * y[0];
-                s2 += t * y2[0];
-                t = p[1];
-                s1 += t * y[1];
-                s2 += t * y2[1];
-                y += 2;
-                y2 += 2;
+                s += p[0] * y[0];
+                s += p[1] * y[1];
                 p += 2;
+                y += 2;
             }
-
-            y = y2;
+            if (k & 1)
+                s += p[0] * y[0];
         }
 #       endif
 
-        /* Store the two dot products in the result vector. */
-
-        *z++ = s1;
-        *z++ = s2;
-
-        m -= 2;
+        *z = s;
     }
 }
 
@@ -257,7 +276,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 {
     if (n <= 0) return;
 
-#   if defined(ALIGN) && __GNUC__
+#   if CAN_ASSUME_ALIGNED
         x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
         y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
         z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
@@ -362,7 +381,7 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
 {
     if (n <= 0) return;
 
-#   if defined(ALIGN) && __GNUC__
+#   if CAN_ASSUME_ALIGNED
         x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
         y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
         z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
@@ -627,7 +646,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 {
     if (n <= 0) return;
 
-#   if defined(ALIGN) && __GNUC__
+#   if CAN_ASSUME_ALIGNED
         x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
         y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
         z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
@@ -812,7 +831,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
 {
     if (n <= 0) return;
 
-#   if defined(ALIGN) && __GNUC__
+#   if CAN_ASSUME_ALIGNED
         x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
         y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
         z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
