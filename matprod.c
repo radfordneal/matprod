@@ -35,7 +35,7 @@
 #define CAN_ASSUME_ALIGNED 0
 #endif
 
-#if __AVX__ && !defined(DISABLE_AVX_CODE)
+#if __AVX__ && !defined(DISABLE_SIMD_CODE)
 #include <immintrin.h>
 #endif
 
@@ -90,16 +90,17 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 #       endif
         double *e = x + ((unsigned)k&~3);
         while (x < e) {
-#           if __AVX__ && !defined(DISABLE_AVX_CODE)
-                double t[4] __attribute__ ((aligned (32)));
-                __m256d A, B;
-                A = _mm256_load_pd (x);
-                B = _mm256_load_pd (y);
-                _mm256_store_pd (t, _mm256_mul_pd(A,B));
+#           if __SSE2__ && !defined(DISABLE_SIMD_CODE)
+                __m128d A;
+                double t[2] __attribute__ ((aligned (16)));
+                A = _mm_mul_pd(_mm_load_pd(x),_mm_load_pd(y));
+                _mm_store_pd (t, A);
                 s += t[0];
                 s += t[1];
-                s += t[2];
-                s += t[3];
+                A  = _mm_mul_pd(_mm_load_pd(x+2),_mm_load_pd(y+2));
+                _mm_store_pd (t, A);
+                s += t[0];
+                s += t[1];
 #           else
                 s += x[0] * y[0];
                 s += x[1] * y[1];
@@ -182,7 +183,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             /* Each time around the loop below, add two products for each
                of the two dot products, adjusting p and y as we go. */
 
-#           if __AVX__ && !defined(DISABLE_AVX_CODE)
+#           if __SSE2__ && !defined(DISABLE_SIMD_CODE)
 
                 __m128d S = _mm_setzero_pd ();
 
