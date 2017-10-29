@@ -182,39 +182,35 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             /* Each time around the loop below, add two products for each
                of the two dot products, adjusting p and y as we go. */
 
-#           if __AVX__ && !defined(DISABLE_AVX_CODE) && 0 /* not better */
+#           if __AVX__ && !defined(DISABLE_AVX_CODE)
 
-                __m256d S = _mm256_setzero_pd ();
-                __m256d Z = _mm256_setzero_pd ();
+                __m128d S = _mm_setzero_pd ();
+
                 p = x;
                 while (p < e) {
-                    __m256d A, B;
-                    A = _mm256_broadcast_pd((__m128d*)p);
-                    B = _mm256_broadcast_pd((__m128d*)(y+k));
-                    B = _mm256_insertf128_pd (B, _mm_loadu_pd(y), 0);
-                    B = _mm256_mul_pd (A, B);
-                    B = _mm256_add_pd (B, S);
-                    S = _mm256_hadd_pd (B, Z);
-                    y += 2;
-                    p += 2;
+                    __m128d Y, Y2, B;
+                    Y = _mm_loadu_pd(y);
+                    Y2 = _mm_loadu_pd(y+k);
+                    B = _mm_mul_pd (_mm_load1_pd(p), _mm_unpacklo_pd(Y,Y2));
+                    S = _mm_add_pd (S, B);
+                    y += 1;
+                    p += 1;
+                    B = _mm_mul_pd (_mm_load1_pd(p), _mm_unpackhi_pd(Y,Y2));
+                    S = _mm_add_pd (S, B);
+                    y += 1;
+                    p += 1;
                 }
 
-                __m128d X = _mm256_extractf128_pd (S, 0);
-                __m128d Y = _mm256_extractf128_pd (S, 1);
-                __m128d S128 = _mm_unpacklo_pd (X, Y);
-
                 if (k & 1) {
-                    __m128d A, B;
-                    A = _mm_set_pd (p[0], p[0]);
-                    B = _mm_set_pd (y[k], y[0]);
-                    B = _mm_mul_pd (A, B);
-                    S128 = _mm_add_pd (S128, B);
+                    __m128d B;
+                    B = _mm_mul_pd (_mm_load1_pd(p), _mm_set_pd(y[k],y[0]));
+                    S = _mm_add_pd (S, B);
                     y += 1;
                 }
 
                 y += k;
 
-                _mm_storeu_pd (z, S128);
+                _mm_storeu_pd (z, S);
 
 #           else
 
