@@ -320,38 +320,72 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 #   ifndef ALT_MATPROD_MAT_VEC
     {
         if (n == 2) { 
-        
-            double s[2];          /* sums for two elements of a result column */
 
-            s[0] = s[1] = 0;
+#           if __SSE2__ && !defined(DISABLE_SIMD_CODE)
 
-            /* Each time around this loop, add the products of two columns of
-               x with two elements of y to s1 and s2.  Adjust x and y to
-               account for this.  Note that e-y will be even when we start. */
+                __m128d S = _mm_setzero_pd ();
+                __m128d A;
 
-            while (y < e) {
-                s[0] = (s[0] + (x[0] * y[0])) + (x[2] * y[1]);
-                s[1] = (s[1] + (x[1] * y[0])) + (x[3] * y[1]);
-                x += 4;
-                y += 2;
-            }
+                /* Each time around this loop, add the products of two
+                   columns of x with two elements of y to S.  Adjust x
+                   and y to account for this. */
 
-            if (k & 1) {
-                s[0] += x[0] * y[0];
-                s[1] += x[1] * y[0];
-            }
+                while (y < e) {
+                    A = _mm_mul_pd (_mm_loadu_pd(x), _mm_load1_pd(y));
+                    S = _mm_add_pd (S, A);
+                    A = _mm_mul_pd (_mm_loadu_pd(x+2), _mm_load1_pd(y+1));
+                    S = _mm_add_pd (S, A);
+                    x += 4;
+                    y += 2;
+                }
 
-            /* Store s[0] and s[1] in the result vector. */
+                if (k & 1) {
+                    A = _mm_mul_pd (_mm_loadu_pd(x), _mm_load1_pd(y));
+                    S = _mm_add_pd (S, A);
+                }
 
-            z[0] = s[0];
-            z[1] = s[1];
+                /* Store the two sums in S in the result vector. */
+
+                _mm_storeu_pd (z, S);
+
+#           else
+
+                double s[2];  /* sums for two elements of a result column */
+
+                s[0] = s[1] = 0;
+
+                /* Each time around this loop, add the products of two
+                   columns of x with two elements of y to s[0] and s[1].
+                   Adjust x and y to account for this. */
+
+                while (y < e) {
+                    s[0] = (s[0] + (x[0] * y[0])) + (x[2] * y[1]);
+                    s[1] = (s[1] + (x[1] * y[0])) + (x[3] * y[1]);
+                    x += 4;
+                    y += 2;
+                }
+
+                if (k & 1) {
+                    s[0] += x[0] * y[0];
+                    s[1] += x[1] * y[0];
+                }
+
+                /* Store s[0] and s[1] in the result vector. */
+
+                z[0] = s[0];
+                z[1] = s[1];
+
+
+#           endif
 
             return;
         }
     }
 #   endif
 
-    double *q, *f, *p;
+    double *q, *f;
+
+    /* Set result to all zeros to start. */
 
     q = z;
     f = z+n;
@@ -361,20 +395,131 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
        with two elements of y to the result vector, z.  Adjust x and y
        to account for this. */
 
-    while (y < e) {
-        q = z;
-        f = z+n;
-        p = x+n;
-        do { *q = (*q + (*x++ * y[0])) + (*p++ * y[1]); } while (++q < f);
-        x = p;
-        y += 2;
-    }
+#   if __AVX__ && !defined(DISABLE_SIMD_CODE)
 
-    if (k & 1) {
-        q = z;
-        f = z+n;
-        do { *q++ += *x++ * y[0]; } while (q < f);
-    }
+        while (y < e) {
+            q = z;
+            f = z + (n&~3);
+            __m256d Y0b = _mm256_set1_pd(y[0]);
+            __m256d Y1b = _mm256_set1_pd(y[1]);
+            while (q < f) { 
+                __m256d Q = _mm256_loadu_pd(q);
+                __m256d X = _mm256_mul_pd (_mm256_loadu_pd(x), Y0b);
+                __m256d P = _mm256_mul_pd (_mm256_loadu_pd(x+n), Y1b);
+                Q = _mm256_add_pd (_mm256_add_pd (Q, X), P);
+                _mm256_storeu_pd (q, Q);
+                x += 4;
+                q += 4;
+            }
+            if (n & 2) {
+                __m128d Y0 = _mm_set1_pd(y[0]);
+                __m128d Y1 = _mm_set1_pd(y[1]);
+                __m128d Q = _mm_loadu_pd(q);
+                __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
+                __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
+                Q = _mm_add_pd (_mm_add_pd (Q, X), P);
+                _mm_storeu_pd (q, Q);
+                x += 2;
+                q += 2;
+            }
+            if (n & 1) {
+                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
+                x += 1;
+            }
+            x += n;
+            y += 2;
+        }
+
+        if (k & 1) {
+            q = z;
+            f = z + (n&~1);
+            __m128d Y = _mm_load1_pd(y);
+            while (q < f) { 
+                __m128d Q = _mm_loadu_pd(q);
+                __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y);
+                Q = _mm_add_pd (Q, X);
+                _mm_storeu_pd (q, Q);
+                x += 2;
+                q += 2;
+            }
+            if (n & 1)
+                q[0] += x[0] * y[0];
+        }
+
+
+#   elif __SSE2__ && !defined(DISABLE_SIMD_CODE)
+
+        while (y < e) {
+            q = z;
+            f = z + (n&~1);
+            __m128d Y0 = _mm_load1_pd(y);
+            __m128d Y1 = _mm_load1_pd(y+1);
+            while (q < f) { 
+                __m128d Q = _mm_loadu_pd(q);
+                __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
+                __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
+                Q = _mm_add_pd (_mm_add_pd (Q, X), P);
+                _mm_storeu_pd (q, Q);
+                x += 2;
+                q += 2;
+            }
+            if (n & 1) {
+                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
+                x += 1;
+            }
+            x += n;
+            y += 2;
+        }
+
+        if (k & 1) {
+            q = z;
+            f = z + (n&~1);
+            __m128d Y = _mm_load1_pd(y);
+            while (q < f) { 
+                __m128d Q = _mm_loadu_pd(q);
+                __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y);
+                Q = _mm_add_pd (Q, X);
+                _mm_storeu_pd (q, Q);
+                x += 2;
+                q += 2;
+            }
+            if (n & 1)
+                q[0] += x[0] * y[0];
+        }
+
+#   else
+
+        while (y < e) {
+            q = z;
+            f = z + (n&~1);
+            while (q < f) { 
+                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
+                q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
+                x += 2;
+                q += 2;
+            }
+            if (n & 1) {
+                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
+                x += 1;
+            }
+            x += n;
+            y += 2;
+        }
+
+        if (k & 1) {
+            q = z;
+            f = z + (n&~1);
+            while (q < f) { 
+                q[0] += x[0] * y[0];
+                q[1] += x[1] * y[0];
+                x += 2;
+                q += 2;
+            }
+            if (n & 1)
+                q[0] += x[0] * y[0];
+        }
+
+#   endif
 }
 
 
