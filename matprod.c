@@ -315,80 +315,65 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
 #   endif
 
-    double *p, *q;
-    double *e, *f;
+    double *e = y+(k&~1);  /* point to stop at in/after vector y */
 
 #   ifndef ALT_MATPROD_MAT_VEC
     {
         if (n == 2) { 
         
-            double s1, s2;    /* sums for the two elements of a result column */
-            double *e = y+k;  /* point to stop at past end of vector y */
+            double s[2];          /* sums for two elements of a result column */
 
-            /* Initialize s1 and s2 to zero, if k is even, or to the products
-               of the first element of y with the first column of x.  Adjust 
-               x and y accordingly. */
-
-            if (k & 1) {
-                double b = *y++;
-                s1 = *x++ * b;
-                s2 = *x++ * b;
-            }
-            else
-                s1 = s2 = 0.0;
+            s[0] = s[1] = 0;
 
             /* Each time around this loop, add the products of two columns of
                x with two elements of y to s1 and s2.  Adjust x and y to
                account for this.  Note that e-y will be even when we start. */
 
             while (y < e) {
-                double b1 = y[0];
-                double b2 = y[1];
-                s1 = (s1 + (x[0] * b1)) + (x[2] * b2);
-                s2 = (s2 + (x[1] * b1)) + (x[3] * b2);
+                s[0] = (s[0] + (x[0] * y[0])) + (x[2] * y[1]);
+                s[1] = (s[1] + (x[1] * y[0])) + (x[3] * y[1]);
                 x += 4;
                 y += 2;
             }
 
-            /* Store s1 and s2 in the result vector. */
+            if (k & 1) {
+                s[0] += x[0] * y[0];
+                s[1] += x[1] * y[0];
+            }
 
-            z[0] = s1;
-            z[1] = s2;
+            /* Store s[0] and s[1] in the result vector. */
+
+            z[0] = s[0];
+            z[1] = s[1];
 
             return;
         }
     }
 #   endif
 
+    double *q, *f, *p;
+
     q = z;
-    e = y+k;
-
-    /* Initialize sums in z to zero, if k is even, or to the product of
-       the first element of y with the first column of x.  Adjust x and y
-       accordingly. */
-
     f = z+n;
-    if (k & 1) {
-        double b = *y++;
-        do { *q++ = *x++ * b; } while (q < f);
-    }
-    else {
-        do { *q++ = 0.0; } while (q < f);
-   }
+    do { *q++ = 0.0; } while (q < f);
 
     /* Each time around this loop, add the products of two columns of x 
        with two elements of y to the result vector, z.  Adjust x and y
-       to account for this.  Note that e-y will be even when we start. */
+       to account for this. */
 
     while (y < e) {
-        double b1 = y[0];
-        double b2 = y[1];
         q = z;
         f = z+n;
         p = x+n;
-        do { *q = (*q + (*x++ * b1)) + (*p++ * b2); } while (++q < f);
+        do { *q = (*q + (*x++ * y[0])) + (*p++ * y[1]); } while (++q < f);
         x = p;
         y += 2;
+    }
+
+    if (k & 1) {
+        q = z;
+        f = z+n;
+        do { *q++ += *x++ * y[0]; } while (q < f);
     }
 }
 
