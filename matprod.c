@@ -89,8 +89,8 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET&~24);
 #       endif
         double *e = x + ((unsigned)k&~3);
-#       if __AVX__ && !defined(DISABLE_AVX_CODE)
-            while (x < e) {
+        while (x < e) {
+#           if __AVX__ && !defined(DISABLE_AVX_CODE)
                 double t[4] __attribute__ ((aligned (32)));
                 __m256d A, B;
                 A = _mm256_load_pd (x);
@@ -100,19 +100,15 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
                 s += t[1];
                 s += t[2];
                 s += t[3];
-                x += 4;
-                y += 4;
-            }
-#       else
-            while (x < e) {
+#           else
                 s += x[0] * y[0];
                 s += x[1] * y[1];
                 s += x[2] * y[2];
                 s += x[3] * y[3];
-                x += 4;
-                y += 4;
-            }
-#       endif
+#           endif
+            x += 4;
+            y += 4;
+        }
         if (k & 1) {
             s += x[0] * y[0];
             x += 1;
@@ -131,8 +127,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 /* Product of row vector (x) of length k and k x m matrix (y), result stored 
    in z. 
 
-   The inner loop is a pair of vector dot products, each implemented 
-   similarly to the matprod_vec_vec routine above.  As there, two 
+   The inner loop is a pair of vector dot products.  Two
    implementations are provided, one with loop unrolling within each
    dot product, the other without (since maybe the compiler does a
    better job of this).  The loop unrolling to do two dot products at
@@ -151,6 +146,9 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
 #   endif
 
+    double *p;             /* pointer that goes along pairs in x */
+    double *e = x+(k&~1);  /* point where pointer to pairs in x stops */
+
     /* In this loop, compute two consecutive elements of the result vector,
        by doing two dot products of x with columns of y.  Adjust y, z, and
        m as we go. */
@@ -158,11 +156,9 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     m -= 2;
     while (m >= 0) {
 
-        double s[2], t;
-        double *y2 = y+k;
-
 #       ifdef ALT_MATPROD_VEC_MAT
         {
+            double s[2], t;
             int i;
 
             s[0] = s[1] = 0.0;
@@ -173,46 +169,82 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             for (i = 0; i<k; i++) {
                 t = x[i];
                 s[0] += t * y[i];
-                s[1] += t * y2[i];
+                s[1] += t * y[i+k];
             }
 
-            y = y2 + k;
+            y += 2*k;
+
+            z[0] = s[0];
+            z[1] = s[1];
         }
 #       else
         {
-            double *p = x;         /* pointer that goes along vector x */
-            double *e = x+(k&~1);  /* point where p stops */
+            /* Each time around the loop below, add two products for each
+               of the two dot products, adjusting p and y as we go. */
 
-            s[0] = s[1] = 0.0;
+#           if __AVX__ && !defined(DISABLE_AVX_CODE) && 0 /* not better */
 
-            /* Each time around this loop, add two products for each of the 
-               two dot products, adjusting p, y, and y2 as we go. */
+                __m256d S = _mm256_setzero_pd ();
+                __m256d Z = _mm256_setzero_pd ();
+                p = x;
+                while (p < e) {
+                    __m256d A, B;
+                    A = _mm256_broadcast_pd((__m128d*)p);
+                    B = _mm256_broadcast_pd((__m128d*)(y+k));
+                    B = _mm256_insertf128_pd (B, _mm_loadu_pd(y), 0);
+                    B = _mm256_mul_pd (A, B);
+                    B = _mm256_add_pd (B, S);
+                    S = _mm256_hadd_pd (B, Z);
+                    y += 2;
+                    p += 2;
+                }
 
-            while (p < e) {
-                s[0] += p[0] * y[0];
-                s[1] += p[0] * y2[0];
-                s[0] += p[1] * y[1];
-                s[1] += p[1] * y2[1];
-                y += 2;
-                y2 += 2;
-                p += 2;
-            }
+                __m128d X = _mm256_extractf128_pd (S, 0);
+                __m128d Y = _mm256_extractf128_pd (S, 1);
+                __m128d S128 = _mm_unpacklo_pd (X, Y);
 
-            if (k & 1) {
-                s[0] += p[0] * *y;
-                s[1] += p[0] * *y2;
-                y2 += 1;
-            }
+                if (k & 1) {
+                    __m128d A, B;
+                    A = _mm_set_pd (p[0], p[0]);
+                    B = _mm_set_pd (y[k], y[0]);
+                    B = _mm_mul_pd (A, B);
+                    S128 = _mm_add_pd (S128, B);
+                    y += 1;
+                }
 
-            y = y2;
+                y += k;
+
+                _mm_storeu_pd (z, S128);
+
+#           else
+
+                double s[2] = { 0.0, 0.0 };
+                p = x;
+                while (p < e) {
+                    s[0] += p[0] * y[0];
+                    s[1] += p[0] * y[k];
+                    s[0] += p[1] * y[1];
+                    s[1] += p[1] * y[k+1];
+                    y += 2;
+                    p += 2;
+                }
+
+                if (k & 1) {
+                    s[0] += p[0] * y[0];
+                    s[1] += p[0] * y[k];
+                    y += 1;
+                }
+
+                y += k;
+
+                z[0] = s[0];
+                z[1] = s[1];
+
+#           endif
         }
 #       endif
 
-        /* Store the two dot products in the result vector. */
-
-        *z++ = s[0];
-        *z++ = s[1];
-
+        z += 2;
         m -= 2;
     }
 
@@ -232,10 +264,8 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         }
 #       else
         {
-            double *p = x;         /* pointer that goes along vector x */
-            double *e = x+(k&~1);  /* point where p stops */
-
             s = 0.0;
+            p = x;
             while (p < e) {
                 s += p[0] * y[0];
                 s += p[1] * y[1];
