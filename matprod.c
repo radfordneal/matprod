@@ -89,27 +89,33 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET&~24);
 #       endif
         double *e = x + ((unsigned)k&~3);
-        while (x < e) {
-#           if __SSE2__ && !defined(DISABLE_SIMD_CODE)
+#       if __SSE2__ && !defined(DISABLE_SIMD_CODE)
+            __m128d S = _mm_load_sd(&s);
+            while (x < e) {
                 __m128d A;
                 double t[2] __attribute__ ((aligned (16)));
                 A = _mm_mul_pd(_mm_load_pd(x),_mm_load_pd(y));
-                _mm_store_pd (t, A);
-                s += t[0];
-                s += t[1];
+                S = _mm_add_sd (S, A);
+                A = _mm_unpackhi_pd (A, A);
+                S = _mm_add_sd (S, A);
                 A  = _mm_mul_pd(_mm_load_pd(x+2),_mm_load_pd(y+2));
-                _mm_store_pd (t, A);
-                s += t[0];
-                s += t[1];
-#           else
+                S = _mm_add_sd (S, A);
+                A = _mm_unpackhi_pd (A, A);
+                S = _mm_add_sd (S, A);
+                x += 4;
+                y += 4;
+            }
+            _mm_store_sd (&s, S);
+#       else
+            while (x < e) {
                 s += x[0] * y[0];
                 s += x[1] * y[1];
                 s += x[2] * y[2];
                 s += x[3] * y[3];
-#           endif
-            x += 4;
-            y += 4;
-        }
+                x += 4;
+                y += 4;
+            }
+#       endif
         if (k & 1) {
             s += x[0] * y[0];
             x += 1;
