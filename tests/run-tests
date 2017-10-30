@@ -44,33 +44,37 @@ echo " "; time $prog 50000 2 12345 v
 echo " "; time $prog 200000 3 2222 v
 echo " "; time $prog 50000 3 10345 v
 
-echo " "; time $prog 2000000 30 21 v
-echo " "; time $prog 2000 301 2222 v
-echo " "; time $prog 200 280 12345 v
+echo " "; time $prog 10000000 13 12 v
+echo " "; time $prog 4000000 30 21 v
+echo " "; time $prog 20000 400 400 v
+echo " "; time $prog 4000 301 2222 v
+echo " "; time $prog 400 280 12345 v
 
 echo " "; echo VEC_MAT
 
 echo " "; time $prog 10000000 v 12 13
-echo " "; time $prog 100000 v 1272 13
-echo " "; time $prog 10000 v 9345 14
+echo " "; time $prog 4000000 v 21 30
+echo " "; time $prog 20000 400 400 v
+echo " "; time $prog 4000 v 2222 301
+echo " "; time $prog 400 v 12345 280
 
 echo " "; echo VEC VIA GENERAL
 
-echo " "; time $prog 200000 1 2222 1
-echo " "; time $prog 2000 301 2222 1
-echo " "; time $prog 10000 1 9345 14
+echo " "; time $prog 500000 1 901 1
+echo " "; time $prog 4000 301 2222 1
+echo " "; time $prog 4000 1 2222 301
 
 echo " "; echo GENERAL
 
-echo " "; time $prog 100000 2 522 34
-echo " "; time $prog 10000 3 1445 62
+echo " "; time $prog 50000 2 522 34
+echo " "; time $prog 5000 3 1445 62
 
 echo " "; time $prog 2000000 7 12 9
-echo " "; time $prog 10000 23 222 34
-echo " "; time $prog 1000 50 445 62
+echo " "; time $prog 20000 23 222 34
+echo " "; time $prog 2000 50 445 62
 
-echo " "; time $prog 10000 43 72 64
-echo " "; time $prog 1000 100 155 112
+echo " "; time $prog 20000 43 72 64
+echo " "; time $prog 2000 100 155 112
 
 echo " "; time $prog 10 430 520 540
 echo " "; time $prog 2 800 1150 920
@@ -85,10 +89,16 @@ echo " "; time $prog 100 2031 1 3201
 
 echo " "; echo TRANS1
 
-echo " "; time $prog 100000 t 2 522 34
-echo " "; time $prog 10000 t 3 1445 62
+echo " "; time $prog 50000 t 2 522 34
+echo " "; time $prog 5000 t 3 1445 62
 
 echo " "; time $prog 2000000 t 7 12 9
+echo " "; time $prog 20000 t 23 222 34
+echo " "; time $prog 2000 t 50 445 62
+
+echo " "; time $prog 20000 t 43 72 64
+echo " "; time $prog 2000 t 100 155 112
+
 echo " "; time $prog 10 t 430 520 540
 echo " "; time $prog 2 t 800 1150 920
 echo " "; time $prog 1 t 1271 1341 1013
@@ -98,10 +108,16 @@ echo " "; time $prog 1 T 1271 1341 1271
 
 echo " "; echo TRANS2
 
-echo " "; time $prog 100000 2 522 34 t
-echo " "; time $prog 10000 3 1445 62 t
+echo " "; time $prog 50000 2 522 34 t
+echo " "; time $prog 5000 3 1445 62 t
 
 echo " "; time $prog 2000000 7 12 9 t
+echo " "; time $prog 20000 23 222 34 t
+echo " "; time $prog 2000 50 445 62 t
+
+echo " "; time $prog 20000 43 72 64 t
+echo " "; time $prog 2000 100 155 112 t
+
 echo " "; time $prog 10 430 520 540 t
 echo " "; time $prog 3 800 1150 920 t
 echo " "; time $prog 1 1271 1341 1013 t
