@@ -988,37 +988,60 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
            is symmetric. */
 
         while (z < e) {
-            double s00 = 0.0;
-            double s01 = 0.0;
-            double s10 = 0.0;
-            double s11 = 0.0;
-            double *q = y;
-            int i = k;
-            do {
-                double t = *r;
-                double t2 = *(r+k);
-                double u = *q;
-                double u2 = *(q+k);
-                s00 += t * u;
-                s01 += t * u2;
-                s10 += t2 * u;
-                s11 += t2 * u2;
-                r += 1;
-                q += 1;
-            } while (--i > 0);
-            *z++ = s00;
-            *z2++ = s01;
-            *z++ = s10;
-            *z2++ = s11;
-            if (sym) {
-                rz[0] = s00;
-                rz[1] = s01;
-                rz += n;
-                rz[0] = s10;
-                rz[1] = s11;
-                rz += n;
-            }
-            r += k;
+#           if __AVX__ && !defined(DISABLE_SIMD_CODE)
+                __m256d S = _mm256_setzero_pd();
+                double *q = y;
+                int i = k;
+                do {
+                    __m256d X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
+                    __m256d Y = _mm256_set_pd (q[k], q[k], q[0], q[0]);
+                    S = _mm256_add_pd (S, _mm256_mul_pd(X,Y));
+                    r += 1;
+                    q += 1;
+                } while (--i > 0);
+                __m128d H = _mm256_extractf128_pd(S,1);
+                _mm_storeu_pd (z, _mm256_extractf128_pd(S,0));
+                _mm_storeu_pd (z2, H);
+                if (sym) {
+                    _mm_storeu_pd (rz, 
+                       _mm_unpacklo_pd(_mm256_extractf128_pd(S,0),H));
+                    rz += n;
+                    _mm_storeu_pd (rz, 
+                       _mm_unpackhi_pd(_mm256_extractf128_pd(S,0),H));
+                    rz += n;
+                }
+                z += 2;
+                z2 += 2;
+                r += k;
+#           else
+                double s[4] = { 0, 0, 0, 0 };
+                double *q = y;
+                int i = k;
+                do {
+                    double t = *r;
+                    double t2 = *(r+k);
+                    double u = *q;
+                    double u2 = *(q+k);
+                    s[0] += t * u;
+                    s[1] += t * u2;
+                    s[2] += t2 * u;
+                    s[3] += t2 * u2;
+                    r += 1;
+                    q += 1;
+                } while (--i > 0);
+                *z++ = s[0];
+                *z2++ = s[1];
+                *z++ = s[2];
+                *z2++ = s[3];
+                if (sym) {
+                    rz[0] = s[0];
+                    rz[1] = s[1];
+                    rz[n] = s[2];
+                    rz[n+1] = s[3];
+                    rz += 2*n;
+                }
+                r += k;
+#           endif
         }
 
         /* Go on to next two columns of y. */
