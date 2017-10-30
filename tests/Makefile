@@ -18,7 +18,7 @@
 #   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 progs=matprod-test matprod-aligned-test \
-      matprod-nosimd-test matprod-norestrict-test \
+      matprod-nosimd-test matprod-norestrict-test matprod-noavx-test \
       matprod-alt-test matprod-alt-aligned-test \
       piped-matprod-test piped-matprod-aligned-test \
       piped-matprod-norestrict-test piped-matprod-d-test
@@ -54,6 +54,11 @@ matprod-norestrict-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DMATPROD_NO_RESTRICT \
 		test.c matprod-test.c ../matprod.c \
 		-o matprod-norestrict-test
+
+matprod-noavx-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -mno-avx \
+		test.c matprod-test.c ../matprod.c \
+		-o matprod-noavx-test
 
 matprod-alt-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) \

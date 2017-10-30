@@ -3,7 +3,7 @@
 # Run all tests, except ones involving piping or blas.
 
 for i in matprod matprod-aligned matprod-nosimd matprod-norestrict \
-         matprod-alt matprod-alt-aligned; do
+         matprod-noavx matprod-alt matprod-alt-aligned; do
   run-tests $i-test >& $i.out
   tim $i
 done

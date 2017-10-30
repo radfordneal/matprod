@@ -153,7 +153,8 @@ static void check_results (void)
     }
 
     if (memcmp (z, product[i], N*M*sizeof(double)) != 0)
-    { fprintf(stderr,"Check failed on computation of result %d\n",i);
+    { fprintf(stderr,"Check failed on computation of result %d : %f %f\n",
+                      i,z[0],product[i][0]);
       abort();
     }
   }  
