@@ -93,7 +93,6 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             __m128d S = _mm_load_sd(&s);
             while (x < e) {
                 __m128d A;
-                double t[2] __attribute__ ((aligned (16)));
                 A = _mm_mul_pd(_mm_load_pd(x),_mm_load_pd(y));
                 S = _mm_add_sd (S, A);
                 A = _mm_unpackhi_pd (A, A);
