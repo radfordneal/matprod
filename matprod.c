@@ -196,22 +196,20 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
                 p = x;
                 while (p < e) {
-                    __m128d Y0, Y1, Y2, Y3, T0, T1;
-                    __m256d B;
+                    __m128d Y0, Y1, Y2, Y3;
+                    __m256d T0, T1, B;
                     Y0 = _mm_loadu_pd(y);
                     Y1 = _mm_loadu_pd(y+k);
                     Y2 = _mm_loadu_pd(y+2*k);
                     Y3 = _mm_loadu_pd(y+3*k);
-                    T0 = _mm_unpacklo_pd (Y0, Y1);
-                    T1 = _mm_unpacklo_pd (Y2, Y3);
-                    B = _mm256_insertf128_pd (_mm256_undefined_pd(), T0, 0);
-                    B = _mm256_insertf128_pd (B, T1, 1);
+                    T0 = _mm256_castpd128_pd256 (Y0);
+                    T0 = _mm256_insertf128_pd (T0, Y2, 1);
+                    T1 = _mm256_castpd128_pd256 (Y1);
+                    T1 = _mm256_insertf128_pd (T1, Y3, 1);
+                    B = _mm256_unpacklo_pd (T0, T1);
                     B = _mm256_mul_pd (_mm256_set1_pd(p[0]), B);
                     S = _mm256_add_pd (S, B);
-                    T0 = _mm_unpackhi_pd (Y0, Y1);
-                    T1 = _mm_unpackhi_pd (Y2, Y3);
-                    B = _mm256_insertf128_pd (_mm256_undefined_pd(), T0, 0);
-                    B = _mm256_insertf128_pd (B, T1, 1);
+                    B = _mm256_unpackhi_pd (T0, T1);
                     B = _mm256_mul_pd (_mm256_set1_pd(p[1]), B);
                     S = _mm256_add_pd (S, B);
                     p += 2;
