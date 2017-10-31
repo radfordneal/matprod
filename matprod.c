@@ -155,78 +155,93 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     double *p;             /* pointer that goes along pairs in x */
     double *e = x+(k&~1);  /* point where pointer to pairs in x stops */
 
-    /* In this loop, compute two consecutive elements of the result vector,
-       by doing two dot products of x with columns of y.  Adjust y, z, and
+    /* In this loop, compute four consecutive elements of the result vector,
+       by doing four dot products of x with columns of y.  Adjust y, z, and
        m as we go. */
 
-    m -= 2;
+    m -= 4;
     while (m >= 0) {
 
 #       ifdef ALT_MATPROD_VEC_MAT
         {
-            double s[2], t;
+            double s[4] = { 0, 0, 0, 0 };
             int i;
 
-            s[0] = s[1] = 0.0;
-
             /* Each time around this loop, add one product for each of the 
-               two dot products. */
+               four dot products. */
 
             for (i = 0; i<k; i++) {
-                t = x[i];
+                double t = x[i];
                 s[0] += t * y[i];
                 s[1] += t * y[i+k];
+                s[2] += t * y[i+2*k];
+                s[3] += t * y[i+3*k];
             }
 
-            y += 2*k;
+            y += 4*k;
 
             z[0] = s[0];
             z[1] = s[1];
+            z[2] = s[2];
+            z[3] = s[3];
         }
 #       else
         {
-            /* Each time around the loop below, add two products for each
-               of the two dot products, adjusting p and y as we go. */
+            /* Each time around the loop below, add four products for each
+               of the four dot products, adjusting p and y as we go. */
 
-#           if __SSE2__ && !defined(DISABLE_SIMD_CODE)
+#           if __AVX__ && !defined(DISABLE_SIMD_CODE)
 
-                __m128d S = _mm_setzero_pd ();
+                __m256d S = _mm256_setzero_pd ();
 
                 p = x;
                 while (p < e) {
-                    __m128d Y, Y2, B;
-                    Y = _mm_loadu_pd(y);
-                    Y2 = _mm_loadu_pd(y+k);
-                    B = _mm_mul_pd (_mm_load1_pd(p), _mm_unpacklo_pd(Y,Y2));
-                    S = _mm_add_pd (S, B);
-                    y += 1;
-                    p += 1;
-                    B = _mm_mul_pd (_mm_load1_pd(p), _mm_unpackhi_pd(Y,Y2));
-                    S = _mm_add_pd (S, B);
-                    y += 1;
-                    p += 1;
+                    __m128d Y0, Y1, Y2, Y3, T0, T1;
+                    __m256d B;
+                    Y0 = _mm_loadu_pd(y);
+                    Y1 = _mm_loadu_pd(y+k);
+                    Y2 = _mm_loadu_pd(y+2*k);
+                    Y3 = _mm_loadu_pd(y+3*k);
+                    T0 = _mm_unpacklo_pd (Y0, Y1);
+                    T1 = _mm_unpacklo_pd (Y2, Y3);
+                    B = _mm256_insertf128_pd (_mm256_undefined_pd(), T0, 0);
+                    B = _mm256_insertf128_pd (B, T1, 1);
+                    B = _mm256_mul_pd (_mm256_set1_pd(p[0]), B);
+                    S = _mm256_add_pd (S, B);
+                    T0 = _mm_unpackhi_pd (Y0, Y1);
+                    T1 = _mm_unpackhi_pd (Y2, Y3);
+                    B = _mm256_insertf128_pd (_mm256_undefined_pd(), T0, 0);
+                    B = _mm256_insertf128_pd (B, T1, 1);
+                    B = _mm256_mul_pd (_mm256_set1_pd(p[1]), B);
+                    S = _mm256_add_pd (S, B);
+                    p += 2;
+                    y += 2;
                 }
 
                 if (k & 1) {
-                    __m128d B;
-                    B = _mm_mul_pd (_mm_load1_pd(p), _mm_set_pd(y[k],y[0]));
-                    S = _mm_add_pd (S, B);
+                    __m256d B = _mm256_set_pd (y[3*k], y[2*k], y[k], y[0]);
+                    B = _mm256_mul_pd (_mm256_set1_pd(p[0]), B);
+                    S = _mm256_add_pd (S, B);
                     y += 1;
                 }
 
-                y += k;
+                y += 3*k;
 
-                _mm_storeu_pd (z, S);
+                _mm256_storeu_pd (z, S);
 
 #           else
 
-                double s[2] = { 0.0, 0.0 };
+                double s[4] = { 0, 0, 0, 0 };
                 p = x;
                 while (p < e) {
                     s[0] += p[0] * y[0];
                     s[1] += p[0] * y[k];
+                    s[2] += p[0] * y[2*k];
+                    s[3] += p[0] * y[3*k];
                     s[0] += p[1] * y[1];
                     s[1] += p[1] * y[k+1];
+                    s[2] += p[1] * y[2*k+1];
+                    s[3] += p[1] * y[3*k+1];
                     y += 2;
                     p += 2;
                 }
@@ -234,25 +249,29 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 if (k & 1) {
                     s[0] += p[0] * y[0];
                     s[1] += p[0] * y[k];
+                    s[2] += p[0] * y[2*k];
+                    s[3] += p[0] * y[3*k];
                     y += 1;
                 }
 
-                y += k;
+                y += 3*k;
 
                 z[0] = s[0];
                 z[1] = s[1];
+                z[2] = s[2];
+                z[3] = s[3];
 
 #           endif
         }
 #       endif
 
-        z += 2;
-        m -= 2;
+        z += 4;
+        m -= 4;
     }
 
-    /* Compute the final dot product, if the number of columns is odd. */
+    /* Compute the final few dot products left over from the loop above. */
 
-    if (m == -1) {
+    while (m < 0) {
 
         double s;
 
@@ -263,6 +282,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             s = 0.0;
             for (i = 0; i<k; i++)
                 s += x[i] * y[i];
+            y += k;
         }
 #       else
         {
@@ -274,12 +294,17 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 p += 2;
                 y += 2;
             }
-            if (k & 1)
+            if (k & 1) {
                 s += p[0] * y[0];
+                y += 1;
+            }
         }
 #       endif
 
-        *z = s;
+        z[0] = s;
+
+        z += 1;
+        m += 1;
     }
 }
 
