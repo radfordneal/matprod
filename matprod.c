@@ -159,8 +159,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
        by doing four dot products of x with columns of y.  Adjust y, z, and
        m as we go. */
 
-    m -= 4;
-    while (m >= 0) {
+    while (m >= 4) {
 
 #       ifdef ALT_MATPROD_VEC_MAT
         {
@@ -269,7 +268,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
     /* Compute the final few dot products left over from the loop above. */
 
-    while (m < 0) {
+    while (m > 0) {
 
         double s;
 
@@ -302,7 +301,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         z[0] = s;
 
         z += 1;
-        m += 1;
+        m -= 1;
     }
 }
 
