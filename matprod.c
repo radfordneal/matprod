@@ -77,16 +77,9 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             y += 1;
             k -= 1;
         }
-        if (ALIGN_OFFSET & 16) {
-            s += x[0] * y[0];
-            s += x[1] * y[1];
-            x += 2;
-            y += 2;
-            k -= 2;
-        }
 #       if CAN_ASSUME_ALIGNED
-            x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET&~24);
-            y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET&~24);
+            x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET&~8);
+            y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET&~8);
 #       endif
         double *e = x + ((unsigned)k&~3);
 #       if __SSE2__ && !defined(DISABLE_SIMD_CODE)
@@ -225,6 +218,50 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 y += 3*k;
 
                 _mm256_storeu_pd (z, S);
+
+#           elif __SSE2__ && !defined(DISABLE_SIMD_CODE)
+
+                __m128d S0 = _mm_setzero_pd ();
+                __m128d S1 = _mm_setzero_pd ();
+
+                p = x;
+                while (p < e) {
+                    __m128d Y0, Y1, Y2, Y3;
+                    __m128d P, B0, B1;
+                    Y0 = _mm_loadu_pd(y);
+                    Y1 = _mm_loadu_pd(y+k);
+                    Y2 = _mm_loadu_pd(y+2*k);
+                    Y3 = _mm_loadu_pd(y+3*k);
+                    P = _mm_set1_pd(p[0]);
+                    B0 = _mm_mul_pd (P, _mm_unpacklo_pd (Y0, Y1));
+                    B1 = _mm_mul_pd (P, _mm_unpacklo_pd (Y2, Y3));
+                    S0 = _mm_add_pd (S0, B0);
+                    S1 = _mm_add_pd (S1, B1);
+                    P = _mm_set1_pd(p[1]);
+                    B0 = _mm_mul_pd (P, _mm_unpackhi_pd (Y0, Y1));
+                    B1 = _mm_mul_pd (P, _mm_unpackhi_pd (Y2, Y3));
+                    S0 = _mm_add_pd (S0, B0);
+                    S1 = _mm_add_pd (S1, B1);
+                    p += 2;
+                    y += 2;
+                }
+
+                if (k & 1) {
+                    __m128d P, B0, B1;
+                    B0 = _mm_set_pd (y[k], y[0]);
+                    B1 = _mm_set_pd (y[3*k], y[2*k]);
+                    P = _mm_set1_pd(p[0]);
+                    B0 = _mm_mul_pd (P, B0);
+                    S0 = _mm_add_pd (S0, B0);
+                    B1 = _mm_mul_pd (P, B1);
+                    S1 = _mm_add_pd (S1, B1);
+                    y += 1;
+                }
+
+                y += 3*k;
+
+                _mm_storeu_pd (z, S0);
+                _mm_storeu_pd (z+2, S1);
 
 #           else
 
