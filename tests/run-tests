@@ -54,7 +54,7 @@ echo " "; echo VEC_MAT
 
 echo " "; time $prog 10000000 v 12 13
 echo " "; time $prog 4000000 v 21 30
-echo " "; time $prog 20000 400 400 v
+echo " "; time $prog 20000 v 400 400
 echo " "; time $prog 4000 v 2222 301
 echo " "; time $prog 400 v 12345 280
 
