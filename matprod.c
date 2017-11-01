@@ -230,7 +230,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
                 _mm256_storeu_pd (z, S);
 
-#           elif __SSE2__ && !defined(DISABLE_SIMD_CODE)
+#           elif __SSE2__ && !defined(DISABLE_SIMD_CODE) && 0
 
                 __m128d S0 = _mm_setzero_pd ();
                 __m128d S1 = _mm_setzero_pd ();
@@ -273,6 +273,65 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
                 _mm_storeu_pd (z, S0);
                 _mm_storeu_pd (z+2, S1);
+
+#           elif __SSE2__ && !defined(DISABLE_SIMD_CODE)
+
+                __m128d S0, S1, S2, S3;
+
+                if (ALIGN_OFFSET & 8) {
+                    S0 = _mm_set_sd (x[0] * y[0]);
+                    S1 = _mm_set_sd (x[0] * y[1]);
+                    S2 = _mm_set_sd (x[0] * y[2]);
+                    S3 = _mm_set_sd (x[0] * y[3]);
+                    p = x+1;
+                }
+                else {
+                    S0 = _mm_setzero_pd();
+                    S1 = _mm_setzero_pd();
+                    S2 = _mm_setzero_pd();
+                    S3 = _mm_setzero_pd();
+                    p = x;
+                }
+                p = __builtin_assume_aligned (p, ALIGN, ALIGN_OFFSET&~8);
+
+                while (p < e) {
+                    __m128d P = _mm_load_pd (p);
+                    __m128d A;
+                    A = _mm_mul_pd (P, _mm_loadu_pd(y));
+                    S0 = _mm_add_sd (S0, A);
+                    A = _mm_unpackhi_pd (A, A);
+                    S0 = _mm_add_sd (S0, A);
+                    A = _mm_mul_pd (P, _mm_loadu_pd(y+k));
+                    S1 = _mm_add_sd (S1, A);
+                    A = _mm_unpackhi_pd (A, A);
+                    S1 = _mm_add_sd (S1, A);
+                    A = _mm_mul_pd (P, _mm_loadu_pd(y+2*k));
+                    S2 = _mm_add_sd (S2, A);
+                    A = _mm_unpackhi_pd (A, A);
+                    S2 = _mm_add_sd (S2, A);
+                    A = _mm_mul_pd (P, _mm_loadu_pd(y+3*k));
+                    S3 = _mm_add_sd (S3, A);
+                    A = _mm_unpackhi_pd (A, A);
+                    S3 = _mm_add_sd (S3, A);
+                    p += 2;
+                    y += 2;
+                }
+
+                if (k & 1) {
+                    __m128d P = _mm_load_sd (p);
+                    S0 = _mm_add_sd (S0, _mm_mul_sd (P, _mm_load_sd(y)));
+                    S1 = _mm_add_sd (S1, _mm_mul_sd (P, _mm_load_sd(y+k)));
+                    S2 = _mm_add_sd (S2, _mm_mul_sd (P, _mm_load_sd(y+2*k)));
+                    S3 = _mm_add_sd (S3, _mm_mul_sd (P, _mm_load_sd(y+3*k)));
+                    y += 1;
+                }
+
+                y += 3*k;
+
+                _mm_store_sd (z, S0);
+                _mm_store_sd (z+1, S1);
+                _mm_store_sd (z+2, S2);
+                _mm_store_sd (z+3, S3);
 
 #           else
 
