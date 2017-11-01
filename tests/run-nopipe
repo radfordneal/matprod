@@ -4,6 +4,6 @@
 
 for i in matprod matprod-aligned matprod-nosimd matprod-norestrict \
          matprod-noavx matprod-alt matprod-alt-aligned; do
-  run-tests $i-test >& $i.out
+  run-tests$1 $i-test >& $i.out
   tim $i
 done

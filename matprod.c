@@ -71,52 +71,63 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 #   else
     {
         double s = 0.0;
+        int i = 0;
+
         if (ALIGN_OFFSET & 8) {
             s = x[0] * y[0];
-            x += 1;
-            y += 1;
+            i += 1;
             k -= 1;
         }
+
+        int e = k&(~3);
+
 #       if CAN_ASSUME_ALIGNED
             x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET&~8);
             y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET&~8);
 #       endif
-        double *e = x + ((unsigned)k&~3);
+
 #       if __SSE2__ && !defined(DISABLE_SIMD_CODE)
             __m128d S = _mm_load_sd(&s);
-            while (x < e) {
-                __m128d A;
-                A = _mm_mul_pd(_mm_load_pd(x),_mm_load_pd(y));
+            __m128d A;
+            while (i < e) {
+                A = _mm_mul_pd(_mm_load_pd(x+i),_mm_load_pd(y+i));
                 S = _mm_add_sd (S, A);
                 A = _mm_unpackhi_pd (A, A);
                 S = _mm_add_sd (S, A);
-                A  = _mm_mul_pd(_mm_load_pd(x+2),_mm_load_pd(y+2));
+                A  = _mm_mul_pd(_mm_load_pd(x+i+2),_mm_load_pd(y+i+2));
                 S = _mm_add_sd (S, A);
                 A = _mm_unpackhi_pd (A, A);
                 S = _mm_add_sd (S, A);
-                x += 4;
-                y += 4;
+                i += 4;
+            }
+            if (k & 2) {
+                A = _mm_mul_pd(_mm_load_pd(x+i),_mm_load_pd(y+i));
+                S = _mm_add_sd (S, A);
+                A = _mm_unpackhi_pd (A, A);
+                S = _mm_add_sd (S, A);
+                i += 2;
             }
             _mm_store_sd (&s, S);
+            if (k & 1) {
+                s += x[i+0] * y[i+0];
+            }
 #       else
-            while (x < e) {
-                s += x[0] * y[0];
-                s += x[1] * y[1];
-                s += x[2] * y[2];
-                s += x[3] * y[3];
-                x += 4;
-                y += 4;
+            while (i < e) {
+                s += x[i+0] * y[i+0];
+                s += x[i+1] * y[i+1];
+                s += x[i+2] * y[i+2];
+                s += x[i+3] * y[i+3];
+                i += 4;
+            }
+            if (k & 2) {
+                s += x[i+0] * y[i+0];
+                s += x[i+1] * y[i+1];
+                i += 2;
+            }
+            if (k & 1) {
+                s += x[i+0] * y[i+0];
             }
 #       endif
-        if (k & 1) {
-            s += x[0] * y[0];
-            x += 1;
-            y += 1;
-        }
-        if (k & 2) {
-            s += x[0] * y[0];
-            s += x[1] * y[1];
-        }
         return s;
     }
 #   endif
