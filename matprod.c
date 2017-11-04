@@ -35,7 +35,19 @@
 #define CAN_ASSUME_ALIGNED 0
 #endif
 
-#if (__AVX__ || __SSE2__) && !defined(DISABLE_SIMD_CODE)
+#if __SSE2__ && !defined(DISABLE_SIMD_CODE)
+#define CAN_USE_SSE2 1
+#else
+#define CAN_USE_SSE2 0
+#endif
+
+#if __AVX__ && !defined(DISABLE_SIMD_CODE)
+#define CAN_USE_AVX 1
+#else
+#define CAN_USE_AVX 0
+#endif
+
+#if CAN_USE_SSE2 || CAN_USE_AVX
 #include <immintrin.h>
 #endif
 
@@ -86,7 +98,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET&~8);
 #       endif
 
-#       if __SSE2__ && !defined(DISABLE_SIMD_CODE)
+#       if CAN_USE_SSE2 && defined(ALIGN)
             __m128d S = _mm_load_sd(&s);
             __m128d A;
             while (i < e) {
@@ -193,7 +205,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             /* Each time around the loop below, add four products for each
                of the four dot products, adjusting p and y as we go. */
 
-#           if __AVX__ && !defined(DISABLE_SIMD_CODE)
+#           if CAN_USE_AVX
 
                 __m256d S = _mm256_setzero_pd ();
 
@@ -230,7 +242,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
                 _mm256_storeu_pd (z, S);
 
-#           elif __SSE2__ && !defined(DISABLE_SIMD_CODE) && 0
+#           elif CAN_USE_SSE2 && 0
 
                 __m128d S0 = _mm_setzero_pd ();
                 __m128d S1 = _mm_setzero_pd ();
@@ -274,7 +286,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 _mm_storeu_pd (z, S0);
                 _mm_storeu_pd (z+2, S1);
 
-#           elif __SSE2__ && !defined(DISABLE_SIMD_CODE)
+#           elif CAN_USE_SSE2 && defined(ALIGN)
 
                 __m128d S0, S1, S2, S3;
 
@@ -292,7 +304,9 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     S3 = _mm_setzero_pd();
                     p = x;
                 }
-                p = __builtin_assume_aligned (p, ALIGN, ALIGN_OFFSET&~8);
+#               if CAN_ASSUME_ALIGNED
+                    p = __builtin_assume_aligned (p, ALIGN, ALIGN_OFFSET&~8);
+#               endif
 
                 while (p < e) {
                     __m128d P = _mm_load_pd (p);
@@ -449,7 +463,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     {
         if (n == 2) { 
 
-#           if __SSE2__ && !defined(DISABLE_SIMD_CODE)
+#           if CAN_USE_SSE2
 
                 __m128d S = _mm_setzero_pd ();
                 __m128d A;
@@ -523,7 +537,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
        with two elements of y to the result vector, z.  Adjust x and y
        to account for this. */
 
-#   if __AVX__ && !defined(DISABLE_SIMD_CODE)
+#   if CAN_USE_AVX
 
         while (y < e) {
             q = z;
@@ -585,7 +599,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         }
 
 
-#   elif __SSE2__ && !defined(DISABLE_SIMD_CODE)
+#   elif CAN_USE_SSE2
 
         while (y < e) {
             q = z;
@@ -1116,7 +1130,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
            is symmetric. */
 
         while (z < e) {
-#           if __AVX__ && !defined(DISABLE_SIMD_CODE)
+#           if CAN_USE_AVX
                 __m256d S = _mm256_setzero_pd();
                 double *q = y;
                 int i = k;
