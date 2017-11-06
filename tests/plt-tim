@@ -1,0 +1,6 @@
+#!/bin/bash
+
+(echo "i<-0"; pr -s+ -m -t -l10000 $1.tim $2.tim \
+ | sed "s/[A-Z].*//" | sed "s/+/ \\//" \
+ | sed "s/^./cat(i<-i+1,/" | sed "s/.$/,'\\\\n')/" | sed "s/^$/cat('\\\\n')/") \
+ | pqR --slave --vanilla
