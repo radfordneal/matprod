@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
-#           Shell File to Run a Series of Tests (for vec_vec)
+#           Shell File to Run a Series of Tests (for trans2)
 #
 # Copyright (c) 2013, 2017 Radford M. Neal.
 # 
@@ -22,10 +22,31 @@
 
 prog=$1
 
-echo " "; echo VEC_VEC
+echo " "; echo TRANS2
 
-echo " "; time $prog 30000000 v 23 v
-echo " "; time $prog 500000 v  901 v
-echo " "; time $prog 50000 v 12345 v
-echo " "; time $prog 5000 v 123456 v
-echo " "; time $prog 500 v 1234567 v
+echo " "; time $prog 1000000 2222 1 1 t
+
+echo " "; time $prog 500000 1 901 1 t
+echo " "; time $prog 4000 301 2222 1 t
+echo " "; time $prog 4000 1 2222 301 t
+
+echo " "; time $prog 50000 2 522 34 t
+echo " "; time $prog 5000 3 1445 62 t
+
+echo " "; time $prog 2000000 7 12 9 t
+echo " "; time $prog 20000 23 222 34 t
+echo " "; time $prog 2000 50 445 62 t
+
+echo " "; time $prog 20000 43 72 64 t
+echo " "; time $prog 2000 100 155 112 t
+
+echo " "; time $prog 10 430 520 540 t
+echo " "; time $prog 3 800 1150 920 t
+echo " "; time $prog 1 1271 1341 1013 t
+
+echo " "; time $prog 1 1271 1341 1271 t
+
+echo " "; time $prog 10000 230 1 341 t
+echo " "; time $prog 100 2031 1 3201 t
+
+echo " "; time $prog 1 1271 1341 1271 T
