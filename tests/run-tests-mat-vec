@@ -26,11 +26,11 @@ echo " "; echo MAT_VEC
 
 echo " "; time $prog 1000000 2222 1 v
 
-echo " "; time $prog 200000 2 2222 v
-echo " "; time $prog 50000 2 12345 v
+echo " "; time $prog 100000 2 2222 v
+echo " "; time $prog 20000 2 12345 v
 
-echo " "; time $prog 200000 3 2222 v
-echo " "; time $prog 50000 3 10345 v
+echo " "; time $prog 100000 3 2222 v
+echo " "; time $prog 20000 3 10345 v
 
 echo " "; time $prog 10000000 13 12 v
 echo " "; time $prog 4000000 30 21 v

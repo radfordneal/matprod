@@ -26,11 +26,11 @@ echo " "; echo VEC_MAT
 
 echo " "; time $prog 1000000 v 1 2222
 
-echo " "; time $prog 200000 v 2222 2
-echo " "; time $prog 50000 v 12345 2
+echo " "; time $prog 100000 v 2222 2
+echo " "; time $prog 20000 v 12345 2
 
-echo " "; time $prog 200000 v 2222 3
-echo " "; time $prog 50000 v 10345 3
+echo " "; time $prog 100000 v 2222 3
+echo " "; time $prog 20000 v 10345 3
 
 echo " "; time $prog 10000000 v 12 13
 echo " "; time $prog 4000000 v 21 30
