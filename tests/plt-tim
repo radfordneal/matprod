@@ -4,5 +4,5 @@
  | sed "s/[A-Z].*//" | sed "s/+/ \\//" \
  | sed "s/^./cat(i<-i+1,/" | sed "s/.$/,'\\\\n')/" \
  | sed "s/^$/i<-(i+9)%\\/%5\\*5;cat('\\\\n')/") \
- | pqR --slave --vanilla \
+ | R --slave --vanilla \
  | pp -lny =900x450

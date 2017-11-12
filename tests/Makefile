@@ -25,7 +25,7 @@ progs=matprod-test matprod-aligned-test \
 
 blas-progs=blas1-test blas2-test blas3-test  # blas0-test omitted
 
-CC=gcc
+CC=gcc-7
 CFLAGS=-g -std=gnu99 -O3 -march=native -mtune=native -mfpmath=sse \
                          -ffp-contract=off
 

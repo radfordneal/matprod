@@ -27,8 +27,8 @@ echo " "; echo TRANS1
 echo " "; time $prog 1000000 t 2222 1 1
 
 echo " "; time $prog 500000 t 1 901 1
-echo " "; time $prog 4000 t 301 2222 1
-echo " "; time $prog 4000 t 1 2222 301
+echo " "; time $prog 1000 t 301 2222 1
+echo " "; time $prog 1000 t 1 2222 301
 
 echo " "; time $prog 50000 t 2 522 34
 echo " "; time $prog 5000 t 3 1445 62
