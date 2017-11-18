@@ -181,6 +181,17 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
 #   endif
 
+    /* Handle scalar times row vector specially. */
+
+    if (k == 1) {
+        double t = x[0];
+        int j;
+        for (j = 0; j < m; j++) {
+            z[j] = t * y[j];
+        }
+        return;
+    }
+
     double *p;             /* pointer that goes along pairs in x */
     double *e = x+(k&~1);  /* point where pointer to pairs in x stops */
 
@@ -539,6 +550,17 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
         z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
 #   endif
+
+    /* Handle column vector times scalar specially. */
+
+    if (k == 1) {
+        double t = y[0];
+        int j;
+        for (j = 0; j < n; j++) {
+            z[j] = t * x[j];
+        }
+        return;
+    }
 
     double *e = y+(k&~1);  /* point to stop at in/after vector y */
 
