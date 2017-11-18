@@ -4,8 +4,7 @@
 
 for i in matprod matprod-noalign matprod-alt \
       matprod-nosimd matprod-norestrict matprod-noavx \
-      matprod-generic matprod-generic-noavx \
-      matprod-generic-nosimd matprod-generic-noavx-nosimd \
+      matprod-generic matprod-generic-avx \
       piped-matprod piped-matprod-noalign \
       piped-matprod-norestrict piped-matprod-nohelpers; do
   echo RUNNING TESTS FOR $i
