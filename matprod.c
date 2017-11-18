@@ -709,25 +709,38 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
 #           if CAN_USE_SSE2
 
-                __m128d S = _mm_setzero_pd ();
-                __m128d A;
+                __m128d S, A;
 
                 /* Each time around this loop, add the products of two
                    columns of x with two elements of y to S.  Adjust x
                    and y to account for this. */
 
+                S = _mm_setzero_pd (); 
+
                 while (y < e) {
-                    A = _mm_mul_pd (_mm_loadu_pd(x), _mm_load1_pd(y));
-                    S = _mm_add_pd (S, A);
-                    A = _mm_mul_pd (_mm_loadu_pd(x+2), _mm_load1_pd(y+1));
-                    S = _mm_add_pd (S, A);
+#                   if ALIGN >= 16 && ALIGN_OFFSET == 0
+                        A = _mm_mul_pd (_mm_load_pd(x), _mm_load1_pd(y));
+                        S = _mm_add_pd (S, A);
+                        A = _mm_mul_pd (_mm_load_pd(x+2), _mm_load1_pd(y+1));
+                        S = _mm_add_pd (S, A);
+#                   else
+                        A = _mm_mul_pd (_mm_loadu_pd(x), _mm_load1_pd(y));
+                        S = _mm_add_pd (S, A);
+                        A = _mm_mul_pd (_mm_loadu_pd(x+2), _mm_load1_pd(y+1));
+                        S = _mm_add_pd (S, A);
+#                   endif
                     x += 4;
                     y += 2;
                 }
 
                 if (k & 1) {
-                    A = _mm_mul_pd (_mm_loadu_pd(x), _mm_load1_pd(y));
-                    S = _mm_add_pd (S, A);
+#                   if ALIGN >= 16 && ALIGN_OFFSET == 0
+                        A = _mm_mul_pd (_mm_load_pd(x), _mm_load1_pd(y));
+                        S = _mm_add_pd (S, A);
+#                   else
+                        A = _mm_mul_pd (_mm_loadu_pd(x), _mm_load1_pd(y));
+                        S = _mm_add_pd (S, A);
+#                   endif
                 }
 
                 /* Store the two sums in S in the result vector. */
