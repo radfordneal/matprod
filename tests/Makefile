@@ -110,6 +110,8 @@ piped-matprod-nohelpers-test:	test.h test.c piped-matprod-test.c ../piped-matpro
 		test.c piped-matprod-test.c ../piped-matprod.c helpers.c \
 		-o piped-matprod-nohelpers-test
 
+# -----------------------------------------------------------------------------
+
 blas0-test:		test.h test.c blas-test.c \
 			ddot.f dgemm.f dgemv.f dsyrk.f lsame.f
 	$(CC) -I.. -I. $(CFLAGS) \
@@ -125,7 +127,8 @@ blas2-test:		test.h test.c blas-test.c blas.f
 		-lm -o blas2-test
 
 blas3-test:		test.h test.c blas-test.c
-	$(CC) -I.. -I. $(CFLAGS) test.c blas-test.c /usr/lib/libblas.so.3 \
+	$(CC) -I.. -I. $(CFLAGS) test.c blas-test.c \
+		/usr/lib/x86_64-linux-gnu/libblas.so.3 \
 		-lm -o blas3-test
 
 clean:
