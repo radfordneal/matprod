@@ -25,13 +25,15 @@ but they are probably not as efficient as some other matrix
 multiplication packages.  
 
 However, these routines have been written to produce the same results
-as the obvious matrix multiplication algorithms.  They do not bypass
-multiplications by zero, and therefore propagate Inf and NaN values
-properly.  They do not re-group additions assuming associativity
-holds, so round-off errors will be the same as for the obvious
-algorithms.  (Note that producing the exact same result as the obvious
-method requires disabling any contraction of floating-point operations
-(eg, fused multiply-add) that might be done by the compiler/processor.)
+as the obvious matrix multiplication algorithms, that sequentially sum
+products of elements.  These routines do not bypass multiplications by
+zero, and therefore propagate Inf and NaN values properly.  They do
+not re-group additions assuming associativity holds, so round-off
+errors will be the same as for the obvious algorithms.  Note that
+producing the exact same result as the obvious methods requires that
+the routine be built with any contraction of floating-point operations
+(eg, fused multiply-add) that might be done by the compiler/processor
+disabled.
 
 There are also versions of these routines that allow for possible
 parallel operation in the context of a program using the helpers
@@ -69,7 +71,7 @@ These options include the following:
                          smaller code.
 
     ALIGN_OFFSET         If ALIGN is defined, ALIGN_OFFSET gives the
-                         offset from an even mulitple of ALIGN that
+                         offset from an even multiple of ALIGN that
                          arguments are aligned to.  If ALIGN_OFFSET is
                          not defined, zero is assumed.
 
@@ -82,6 +84,16 @@ These options include the following:
 
 There are also options for selecting amongst alternative
 implementations, documented in the source code.
+
+Some special code has been written to take advantage of the SSE2 or
+AVX instructions available on some Intel/AMD processors.  It will be
+used only if gcc or a gcc look-alike is used, since this code uses the
+builtin intrinsic functions that gcc provides.  This code can be
+disabled by defining the symbol DISABLE_SIMD_CODE with a compiler
+option; just the AVX code can be disabled by defining DISABLE_AVX_CODE
+(in which case SSE2 code may still be used).  The SIMD code is
+automatically disabled when the routines are compiled for an
+architecture without the required instructions.
 
 
 Procedures in matprod.c:
@@ -124,6 +136,15 @@ source is compiled with -DMATPROD_NO_RESTRICT.
 For the above procedures, the result matrix, z, must have no overlap
 with the operands, x and y.  However, the operands may be the same or
 may overlap.
+
+Some attention has been paid to making special cases of these routines
+be fast - such as matprod_vec_mat when the vector is of length one,
+which reduces to simply multiplying the elements of the matrix (with
+one row) by a scalar.  However, the cases of matprod_mat_mat,
+matprod_trans1, and matprod_trans2 that reduce to matprod_vec_vec,
+matprod_vec_mat, or matprod_mat_vec have not been optimized, on the
+assumption that the caller will call the specialized routine when
+appropriate.
 
 See the comments in matprod.c for details on the algorithms used,
 including compile options for selecting an alternative algorithm for

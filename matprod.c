@@ -99,17 +99,18 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             s = x[0] * y[0];
             i = 1;
             k -= 1;
+#           if CAN_ASSUME_ALIGNED
+                x = __builtin_assume_aligned (x, ALIGN,
+                        (ALIGN_OFFSET+8)&(ALIGN-1));
+                y = __builtin_assume_aligned (y, ALIGN,
+                        (ALIGN_OFFSET+8)&(ALIGN-1));
+#           endif
 #       else
             s = 0.0;
             i = 0;
 #       endif
 
         int e = k&(~3);
-
-#       if CAN_ASSUME_ALIGNED
-            x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET&~8);
-            y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET&~8);
-#       endif
 
 #       if CAN_USE_SSE2
         {
@@ -256,13 +257,15 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     S = _mm256_mul_pd (_mm256_set1_pd(p[0]), B);
                     p = x+1;
                     y += 1;
+#                   if CAN_ASSUME_ALIGNED
+                        p = __builtin_assume_aligned (p, ALIGN, 
+                                 (ALIGN_OFFSET+8)&(ALIGN-1));
+                        y = __builtin_assume_aligned (y, ALIGN,
+                                 (ALIGN_OFFSET+8)&(ALIGN-1));
+#                   endif
 #               else
                     S = _mm256_setzero_pd ();
                     p = x;
-#               endif
-#               if CAN_ASSUME_ALIGNED
-                    p = __builtin_assume_aligned (p, ALIGN, ALIGN_OFFSET&~8);
-                    y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET&~8);
 #               endif
 
                 while (p < e) {
@@ -426,6 +429,10 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     S2 = _mm_set_sd (x[0] * y[2]);
                     S3 = _mm_set_sd (x[0] * y[3]);
                     p = x+1;
+#                   if CAN_ASSUME_ALIGNED
+                        p = __builtin_assume_aligned (p, ALIGN, 
+                                (ALIGN_OFFSET+8)&(ALIGN-1));
+#                   endif
                 }
                 else {
                     S0 = _mm_setzero_pd();
@@ -434,9 +441,6 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     S3 = _mm_setzero_pd();
                     p = x;
                 }
-#               if CAN_ASSUME_ALIGNED
-                    p = __builtin_assume_aligned (p, ALIGN, ALIGN_OFFSET&~8);
-#               endif
 
                 while (p < e) {
                     __m128d P = _mm_load_pd (p);
@@ -563,13 +567,15 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 S = _mm_mul_pd (P, B);
                 p = x+1;
                 y += 1;
+#               if CAN_ASSUME_ALIGNED
+                    p = __builtin_assume_aligned (p, ALIGN,
+                            (ALIGN_OFFSET+8)&(ALIGN-1));
+                    y = __builtin_assume_aligned (y, ALIGN,
+                            (ALIGN_OFFSET+8)&(ALIGN-1));
+#               endif
 #           else
                 S = _mm_setzero_pd ();
                 p = x;
-#           endif
-#           if CAN_ASSUME_ALIGNED
-                p = __builtin_assume_aligned (p, ALIGN, ALIGN_OFFSET&~8);
-                y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET&~8);
 #           endif
 
             while (p < e) {
@@ -659,11 +665,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
    The product is computed using an outer loop that accumulates the sums for 
    all elements of the result vector, iterating over columns of x, in order
    to produce sequential accesses.  This loop is unrolled to accumulate from
-   two columns of x at once, which probably reduces the number of memory
-   accesses, and may give more potential to overlap accesses with computation.
-   The result vector is initialized either to zeros or to the result from the 
-   first column, if the number of columns is odd.  Order of summation is
-   kept the same as the obvious method, for consistency of round-off errors.
+   two columns of x at once.
 
    The case of n=2 may be handled specially, accumulating sums in two
    local variables rather than in the result vector, and then storing
@@ -709,7 +711,8 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
 #           if CAN_USE_SSE2
 
-                __m128d S, A;
+                __m128d S;  /* sums for the two values in the result */
+                __m128d A;
 
                 /* Each time around this loop, add the products of two
                    columns of x with two elements of y to S.  Adjust x
@@ -749,7 +752,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
 #           else
 
-                double s[2];  /* sums for two elements of a result column */
+                double s[2];  /* sums for the two values in the result */
 
                 s[0] = s[1] = 0;
 
@@ -769,7 +772,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                     s[1] += x[1] * y[0];
                 }
 
-                /* Store s[0] and s[1] in the result vector. */
+                /* Store the two sums in s[0] and s[1] in the result vector. */
 
                 z[0] = s[0];
                 z[1] = s[1];
@@ -782,17 +785,16 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     }
 #   endif
 
-    double *q, *f;
+    /* To start, set result to all zeros. */
 
-    /* Set result to all zeros to start. */
-
-    q = z;
-    f = z+n;
-    do { *q++ = 0.0; } while (q < f);
+    int i = 0;
+    do { z[i] = 0.0; } while (i++ < n);
 
     /* Each time around this loop, add the products of two columns of x 
        with two elements of y to the result vector, z.  Adjust x and y
        to account for this. */
+
+    double *q, *f;
 
 #   if CAN_USE_AVX
 
@@ -984,8 +986,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
    The inner loop does two matrix-vector products each time, implemented 
    much as in matprod_mat_vec above, except for computing two columns. This
    gives a reasonably efficient implementation of an outer product (where
-   k is one). Order of summation is kept the same as the obvious method, 
-   for consistency of round-off errors.
+   k is one).
 
    The case of n=2 may be handled specially, accumulating sums in two
    local variables rather than in a column of the result, and then storing
