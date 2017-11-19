@@ -28,8 +28,7 @@ blas-progs=blas1-test blas2-test blas3-test  # blas0-test omitted
 CC=gcc-7
 CFLAGS=-g -std=gnu99 -O3 -march=native -mtune=native -mfpmath=sse \
                          -ffp-contract=off
-CFLAGSg=-g -std=gnu99 -O3 -mtune=generic -mfpmath=sse \
-	                  -ffp-contract=off
+CFLAGSg=-g -std=gnu99 -O3 -mfpmath=sse -ffp-contract=off
 
 ALIGN=-DALIGN=32
 
@@ -75,12 +74,13 @@ matprod-noavx-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 # -----------------------------------------------------------------------------
 
 matprod-generic-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGSg) $(ALIGN) \
+	$(CC) -I.. -I. $(CFLAGSg) -mtune=core2 $(ALIGN) \
 		test.c matprod-test.c ../matprod.c \
 		-o matprod-generic-test
 
 matprod-generic-avx-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGSg) $(ALIGN) -mavx \
+	$(CC) -I.. -I. $(CFLAGSg) -march=sandybridge -mtune=generic $(ALIGN) \
+		-mavx \
 		test.c matprod-test.c ../matprod.c \
 		-o matprod-generic-avx-test
 
