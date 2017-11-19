@@ -306,48 +306,71 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
 #               if (ALIGN_OFFSET & 8)
                     P = _mm_set1_pd(p[0]);
-                    B = _mm_set_pd (y[k], y[0]);
-                    S0 = _mm_mul_pd (P, B);
-                    B = _mm_set_pd (y[3*k], y[2*k]);
-                    S1 = _mm_mul_pd (P, B);
+                    S0 = _mm_mul_pd (P, _mm_set_pd (y[k], y[0]));
+                    S1 = _mm_mul_pd (P, _mm_set_pd (y[3*k], y[2*k]));
                     p = x+1;
                     y += 1;
+#                   if CAN_ASSUME_ALIGNED
+                        p = __builtin_assume_aligned (p, ALIGN,
+                                 (ALIGN_OFFSET+8)&(ALIGN-1));
+
+                        y = __builtin_assume_aligned (y, ALIGN,
+                                 (ALIGN_OFFSET+8)&(ALIGN-1));
+#                   endif
 #               else
                     S0 = _mm_setzero_pd ();
                     S1 = _mm_setzero_pd ();
                     p = x;
 #               endif
-#               if CAN_ASSUME_ALIGNED
-                    p = __builtin_assume_aligned (p, ALIGN, ALIGN_OFFSET&~8);
-                    y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET&~8);
+
+#               if ALIGN >= 16
+                    while (p < e) {
+                        __m128d T0, T1;
+                        T0 = _mm_load_pd(y);
+                        T1 = _mm_load_pd(y+2*k);
+                        P = _mm_set1_pd(p[0]);
+                        B = _mm_mul_pd (P, _mm_loadh_pd (T0, y+k));
+                        S0 = _mm_add_pd (S0, B);
+                        B = _mm_mul_pd (P, _mm_loadh_pd (T1, y+3*k));
+                        S1 = _mm_add_pd (S1, B);
+                        T0 = _mm_unpackhi_pd (T0, T0);
+                        T1 = _mm_unpackhi_pd (T1, T1);
+                        P = _mm_set1_pd(p[1]);
+                        B = _mm_mul_pd (P, _mm_loadh_pd (T0, y+k+1));
+                        S0 = _mm_add_pd (S0, B);
+                        B = _mm_mul_pd (P, _mm_loadh_pd (T1, y+3*k+1));
+                        S1 = _mm_add_pd (S1, B);
+                        p += 2;
+                        y += 2;
+                    }
+#               else
+                    while (p < e) {
+                        P = _mm_set1_pd(p[0]);
+                        B = _mm_set_pd (y[k], y[0]);
+                        B = _mm_mul_pd (P, B);
+                        S0 = _mm_add_pd (S0, B);
+                        B = _mm_set_pd (y[3*k], y[2*k]);
+                        B = _mm_mul_pd (P, B);
+                        S1 = _mm_add_pd (S1, B);
+                        P = _mm_set1_pd(p[1]);
+                        B = _mm_set_pd (y[k+1], y[1]);
+                        B = _mm_mul_pd (P, B);
+                        S0 = _mm_add_pd (S0, B);
+                        B = _mm_set_pd (y[3*k+1], y[2*k+1]);
+                        B = _mm_mul_pd (P, B);
+                        S1 = _mm_add_pd (S1, B);
+                        p += 2;
+                        y += 2;
+                    }
 #               endif
 
-                while (p < e) {
-                    __m128d Y0, Y1, Y2, Y3;
-                    Y0 = ALIGN >= 16 ? _mm_load_pd(y) : _mm_loadu_pd(y);
-                    Y1 = _mm_loadu_pd(y+k);
-                    Y2 = ALIGN >= 16 ? _mm_load_pd(y+2*k) : _mm_loadu_pd(y+2*k);
-                    Y3 = _mm_loadu_pd(y+3*k);
-                    P = _mm_set1_pd(p[0]);
-                    B = _mm_mul_pd (P, _mm_unpacklo_pd (Y0, Y1));
-                    S0 = _mm_add_pd (S0, B);
-                    B = _mm_mul_pd (P, _mm_unpacklo_pd (Y2, Y3));
-                    S1 = _mm_add_pd (S1, B);
-                    P = _mm_set1_pd(p[1]);
-                    B = _mm_mul_pd (P, _mm_unpackhi_pd (Y0, Y1));
-                    S0 = _mm_add_pd (S0, B);
-                    B = _mm_mul_pd (P, _mm_unpackhi_pd (Y2, Y3));
-                    S1 = _mm_add_pd (S1, B);
-                    p += 2;
-                    y += 2;
-                }
-
                 if (k & 1) {
+                    P = _mm_set1_pd(p[0]);
                     B = _mm_set_pd (y[k], y[0]);
-                    B = _mm_mul_pd (_mm_set1_pd(p[0]), B);
+                    B = _mm_mul_pd (P, B);
                     S0 = _mm_add_pd (S0, B);
                     B = _mm_set_pd (y[3*k], y[2*k]);
-                    B = _mm_mul_pd (_mm_set1_pd(p[1]), B);
+                    B = _mm_mul_pd (P, B);
                     S1 = _mm_add_pd (S1, B);
                     y += 1;
                 }
@@ -559,9 +582,11 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         }
 #       elif CAN_USE_SSE2
         {
-            __m128d S, S1, B, P;
+            __m128d S;
 
 #           if (ALIGN_OFFSET & 8)
+            {
+                __m128d B, P;
                 P = _mm_set1_pd(p[0]);
                 B = _mm_set_pd (y[k], y[0]);
                 S = _mm_mul_pd (P, B);
@@ -578,23 +603,38 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 p = x;
 #           endif
 
-            while (p < e) {
-                __m128d Y0, Y1;
-                Y0 = ALIGN >= 16 ? _mm_load_pd(y) : _mm_loadu_pd(y);
-                Y1 = _mm_loadu_pd(y+k);
-                P = _mm_set1_pd(p[0]);
-                B = _mm_mul_pd (P, _mm_unpacklo_pd (Y0, Y1));
-                S = _mm_add_pd (S, B);
-                P = _mm_set1_pd(p[1]);
-                B = _mm_mul_pd (P, _mm_unpackhi_pd (Y0, Y1));
-                S = _mm_add_pd (S, B);
-                p += 2;
-                y += 2;
-            }
+#           if ALIGN >= 16
+                while (p < e) {
+                    __m128d T, B, P;
+                    T = _mm_load_pd(y);
+                    P = _mm_set1_pd(p[0]);
+                    B = _mm_mul_pd (P, _mm_loadh_pd (T, y+k));
+                    S = _mm_add_pd (S, B);
+                    T = _mm_unpackhi_pd (T, T);
+                    P = _mm_set1_pd(p[1]);
+                    B = _mm_mul_pd (P, _mm_loadh_pd (T, y+k+1));
+                    S = _mm_add_pd (S, B);
+                    p += 2;
+                    y += 2;
+                }
+#           else
+                while (p < e) {
+                    __m128d B;
+                    B = _mm_mul_pd (_mm_set1_pd(p[0]),
+                                    _mm_set_pd (y[k], y[0]));
+                    S = _mm_add_pd (S, B);
+                    B = _mm_mul_pd (_mm_set1_pd(p[1]),
+                                    _mm_set_pd (y[k+1], y[1]));
+                    S = _mm_add_pd (S, B);
+                    p += 2;
+                    y += 2;
+                }
+#           endif
 
             if (k & 1) {
-                B = _mm_set_pd (y[k], y[0]);
-                B = _mm_mul_pd (_mm_set1_pd(p[0]), B);
+                __m128d B;
+                B = _mm_mul_pd (_mm_set1_pd(p[0]), 
+                                _mm_set_pd (y[k], y[0]));
                 S = _mm_add_pd (S, B);
                 y += 1;
             }
