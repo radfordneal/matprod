@@ -667,6 +667,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 s[1] += p[0] * y[k];
                 y += 1;
             }
+            y += k;
             z[0] = s[0];
             z[1] = s[1];
         }
