@@ -324,21 +324,25 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 #               endif
 
 #               if ALIGN >= 16
+                    __m128d Z = _mm_setzero_pd();
                     while (p < e) {
-                        __m128d T0, T1;
+                        __m128d T0, T1, Q;
+                        P = _mm_load_pd (p);
+                        Q = _mm_unpacklo_pd (P, P);
                         T0 = _mm_load_pd(y);
+                        B = _mm_mul_pd (Q, _mm_loadh_pd (T0, y+k));
+                        S0 = _mm_add_pd (S0, B);
                         T1 = _mm_load_pd(y+2*k);
-                        P = _mm_set1_pd(p[0]);
-                        B = _mm_mul_pd (P, _mm_loadh_pd (T0, y+k));
+                        Q = _mm_mul_pd (Q, _mm_loadh_pd (T1, y+3*k));
+                        S1 = _mm_add_pd (S1, Q);
+                        P = _mm_unpackhi_pd (P, P);
+                        Z = _mm_loadh_pd (Z, y+k+1);
+                        T0 = _mm_unpackhi_pd (T0, Z);
+                        B = _mm_mul_pd (P, T0);
                         S0 = _mm_add_pd (S0, B);
-                        B = _mm_mul_pd (P, _mm_loadh_pd (T1, y+3*k));
-                        S1 = _mm_add_pd (S1, B);
-                        T0 = _mm_unpackhi_pd (T0, T0);
-                        T1 = _mm_unpackhi_pd (T1, T1);
-                        P = _mm_set1_pd(p[1]);
-                        B = _mm_mul_pd (P, _mm_loadh_pd (T0, y+k+1));
-                        S0 = _mm_add_pd (S0, B);
-                        B = _mm_mul_pd (P, _mm_loadh_pd (T1, y+3*k+1));
+                        Z = _mm_loadh_pd (Z, y+3*k+1);
+                        T1 = _mm_unpackhi_pd (T1, Z);
+                        B = _mm_mul_pd (P, T1);
                         S1 = _mm_add_pd (S1, B);
                         p += 2;
                         y += 2;
@@ -604,15 +608,18 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 #           endif
 
 #           if ALIGN >= 16
+                __m128d Z = _mm_setzero_pd();
                 while (p < e) {
-                    __m128d T, B, P;
+                    __m128d T, B, P, Q;
+                    P = _mm_load_pd (p);
+                    Q = _mm_unpacklo_pd (P, P);
                     T = _mm_load_pd(y);
-                    P = _mm_set1_pd(p[0]);
-                    B = _mm_mul_pd (P, _mm_loadh_pd (T, y+k));
+                    B = _mm_mul_pd (Q, _mm_loadh_pd (T, y+k));
                     S = _mm_add_pd (S, B);
-                    T = _mm_unpackhi_pd (T, T);
-                    P = _mm_set1_pd(p[1]);
-                    B = _mm_mul_pd (P, _mm_loadh_pd (T, y+k+1));
+                    P = _mm_unpackhi_pd (P, P);
+                    Z = _mm_loadh_pd (Z, y+k+1);
+                    T = _mm_unpackhi_pd (T, Z);
+                    B = _mm_mul_pd (P, T);
                     S = _mm_add_pd (S, B);
                     p += 2;
                     y += 2;
