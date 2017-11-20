@@ -19,7 +19,8 @@
 
 progs=matprod-test matprod-noalign-test matprod-alt-test \
       matprod-nosimd-test matprod-norestrict-test matprod-noavx-test \
-      matprod-generic-test matprod-generic-avx-test \
+      matprod-generic-test matprod-generic-avx-test matprod-generic-avx2-test \
+      matprod-generic-nosimd-test matprod-generic-nosimd2-test \
       piped-matprod-test piped-matprod-noalign-test \
       piped-matprod-norestrict-test piped-matprod-nohelpers-test
 
@@ -74,15 +75,29 @@ matprod-noavx-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 # -----------------------------------------------------------------------------
 
 matprod-generic-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGSg) -mtune=core2 $(ALIGN) \
+	$(CC) -I.. -I. $(CFLAGSg) -msse2 -mtune=core2 $(ALIGN) \
 		test.c matprod-test.c ../matprod.c \
 		-o matprod-generic-test
 
 matprod-generic-avx-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGSg) -march=sandybridge -mtune=generic $(ALIGN) \
-		-mavx \
+	$(CC) -I.. -I. $(CFLAGSg) -mavx -mtune=skylake $(ALIGN) \
 		test.c matprod-test.c ../matprod.c \
 		-o matprod-generic-avx-test
+
+matprod-generic-avx2-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGSg) -mavx2 -mtune=skylake $(ALIGN) \
+		test.c matprod-test.c ../matprod.c \
+		-o matprod-generic-avx2-test
+
+matprod-generic-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGSg) -msse2 -mtune=skylake $(ALIGN) -DDISABLE_SIMD_CODE \
+		test.c matprod-test.c ../matprod.c \
+		-o matprod-generic-nosimd-test
+
+matprod-generic-nosimd2-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGSg) -msse2 -mtune=core2 $(ALIGN) -DDISABLE_SIMD_CODE \
+		test.c matprod-test.c ../matprod.c \
+		-o matprod-generic-nosimd2-test
 
 # -----------------------------------------------------------------------------
 

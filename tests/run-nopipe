@@ -4,7 +4,8 @@
 
 for i in matprod matprod-noalign matprod-alt \
          matprod-nosimd matprod-norestrict matprod-noavx \
-         matprod-generic matprod-generic-avx; do
+         matprod-generic matprod-generic-avx matprod-generic-avx2 \
+         matprod-generic-nosimd matprod-generic-nosimd2; do
   echo RUNNING TESTS FOR $i
   run-tests$1 $i-test >& $i.out
   tim $i
