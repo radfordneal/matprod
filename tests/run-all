@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Run all tests, except ones involving blas.
+# Run all tests, except ones involving blas, and matprod-norestrict.
 
 for i in matprod matprod-noalign matprod-alt \
-      matprod-nosimd matprod-norestrict matprod-noavx \
+      matprod-nosimd matprod-noavx \
       piped-matprod piped-matprod-noalign \
       piped-matprod-norestrict piped-matprod-nohelpers; do
   echo RUNNING TESTS FOR $i
