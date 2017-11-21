@@ -22,8 +22,8 @@
 
 # run-tests program
 #
-# Uses the given test program for a variety of tests, displaying timing
-# information, along with some headers.
+# Uses the given test program (with -test appended) for a variety of
+# tests, displaying timing information, along with some headers.
 
 run-tests-vec-vec $1
 run-tests-vec-mat $1

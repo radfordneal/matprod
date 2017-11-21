@@ -26,7 +26,7 @@
 # information, along with some headers.
 
 
-prog=$1
+prog=$1-test
 
 echo " "; echo MAT_MAT
 

@@ -5,6 +5,6 @@
 for i in matprod matprod-noalign matprod-alt \
          matprod-nosimd matprod-norestrict matprod-noavx; do
   echo RUNNING TESTS FOR $i
-  run-tests$1 $i-test >& $i.out
+  run-tests$1 $i >& $i.out
   tim $i
 done

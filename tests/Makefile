@@ -18,15 +18,16 @@
 #   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 progs=matprod-test matprod-noalign-test matprod-alt-test \
-      matprod-nosimd-test matprod-norestrict-test matprod-noavx-test \
+      matprod-nosimd-test matprod-noavx-test \
       piped-matprod-test piped-matprod-noalign-test \
-      piped-matprod-norestrict-test piped-matprod-nohelpers-test
+      piped-matprod-nohelpers-test
+      # matprod-norestrict-test and piped-matprod-norestrict-test omitted
 
 blas-progs=blas1-test blas2-test blas3-test  # blas0-test omitted
 
 CFLAGSgen=-g -std=gnu99 -O3 -ffp-contract=off # Generic processor
 CFLAGSi32=-g -std=gnu99 -O3 -ffp-contract=off  -msse2 -mfpmath=sse
-CFLAGSi64=-g -std=gnu99 -O3 -ffp-contract=off  -msse3 -mtune=core2 
+CFLAGSi64=-g -std=gnu99 -O3 -ffp-contract=off  -msse3 -mtune=core2
 CFLAGSavx=-g -std=gnu99 -O3 -ffp-contract=off  -mavx  -mtune=ivybridge
 CFLAGSavx2=-g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
 CFLAGSerr=-Xneed-to-set-CFLAGS

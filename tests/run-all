@@ -7,6 +7,6 @@ for i in matprod matprod-noalign matprod-alt \
       piped-matprod piped-matprod-noalign \
       piped-matprod-norestrict piped-matprod-nohelpers; do
   echo RUNNING TESTS FOR $i
-  run-tests$1 $i-test >& $i.out
+  run-tests$1 $i >& $i.out
   tim $i
 done
