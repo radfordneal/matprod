@@ -586,63 +586,35 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         }
 #       elif CAN_USE_SSE2
         {
-            __m128d S;
+            __m128d S = _mm_setzero_pd();
+            double *f = x + (k&~3);
+            p = x;
 
-#           if (ALIGN_OFFSET & 8)
-            {
-                __m128d P;
-                P = _mm_set1_pd(p[0]);
-                S = _mm_set_pd (y[k], y[0]);
-                S = _mm_mul_pd (P, S);
-                p = x+1;
-                y += 1;
-#               if CAN_ASSUME_ALIGNED
-                    p = __builtin_assume_aligned (p, ALIGN,
-                            (ALIGN_OFFSET+8)&(ALIGN-1));
-                    y = __builtin_assume_aligned (y, ALIGN,
-                            (ALIGN_OFFSET+8)&(ALIGN-1));
-#               endif
-#           else
-                S = _mm_setzero_pd ();
-                p = x;
-#           endif
+            while (p < f) {
+                S = _mm_add_pd (S,
+                    _mm_mul_pd (_mm_set1_pd (p[0]), _mm_set_pd (y[k], y[0])));
+                S = _mm_add_pd (S, 
+                    _mm_mul_pd (_mm_set1_pd (p[1]), _mm_set_pd (y[k+1], y[1])));
+                S = _mm_add_pd (S, 
+                    _mm_mul_pd (_mm_set1_pd (p[2]), _mm_set_pd (y[k+2], y[2])));
+                S = _mm_add_pd (S, 
+                    _mm_mul_pd (_mm_set1_pd (p[3]), _mm_set_pd (y[k+3], y[3])));
+                p += 4;
+                y += 4;
+            }
 
-#           if ALIGN >= 16
-                while (p < e) {
-                    __m128d Y, B, P, Q;
-                    P = _mm_load_pd (p);
-                    Y = _mm_load_pd (y);
-                    Q = _mm_unpacklo_pd (P, P);
-                    B = _mm_loadh_pd (Y, y+k);
-                    B = _mm_mul_pd (Q, B);
-                    S = _mm_add_pd (B, S);
-                    P = _mm_unpackhi_pd (P, P);
-                    Y = _mm_unpackhi_pd (Y, Y);
-                    Y = _mm_loadh_pd (Y, y+k+1);
-                    Y = _mm_mul_pd (P, Y);
-                    S = _mm_add_pd (Y, S);
-                    p += 2;
-                    y += 2;
-                }
-#           else
-                while (p < e) {
-                    __m128d B;
-                    B = _mm_mul_pd (_mm_set1_pd(p[0]),
-                                    _mm_set_pd (y[k], y[0]));
-                    S = _mm_add_pd (B, S);
-                    B = _mm_mul_pd (_mm_set1_pd(p[1]),
-                                    _mm_set_pd (y[k+1], y[1]));
-                    S = _mm_add_pd (B, S);
-                    p += 2;
-                    y += 2;
-                }
-#           endif
+            if (k & 2) {
+                S = _mm_add_pd (S,
+                    _mm_mul_pd (_mm_set1_pd (p[0]), _mm_set_pd (y[k], y[0])));
+                S = _mm_add_pd (S, 
+                    _mm_mul_pd (_mm_set1_pd (p[1]), _mm_set_pd (y[k+1], y[1])));
+                p += 2;
+                y += 2;
+            }
 
             if (k & 1) {
-                __m128d B;
-                B = _mm_mul_pd (_mm_set1_pd(p[0]), 
-                                _mm_set_pd (y[k], y[0]));
-                S = _mm_add_pd (B, S);
+                S = _mm_add_pd (S,
+                     _mm_mul_pd (_mm_set1_pd(p[0]), _mm_set_pd (y[k], y[0])));
                 y += 1;
             }
 
@@ -653,8 +625,23 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 #       else
         {
             double s[2] = { 0, 0 };
+            double *f = x + (k&~3);
             p = x;
-            while (p < e) {
+
+            while (p < f) {
+                s[0] += p[0] * y[0];
+                s[1] += p[0] * y[k];
+                s[0] += p[1] * y[1];
+                s[1] += p[1] * y[k+1];
+                s[0] += p[2] * y[2];
+                s[1] += p[2] * y[k+2];
+                s[0] += p[3] * y[3];
+                s[1] += p[3] * y[k+3];
+                p += 4;
+                y += 4;
+            }
+
+            if (k & 2) {
                 s[0] += p[0] * y[0];
                 s[1] += p[0] * y[k];
                 s[0] += p[1] * y[1];
@@ -662,6 +649,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 p += 2;
                 y += 2;
             }
+
             if (k & 1) {
                 s[0] += p[0] * y[0];
                 s[1] += p[0] * y[k];
