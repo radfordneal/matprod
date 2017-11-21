@@ -46,7 +46,7 @@ reverse the order of the operands (and exchange matprod_trans1 and
 matprod_trans2).
 
 
-Using the procedures:
+Building and using the procedures:
 
 The non-pipelined routines, in matprod.c, are called in ordinary C
 fashion.  The pipelined routines, in piped-matprod.c, are task
@@ -82,8 +82,8 @@ These options include the following:
                          correct in any case if the output argument
                          aliases with an input.
 
-There are also options for selecting amongst alternative
-implementations, documented in the source code.
+There are also options for selecting alternative implementations,
+which are documented in the source code.
 
 Some special code has been written to take advantage of the SSE2 or
 AVX instructions available on some Intel/AMD processors.  It will be
@@ -93,7 +93,11 @@ disabled by defining the symbol DISABLE_SIMD_CODE with a compiler
 option; just the AVX code can be disabled by defining DISABLE_AVX_CODE
 (in which case SSE2 code may still be used).  The SIMD code is
 automatically disabled when the routines are compiled for an
-architecture without the required instructions.
+architecture without the required instructions.  If compiled for some
+architectures, the SSE2 or AVX intrinsics may generate SSE3 or AVX2
+instructions, but intrinsics available only with SSE3 are not used in
+SSE2 code, and intrinsics available only with AVX2 are not used in AVX
+code.
 
 
 Procedures in matprod.c:

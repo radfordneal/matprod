@@ -19,19 +19,22 @@
 
 progs=matprod-test matprod-noalign-test matprod-alt-test \
       matprod-nosimd-test matprod-norestrict-test matprod-noavx-test \
-      matprod-generic-test matprod-generic-avx-test matprod-generic-avx2-test \
-      matprod-generic-nosimd-test matprod-generic-nosimd2-test \
       piped-matprod-test piped-matprod-noalign-test \
       piped-matprod-norestrict-test piped-matprod-nohelpers-test
 
 blas-progs=blas1-test blas2-test blas3-test  # blas0-test omitted
 
-CC=gcc-7
-CFLAGS=-g -std=gnu99 -O3 -march=native -mtune=native -mfpmath=sse \
-                         -ffp-contract=off
-CFLAGSg=-g -std=gnu99 -O3 -mfpmath=sse -ffp-contract=off
+CFLAGSgen=-g -std=gnu99 -O3 -ffp-contract=off # Generic processor
+CFLAGSi32=-g -std=gnu99 -O3 -ffp-contract=off  -msse2 -mfpmath=sse
+CFLAGSi64=-g -std=gnu99 -O3 -ffp-contract=off  -msse3 -mtune=core2 
+CFLAGSavx=-g -std=gnu99 -O3 -ffp-contract=off  -mavx  -mtune=ivybridge
+CFLAGSavx2=-g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
 
-ALIGN=-DALIGN=32
+CC=gcc-7             # Compiler to be used, must be gcc look-alike for CFLAGS
+
+CFLAGS=$(CFLAGSi64)  # Set to one of the above as appropriate
+
+ALIGN=-DALIGN=32     # Can test with other settings of ALIGN and ALIGN_OFFSET
 
 all:	$(progs)
 	true
@@ -71,33 +74,6 @@ matprod-noavx-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DDISABLE_AVX_CODE \
 		test.c matprod-test.c ../matprod.c \
 		-o matprod-noavx-test
-
-# -----------------------------------------------------------------------------
-
-matprod-generic-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGSg) -msse2 -mtune=core2 $(ALIGN) \
-		test.c matprod-test.c ../matprod.c \
-		-o matprod-generic-test
-
-matprod-generic-avx-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGSg) -mavx -mtune=skylake $(ALIGN) \
-		test.c matprod-test.c ../matprod.c \
-		-o matprod-generic-avx-test
-
-matprod-generic-avx2-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGSg) -mavx2 -mtune=skylake $(ALIGN) \
-		test.c matprod-test.c ../matprod.c \
-		-o matprod-generic-avx2-test
-
-matprod-generic-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGSg) -msse2 -mtune=skylake $(ALIGN) -DDISABLE_SIMD_CODE \
-		test.c matprod-test.c ../matprod.c \
-		-o matprod-generic-nosimd-test
-
-matprod-generic-nosimd2-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGSg) -msse2 -mtune=core2 $(ALIGN) -DDISABLE_SIMD_CODE \
-		test.c matprod-test.c ../matprod.c \
-		-o matprod-generic-nosimd2-test
 
 # -----------------------------------------------------------------------------
 
