@@ -120,24 +120,24 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
                 A = ALIGN >= 16 
                      ? _mm_mul_pd(_mm_load_pd(x+i),_mm_load_pd(y+i))
                      : _mm_mul_pd(_mm_loadu_pd(x+i),_mm_loadu_pd(y+i));
-                S = _mm_add_sd (S, A);
+                S = _mm_add_sd (A, S);
                 A = _mm_unpackhi_pd (A, A);
-                S = _mm_add_sd (S, A);
+                S = _mm_add_sd (A, S);
                 A  = ALIGN >= 16 
                       ? _mm_mul_pd(_mm_load_pd(x+i+2),_mm_load_pd(y+i+2))
                       : _mm_mul_pd(_mm_loadu_pd(x+i+2),_mm_loadu_pd(y+i+2));
-                S = _mm_add_sd (S, A);
+                S = _mm_add_sd (A, S);
                 A = _mm_unpackhi_pd (A, A);
-                S = _mm_add_sd (S, A);
+                S = _mm_add_sd (A, S);
                 i += 4;
             }
             if (k & 2) {
                 A = ALIGN >= 16 
                      ? _mm_mul_pd(_mm_load_pd(x+i),_mm_load_pd(y+i))
                      : _mm_mul_pd(_mm_loadu_pd(x+i),_mm_loadu_pd(y+i));
-                S = _mm_add_sd (S, A);
+                S = _mm_add_sd (A, S);
                 A = _mm_unpackhi_pd (A, A);
-                S = _mm_add_sd (S, A);
+                S = _mm_add_sd (A, S);
                 i += 2;
             }
             _mm_store_sd (&s, S);
@@ -253,8 +253,8 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 __m256d S, B;
 
 #               if (ALIGN_OFFSET & 8)
-                    B = _mm256_set_pd (y[3*k], y[2*k], y[k], y[0]);
-                    S = _mm256_mul_pd (_mm256_set1_pd(p[0]), B);
+                    S = _mm256_set_pd (y[3*k], y[2*k], y[k], y[0]);
+                    S = _mm256_mul_pd (_mm256_set1_pd(p[0]), S);
                     p = x+1;
                     y += 1;
 #                   if CAN_ASSUME_ALIGNED
@@ -281,10 +281,10 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     T1 = _mm256_insertf128_pd (T1, Y3, 1);
                     B = _mm256_unpacklo_pd (T0, T1);
                     B = _mm256_mul_pd (_mm256_set1_pd(p[0]), B);
-                    S = _mm256_add_pd (S, B);
+                    S = _mm256_add_pd (B, S);
                     B = _mm256_unpackhi_pd (T0, T1);
                     B = _mm256_mul_pd (_mm256_set1_pd(p[1]), B);
-                    S = _mm256_add_pd (S, B);
+                    S = _mm256_add_pd (B, S);
                     p += 2;
                     y += 2;
                 }
@@ -292,7 +292,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 if (k & 1) {
                     B = _mm256_set_pd (y[3*k], y[2*k], y[k], y[0]);
                     B = _mm256_mul_pd (_mm256_set1_pd(p[0]), B);
-                    S = _mm256_add_pd (S, B);
+                    S = _mm256_add_pd (B, S);
                     y += 1;
                 }
 
@@ -590,10 +590,10 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
 #           if (ALIGN_OFFSET & 8)
             {
-                __m128d B, P;
+                __m128d P;
                 P = _mm_set1_pd(p[0]);
-                B = _mm_set_pd (y[k], y[0]);
-                S = _mm_mul_pd (P, B);
+                S = _mm_set_pd (y[k], y[0]);
+                S = _mm_mul_pd (P, S);
                 p = x+1;
                 y += 1;
 #               if CAN_ASSUME_ALIGNED
@@ -608,19 +608,19 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 #           endif
 
 #           if ALIGN >= 16
-                __m128d Z = _mm_setzero_pd();
                 while (p < e) {
-                    __m128d T, B, P, Q;
+                    __m128d Y, B, P, Q;
                     P = _mm_load_pd (p);
+                    Y = _mm_load_pd (y);
                     Q = _mm_unpacklo_pd (P, P);
-                    T = _mm_load_pd(y);
-                    B = _mm_mul_pd (Q, _mm_loadh_pd (T, y+k));
-                    S = _mm_add_pd (S, B);
+                    B = _mm_loadh_pd (Y, y+k);
+                    B = _mm_mul_pd (Q, B);
+                    S = _mm_add_pd (B, S);
                     P = _mm_unpackhi_pd (P, P);
-                    Z = _mm_loadh_pd (Z, y+k+1);
-                    T = _mm_unpackhi_pd (T, Z);
-                    B = _mm_mul_pd (P, T);
-                    S = _mm_add_pd (S, B);
+                    Y = _mm_unpackhi_pd (Y, Y);
+                    Y = _mm_loadh_pd (Y, y+k+1);
+                    Y = _mm_mul_pd (P, Y);
+                    S = _mm_add_pd (Y, S);
                     p += 2;
                     y += 2;
                 }
@@ -629,10 +629,10 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     __m128d B;
                     B = _mm_mul_pd (_mm_set1_pd(p[0]),
                                     _mm_set_pd (y[k], y[0]));
-                    S = _mm_add_pd (S, B);
+                    S = _mm_add_pd (B, S);
                     B = _mm_mul_pd (_mm_set1_pd(p[1]),
                                     _mm_set_pd (y[k+1], y[1]));
-                    S = _mm_add_pd (S, B);
+                    S = _mm_add_pd (B, S);
                     p += 2;
                     y += 2;
                 }
@@ -642,7 +642,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 __m128d B;
                 B = _mm_mul_pd (_mm_set1_pd(p[0]), 
                                 _mm_set_pd (y[k], y[0]));
-                S = _mm_add_pd (S, B);
+                S = _mm_add_pd (B, S);
                 y += 1;
             }
 
@@ -771,14 +771,14 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 while (y < e) {
 #                   if ALIGN >= 16 && ALIGN_OFFSET == 0
                         A = _mm_mul_pd (_mm_load_pd(x), _mm_load1_pd(y));
-                        S = _mm_add_pd (S, A);
+                        S = _mm_add_pd (A, S);
                         A = _mm_mul_pd (_mm_load_pd(x+2), _mm_load1_pd(y+1));
-                        S = _mm_add_pd (S, A);
+                        S = _mm_add_pd (A, S);
 #                   else
                         A = _mm_mul_pd (_mm_loadu_pd(x), _mm_load1_pd(y));
-                        S = _mm_add_pd (S, A);
+                        S = _mm_add_pd (A, S);
                         A = _mm_mul_pd (_mm_loadu_pd(x+2), _mm_load1_pd(y+1));
-                        S = _mm_add_pd (S, A);
+                        S = _mm_add_pd (A, S);
 #                   endif
                     x += 4;
                     y += 2;
@@ -787,10 +787,10 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 if (k & 1) {
 #                   if ALIGN >= 16 && ALIGN_OFFSET == 0
                         A = _mm_mul_pd (_mm_load_pd(x), _mm_load1_pd(y));
-                        S = _mm_add_pd (S, A);
+                        S = _mm_add_pd (A, S);
 #                   else
                         A = _mm_mul_pd (_mm_loadu_pd(x), _mm_load1_pd(y));
-                        S = _mm_add_pd (S, A);
+                        S = _mm_add_pd (A, S);
 #                   endif
                 }
 
@@ -1443,7 +1443,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                 do {
                     __m256d X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
                     __m256d Y = _mm256_set_pd (q[k], q[k], q[0], q[0]);
-                    S = _mm256_add_pd (S, _mm256_mul_pd(X,Y));
+                    S = _mm256_add_pd (_mm256_mul_pd(X,Y), S);
                     r += 1;
                     q += 1;
                 } while (--i > 0);
