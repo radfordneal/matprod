@@ -211,7 +211,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     }
 
     double *p;             /* pointer that goes along pairs in x */
-    double *e = x+(k&~1);  /* point where pointer to pairs in x stops */
+    double *e = x+(k&~1);
 
     /* In this loop, compute four consecutive elements of the result vector,
        by doing four dot products of x with columns of y.  Adjust y, z, and
@@ -584,7 +584,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             z[0] = s[0];
             z[1] = s[1];
         }
-#       elif CAN_USE_SSE2
+#       elif CAN_USE_SSE2 && 0  /* DISABLED */
         {
             __m128d S = _mm_setzero_pd();
             double *f = x + (k&~3);
@@ -625,23 +625,9 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 #       else
         {
             double s[2] = { 0, 0 };
-            double *f = x + (k&~3);
             p = x;
 
-            while (p < f) {
-                s[0] += p[0] * y[0];
-                s[1] += p[0] * y[k];
-                s[0] += p[1] * y[1];
-                s[1] += p[1] * y[k+1];
-                s[0] += p[2] * y[2];
-                s[1] += p[2] * y[k+2];
-                s[0] += p[3] * y[3];
-                s[1] += p[3] * y[k+3];
-                p += 4;
-                y += 4;
-            }
-
-            if (k & 2) {
+            while (p < e) {
                 s[0] += p[0] * y[0];
                 s[1] += p[0] * y[k];
                 s[0] += p[1] * y[1];
@@ -655,6 +641,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 s[1] += p[0] * y[k];
                 y += 1;
             }
+
             y += k;
             z[0] = s[0];
             z[1] = s[1];
@@ -678,16 +665,18 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         {
             double s = 0.0;
             p = x;
+
             while (p < e) {
                 s += p[0] * y[0];
                 s += p[1] * y[1];
                 p += 2;
                 y += 2;
             }
+
             if (k & 1) {
                 s += p[0] * y[0];
-                y += 1;
             }
+
             z[0] = s;
         }
 #       endif
