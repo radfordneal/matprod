@@ -24,16 +24,16 @@ prog=$1-test
 
 echo " "; echo MAT_VEC
 
-echo " "; time $prog 1000000 2222 1 v
+echo " "; time $prog 1000000$Z 2222 1 v
 
-echo " "; time $prog 100000 2 2222 v
-echo " "; time $prog 20000 2 12345 v
+echo " "; time $prog 100000$Z 2 2222 v
+echo " "; time $prog 20000$Z 2 12345 v
 
-echo " "; time $prog 100000 3 2222 v
-echo " "; time $prog 20000 3 10345 v
+echo " "; time $prog 100000$Z 3 2222 v
+echo " "; time $prog 20000$Z 3 10345 v
 
-echo " "; time $prog 10000000 13 12 v
-echo " "; time $prog 4000000 30 21 v
-echo " "; time $prog 20000 400 400 v
-echo " "; time $prog 4000 301 2222 v
-echo " "; time $prog 400 280 12345 v
+echo " "; time $prog 10000000$Z 13 12 v
+echo " "; time $prog 4000000$Z 30 21 v
+echo " "; time $prog 20000$Z 400 400 v
+echo " "; time $prog 4000$Z 301 2222 v
+echo " "; time $prog 400$Z 280 12345 v

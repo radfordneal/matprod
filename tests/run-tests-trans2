@@ -24,29 +24,29 @@ prog=$1-test
 
 echo " "; echo TRANS2
 
-echo " "; time $prog 1000000 2222 1 1 t
+echo " "; time $prog 1000000$Z 2222 1 1 t
 
-echo " "; time $prog 500000 1 901 1 t
-echo " "; time $prog 1000 301 2222 1 t
-echo " "; time $prog 1000 1 2222 301 t
+echo " "; time $prog 500000$Z 1 901 1 t
+echo " "; time $prog 1000$Z 301 2222 1 t
+echo " "; time $prog 1000$Z 1 2222 301 t
 
-echo " "; time $prog 50000 2 522 34 t
-echo " "; time $prog 5000 3 1445 62 t
+echo " "; time $prog 50000$Z 2 522 34 t
+echo " "; time $prog 5000$Z 3 1445 62 t
 
-echo " "; time $prog 2000000 7 12 9 t
-echo " "; time $prog 20000 23 222 34 t
-echo " "; time $prog 2000 50 445 62 t
+echo " "; time $prog 2000000$Z 7 12 9 t
+echo " "; time $prog 20000$Z 23 222 34 t
+echo " "; time $prog 2000$Z 50 445 62 t
 
-echo " "; time $prog 20000 43 72 64 t
-echo " "; time $prog 2000 100 155 112 t
+echo " "; time $prog 20000$Z 43 72 64 t
+echo " "; time $prog 2000$Z 100 155 112 t
 
-echo " "; time $prog 10 430 520 540 t
-echo " "; time $prog 3 800 1150 920 t
-echo " "; time $prog 1 1271 1341 1013 t
+echo " "; time $prog 10$Z 430 520 540 t
+echo " "; time $prog 3$Z 800 1150 920 t
+echo " "; time $prog 1$Z 1271 1341 1013 t
 
-echo " "; time $prog 1 1271 1341 1271 t
+echo " "; time $prog 1$Z 1271 1341 1271 t
 
-echo " "; time $prog 10000 230 1 341 t
-echo " "; time $prog 100 2031 1 3201 t
+echo " "; time $prog 10000$Z 230 1 341 t
+echo " "; time $prog 100$Z 2031 1 3201 t
 
-echo " "; time $prog 1 1271 1341 1271 T
+echo " "; time $prog 1$Z 1271 1341 1271 T

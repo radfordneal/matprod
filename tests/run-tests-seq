@@ -25,19 +25,19 @@ prog=$1-test
 
 echo " "; echo SEQUENCE
 
-echo " "; time $prog 40000 2 2 40 381
+echo " "; time $prog 40000$Z 2 2 40 381
 
-echo " "; time $prog 20000 25 36 38 29 28
-echo " "; time $prog 1000 55 145 81 93
+echo " "; time $prog 20000$Z 25 36 38 29 28
+echo " "; time $prog 1000$Z 55 145 81 93
 
-echo " "; time $prog 30 215 201 308 270 230
-echo " "; time $prog 6 487 691 570 399
-echo " "; time $prog 1 1287 1201 670 499
+echo " "; time $prog 30$Z 215 201 308 270 230
+echo " "; time $prog 6$Z 487 691 570 399
+echo " "; time $prog 1$Z 1287 1201 670 499
 
-echo " "; time $prog 2 t 1287 1201 670 499 t
+echo " "; time $prog 2$Z t 1287 1201 670 499 t
 
-echo " "; time $prog 20000 v 25 36 38 29 28
-echo " "; time $prog 1000 v 55 145 81 93
+echo " "; time $prog 20000$Z v 25 36 38 29 28
+echo " "; time $prog 1000$Z v 55 145 81 93
 
-echo " "; time $prog 300000 25 36 38 29 28 v
-echo " "; time $prog 50000 55 145 81 93 v
+echo " "; time $prog 300000$Z 25 36 38 29 28 v
+echo " "; time $prog 50000$Z 55 145 81 93 v
