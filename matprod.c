@@ -194,7 +194,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
     /* Specially handle scalar times row vector and zero-length matrix. */
 
-    if (k <= 1) {
+    if (k <= 1 && 0) {
         int j;
         if (k == 0) {
             for (j = 0; j < m; j++) {
@@ -254,7 +254,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
 #               if (ALIGN_OFFSET & 8)
                     S = _mm256_set_pd (y[3*k], y[2*k], y[k], y[0]);
-                    S = _mm256_mul_pd (_mm256_set1_pd(p[0]), S);
+                    S = _mm256_mul_pd (_mm256_set1_pd(x[0]), S);
                     p = x+1;
                     y += 1;
 #                   if CAN_ASSUME_ALIGNED
@@ -263,6 +263,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                         y = __builtin_assume_aligned (y, ALIGN,
                                  (ALIGN_OFFSET+8)&(ALIGN-1));
 #                   endif
+                    e = p+((k-1)&~1);
 #               else
                     S = _mm256_setzero_pd ();
                     p = x;
@@ -289,7 +290,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     y += 2;
                 }
 
-                if (k & 1) {
+                if (p < x+k) {
                     B = _mm256_set_pd (y[3*k], y[2*k], y[k], y[0]);
                     B = _mm256_mul_pd (_mm256_set1_pd(p[0]), B);
                     S = _mm256_add_pd (B, S);
@@ -305,7 +306,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 __m128d S0, S1, B, P;
 
 #               if (ALIGN_OFFSET & 8)
-                    P = _mm_set1_pd(p[0]);
+                    P = _mm_set1_pd(x[0]);
                     S0 = _mm_mul_pd (P, _mm_set_pd (y[k], y[0]));
                     S1 = _mm_mul_pd (P, _mm_set_pd (y[3*k], y[2*k]));
                     p = x+1;
@@ -317,6 +318,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                         y = __builtin_assume_aligned (y, ALIGN,
                                  (ALIGN_OFFSET+8)&(ALIGN-1));
 #                   endif
+                    e = p+((k-1)&~1);
 #               else
                     S0 = _mm_setzero_pd ();
                     S1 = _mm_setzero_pd ();
@@ -368,13 +370,11 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     }
 #               endif
 
-                if (k & 1) {
+                if (p < x+k) {
                     P = _mm_set1_pd(p[0]);
-                    B = _mm_set_pd (y[k], y[0]);
-                    B = _mm_mul_pd (P, B);
+                    B = _mm_mul_pd (P, _mm_set_pd (y[k], y[0]));
                     S0 = _mm_add_pd (S0, B);
-                    B = _mm_set_pd (y[3*k], y[2*k]);
-                    B = _mm_mul_pd (P, B);
+                    B = _mm_mul_pd (P, _mm_set_pd (y[3*k], y[2*k]));
                     S1 = _mm_add_pd (S1, B);
                     y += 1;
                 }
