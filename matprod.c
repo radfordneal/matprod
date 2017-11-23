@@ -179,6 +179,9 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
    better job of this).  The loop unrolling to do four dot products at
    one time is done manually in both implementations.
 
+   Cases where k is 0 or 1 are handled specially, with simple loops
+   that it is assumed can be optimized by the compiler.
+
    Use -DALT_MATPROD_VEC_MAT to switch between these two implementations.
    Change #ifdef to #ifndef or vice versa below to change the default. */
 
@@ -211,7 +214,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     }
 
     double *p;             /* pointer that goes along pairs in x */
-    double *e = x+(k&~1);
+    double *e = x+(k&~1);  /* position after last complete pair in x */
 
     /* In this loop, compute four consecutive elements of the result vector,
        by doing four dot products of x with columns of y.  Adjust y, z, and
@@ -244,9 +247,12 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         }
 #       else
         {
-            /* Each time around the loop below, add two products to
-               the sum for each of the four dot products, adjusting
-               p and y as we go. */
+            /* The various versions of the loop below all add two
+               products to the sums for each of the four dot products,
+               adjusting p and y as we go.  A possible final set of
+               four products is then added afterwards.  The sums may
+               be initialized to zero or to the result of one product,
+               if that helps alignment. */
 
 #           if CAN_USE_AVX
             {
@@ -568,9 +574,10 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         m -= 4;
     }
 
-    /* Compute the final few dot products left over from the loop above. */
+    /* Compute the final few dot products left over from the loop above. 
+       There appears to be no advantage to using AVX or SSE2 to do this. */
 
-    if (m & 2) {
+    if (m & 2) {  /* Do two more dot products */
 
 #       ifdef ALT_MATPROD_VEC_MAT
         {
@@ -651,7 +658,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         z += 2;
     }
 
-    if (m & 1) {
+    if (m & 1) {  /* Do one final dot product */
 
 #       ifdef ALT_MATPROD_VEC_MAT
         {
@@ -692,11 +699,11 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
    to produce sequential accesses.  This loop is unrolled to accumulate from
    two columns of x at once.
 
-   The case of n=2 may be handled specially, accumulating sums in two
-   local variables rather than in the result vector, and then storing
-   them in the result at the end.  Whether this is done can be controlled
-   using -DALT_MATPROD_MAT_VEC.  Change #ifdef to #ifndef or vice versa below 
-   to change the default. */
+   The case of n=2 may be handled specially, accumulating sums in a
+   local variable rather than in the result vector, and then storing
+   them in the result at the end.  Whether this is done can be
+   controlled using -DALT_MATPROD_MAT_VEC.  Change #ifdef to #ifndef
+   or vice versa below to change the default. */
 
 void matprod_mat_vec (double * MATPROD_RESTRICT x, 
                       double * MATPROD_RESTRICT y, 
