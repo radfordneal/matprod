@@ -145,7 +145,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
                 s += x[i+0] * y[i+0];
             }
         }
-#       else
+#       else  /* non-SIMD */
         {
             while (i < e) {
                 s += x[i+0] * y[i+0];
@@ -179,8 +179,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
    better job of this).  The loop unrolling to do four dot products at
    one time is done manually in both implementations.
 
-   Cases where k is 0 or 1 are handled specially, with simple loops
-   that it is assumed can be optimized by the compiler.
+   Cases where k is 0 or 1 are handled specially.
 
    Use -DALT_MATPROD_VEC_MAT to switch between these two implementations.
    Change #ifdef to #ifndef or vice versa below to change the default. */
@@ -195,7 +194,9 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
 #   endif
 
-    /* Specially handle scalar times row vector and zero-length matrix. */
+    /* Specially handle scalar times row vector, and zero-length matrix. 
+       Assumes the compiler can optimize this with SIMD instructions if
+       that is desirable. */
 
     if (k <= 1) {
         int j;
@@ -213,8 +214,13 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         return;
     }
 
-    double *p;             /* pointer that goes along pairs in x */
-    double *e = x+(k&~1);  /* position after last complete pair in x */
+    double *p;             /* Pointer that goes along pairs in x */
+    double *e = x+(k&~1);  /* Position after last complete pair in x */
+
+#   if CAN_USE_AVX
+    int use_AVX = (double)k*m>160; /* Use AVX only if significant computation */
+                                   /*   due to possible transition cost       */
+#   endif
 
     /* In this loop, compute four consecutive elements of the result vector,
        by doing four dot products of x with columns of y.  Adjust y, z, and
@@ -224,6 +230,8 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
 #       ifdef ALT_MATPROD_VEC_MAT
         {
+            /* SIMPLE CODE */
+
             double s[4] = { 0, 0, 0, 0 };
             int i;
 
@@ -245,17 +253,21 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             z[2] = s[2];
             z[3] = s[3];
         }
-#       else
-        {
-            /* The various versions of the loop below all add two
-               products to the sums for each of the four dot products,
-               adjusting p and y as we go.  A possible final set of
-               four products is then added afterwards.  The sums may
-               be initialized to zero or to the result of one product,
-               if that helps alignment. */
 
+        /* The various versions of the loop below all add two products
+           to the sums for each of the four dot products, adjusting p
+           and y as we go.  A possible final set of four products is
+           then added afterwards.  The sums may be initialized to zero
+           or to the result of one product, if that helps
+           alignment. */
+
+#       elif CAN_USE_SSE2  /* or AVX */
+        {
 #           if CAN_USE_AVX
+            if (use_AVX)
             {
+                /* AVX CODE */
+
                 __m256d S, B;
 
 #               if (ALIGN_OFFSET & 8)
@@ -307,11 +319,15 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
                 _mm256_storeu_pd (z, S);
             }
-#           elif CAN_USE_SSE2
+            else   /* End of AVX code, which is done conditionally, */
+#           endif  /*   so the SSE2 code below may be used instead. */
             {
+                /* SSE2 CODE */
+
                 __m128d S0, S1, B, P;
 
 #               if (ALIGN_OFFSET & 8)
+                {
                     P = _mm_set1_pd(x[0]);
                     S0 = _mm_mul_pd (P, _mm_set_pd (y[k], y[0]));
                     S1 = _mm_mul_pd (P, _mm_set_pd (y[3*k], y[2*k]));
@@ -325,13 +341,17 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                                  (ALIGN_OFFSET+8)&(ALIGN-1));
 #                   endif
                     e = p+((k-1)&~1);
+                }
 #               else
+                {
                     S0 = _mm_setzero_pd ();
                     S1 = _mm_setzero_pd ();
                     p = x;
+                }
 #               endif
 
 #               if ALIGN >= 16
+                {
                     __m128d Z = _mm_setzero_pd();
                     while (p < e) {
                         __m128d T0, T1, Q;
@@ -355,7 +375,9 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                         p += 2;
                         y += 2;
                     }
+                }
 #               else
+                {
                     while (p < e) {
                         P = _mm_set1_pd(p[0]);
                         B = _mm_set_pd (y[k], y[0]);
@@ -374,6 +396,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                         p += 2;
                         y += 2;
                     }
+                }
 #               endif
 
                 if (p < x+k) {
@@ -390,39 +413,40 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 _mm_storeu_pd (z, S0);
                 _mm_storeu_pd (z+2, S1);
             }
-#           else
-            {
-                double s[4] = { 0, 0, 0, 0 };
-                p = x;
-                while (p < e) {
-                    s[0] += p[0] * y[0];
-                    s[1] += p[0] * y[k];
-                    s[2] += p[0] * y[2*k];
-                    s[3] += p[0] * y[3*k];
-                    s[0] += p[1] * y[1];
-                    s[1] += p[1] * y[k+1];
-                    s[2] += p[1] * y[2*k+1];
-                    s[3] += p[1] * y[3*k+1];
-                    y += 2;
-                    p += 2;
-                }
+        }
+#       else
+        {
+            /* NON-SIMD CODE */
 
-                if (k & 1) {
-                    s[0] += p[0] * y[0];
-                    s[1] += p[0] * y[k];
-                    s[2] += p[0] * y[2*k];
-                    s[3] += p[0] * y[3*k];
-                    y += 1;
-                }
-
-                y += 3*k;
-
-                z[0] = s[0];
-                z[1] = s[1];
-                z[2] = s[2];
-                z[3] = s[3];
+            double s[4] = { 0, 0, 0, 0 };
+            p = x;
+            while (p < e) {
+                s[0] += p[0] * y[0];
+                s[1] += p[0] * y[k];
+                s[2] += p[0] * y[2*k];
+                s[3] += p[0] * y[3*k];
+                s[0] += p[1] * y[1];
+                s[1] += p[1] * y[k+1];
+                s[2] += p[1] * y[2*k+1];
+                s[3] += p[1] * y[3*k+1];
+                y += 2;
+                p += 2;
             }
-#           endif
+
+            if (k & 1) {
+                s[0] += p[0] * y[0];
+                s[1] += p[0] * y[k];
+                s[2] += p[0] * y[2*k];
+                s[3] += p[0] * y[3*k];
+                y += 1;
+            }
+
+            y += 3*k;
+
+            z[0] = s[0];
+            z[1] = s[1];
+            z[2] = s[2];
+            z[3] = s[3];
         }
 #       endif
 
@@ -431,7 +455,8 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     }
 
     /* Compute the final few dot products left over from the loop above. 
-       There appears to be no advantage to using AVX or SSE2 to do this. */
+       There appears to be no advantage to explicitly using AVX or SSE2 
+       to do this. */
 
     if (m & 2) {  /* Do two more dot products */
 
