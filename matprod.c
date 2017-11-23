@@ -197,7 +197,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
     /* Specially handle scalar times row vector and zero-length matrix. */
 
-    if (k <= 1 && 0) {
+    if (k <= 1) {
         int j;
         if (k == 0) {
             for (j = 0; j < m; j++) {
