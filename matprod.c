@@ -194,23 +194,73 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
 #   endif
 
-    /* Specially handle scalar times row vector, and zero-length matrix. 
-       Assumes the compiler can optimize this with SIMD instructions if
-       that is desirable. */
+    /* Specially handle cases where y has two or fewer rows. */
 
-    if (k <= 1) {
-        int j;
+    if (k <= 2) {
+
         if (k == 0) {
+            int j;
             for (j = 0; j < m; j++) {
                 z[j] = 0.0;
             }
         }
-        else {
+
+        else if (k == 1) {
             double t = x[0];
+            int j;
             for (j = 0; j < m; j++) {
                 z[j] = t * y[j];
             }
         }
+
+        else {  /* k == 2 */
+#           if CAN_USE_AVX
+            {
+                double *f = y + 2*(m&~3);
+                __m256d T = _mm256_set_pd (x[1], x[0], x[1], x[0]);
+                while (y < f) {
+                    __m256d A, B;
+                    __m128d C, D;
+                    A = _mm256_mul_pd (T, _mm256_load_pd(y));
+                    B = _mm256_mul_pd (T, _mm256_load_pd(y+4));
+                    A = _mm256_hadd_pd (A, B);
+                    C = _mm256_extractf128_pd(A,1);
+                    D = _mm_unpacklo_pd (_mm256_castpd256_pd128(A), C);
+                    _mm_store_pd (z, D);
+                    D = _mm_unpackhi_pd (_mm256_castpd256_pd128(A), C);
+                    _mm_store_pd (z+2, D);
+                    y += 8;
+                    z += 4;
+                }
+                if (m & 2) {
+                    __m128d X = _mm_set_pd (x[1], x[0]);
+                    __m128d A = _mm_mul_pd (X, _mm_load_pd(y));
+                    __m128d B = _mm_mul_pd (X, _mm_load_pd(y+2));
+                    _mm_store_pd (z, _mm_hadd_pd (A, B));
+                    y += 4;
+                    z += 2;
+                }
+                if (m & 1) {
+                    z[0] = x[0] * y[0] + x[1] * y[1];
+                }
+            }
+#           else
+            {
+                double t[2] = { x[0], x[1] };
+                double *f = y + 2*(m&~1);
+                while (y < f) {
+                    z[0] = t[0] * y[0] + t[1] * y[1];
+                    z[1] = t[0] * y[2] + t[1] * y[3];
+                    y += 4;
+                    z += 2;
+                }
+                if (m & 1) {
+                    z[0] = t[0] * y[0] + t[1] * y[1];
+                }
+            }
+#           endif
+        }
+
         return;
     }
 
