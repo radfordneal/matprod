@@ -218,8 +218,8 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     double *e = x+(k&~1);  /* Position after last complete pair in x */
 
 #   if CAN_USE_AVX
-    int use_AVX = (double)k*m>160; /* Use AVX only if significant computation */
-                                   /*   due to possible transition cost       */
+    int use_AVX = (long)k*m>40;  /* Use AVX only if significant computation, */
+                                 /*   to avoid possible transition cost      */
 #   endif
 
     /* In this loop, compute four consecutive elements of the result vector,
