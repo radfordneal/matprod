@@ -666,7 +666,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     /* To start, set result to all zeros. */
 
     int i = 0;
-    do { z[i] = 0.0; } while (i++ < n);
+    do { z[i] = 0.0; } while (++i < n);
 
     /* Each time around this loop, add the products of two columns of x 
        with two elements of y to the result vector, z.  Adjust x and y
