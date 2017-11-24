@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <limits.h>
 
 #define EXTERN
 #include "test.h"
@@ -217,11 +218,11 @@ int main (int argc, char **argv)
      (if possible) when a "T" option applies. */
 
   for (i = 0; i<nmat; i++)
-  { matlen[i] = matrows[i] * matcols[i];
-    if (matlen[i] != (double) matrows[i] * matcols[i])
+  { if ((double) matrows[i] * matcols[i] > INT_MAX)
     { fprintf(stderr,"Matrix is too large\n");
       exit(2);
     }
+    matlen[i] = matrows[i] * matcols[i];
     if (i==1 && trans1>1 || i==nmat-1 && trans2>1)
     { if (matrows[i-1]!=matcols[i])
       { fprintf(stderr,"\"T\" option used when dimensions don't match\n");
@@ -241,17 +242,18 @@ int main (int argc, char **argv)
   /* For each product, compute prodlen and allocate space. */
 
   for (i = 0; i<nmat-1; i++)
-  { prodlen[i] = matrows[i] * matcols[nmat-1];
-    if (prodlen[i] != (double) matrows[i] * matcols[nmat-1])
+  { if ((double) matrows[i] * matcols[nmat-1] > INT_MAX)
     { fprintf(stderr,"Product matrix is too large\n");
       exit(2);
     }
-    product[i] = ALLOC(prodlen[i]);
+    prodlen[i] = matrows[i] * matcols[nmat-1];
+    product[i] = ALLOC(prodlen[i]+1);
     if (do_check) product_check[i] = ALLOC(prodlen[i]);
     if (product[i]==0 || do_check && product_check[i]==0)
     { fprintf(stderr,"Couldn't allocate space for product matrix\n");
       exit(2);
     }
+    product[i][prodlen[i]] = 1.1;  /* for check that it doesn't get wiped out */
   }
 
   /* Last "product" is actually the last input matrix. */
@@ -278,6 +280,13 @@ int main (int argc, char **argv)
   /* Run test on these matrices (do_test may or may not return). */
 
   do_test(rep);
+  for (i = 0; i<nmat-1; i++)
+  { if (product[i][prodlen[i]] != 1.1) 
+    { fprintf (stderr, "Memory after product matrix %d corrupted (%f)\n",
+                      i, product[i][prodlen[i]]);
+      abort();
+    }
+  }
   if (do_check)
   { check_results();
   }
