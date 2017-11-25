@@ -173,13 +173,12 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 /* Product of row vector (x) of length k and k x m matrix (y), result
    stored in z.
 
-   The inner loop is a set of four vector dot products.  Two
+   Cases where k is 0 or 1 are handled specially.  Otherwise, the
+   inner loop is a set of four vector dot products.  For this, two
    implementations are provided, one with loop unrolling within each
    dot product, the other without (since maybe the compiler does a
    better job of this).  The loop unrolling to do four dot products at
    one time is done manually in both implementations.
-
-   Cases where k is 0 or 1 are handled specially.
 
    Use -DALT_MATPROD_VEC_MAT to switch between these two implementations.
    Change #ifdef to #ifndef or vice versa below to change the default. */
