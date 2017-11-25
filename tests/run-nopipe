@@ -2,8 +2,8 @@
 
 # Run all tests, except ones involving piping or blas, and matprod-norestrict.
 
-for i in matprod matprod-noalign matprod-alt \
-         matprod-nosimd matprod-noavx; do
+for i in matprod matprod-off matprod-noalign matprod-alt \
+         matprod-nosimd matprod-off-nosimd matprod-noavx; do
   echo RUNNING TESTS FOR $i
   run-tests$1 $i >& $i.out
   tim $i

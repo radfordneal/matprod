@@ -17,8 +17,8 @@
 #   with this program; if not, write to the Free Software Foundation, Inc.,
 #   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-progs=matprod-test matprod-noalign-test matprod-alt-test \
-      matprod-nosimd-test matprod-noavx-test \
+progs=matprod-test matprod-off-test matprod-noalign-test matprod-alt-test \
+      matprod-nosimd-test matprod-off-nosimd-test matprod-noavx-test \
       piped-matprod-test piped-matprod-noalign-test \
       piped-matprod-nohelpers-test
       # matprod-norestrict-test and piped-matprod-norestrict-test omitted
@@ -32,11 +32,13 @@ CFLAGSavx=-g -std=gnu99 -O3 -ffp-contract=off  -mavx  -mtune=ivybridge
 CFLAGSavx2=-g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
 CFLAGSerr=-Xneed-to-set-CFLAGS
 
-CC=gcc-7             # Compiler to be used, must be gcc look-alike for CFLAGS
+CC=gcc-7               # Compiler to be used, must be gcc look-alike for CFLAGS
 
-CFLAGS=$(CFLAGSerr)  # Set to one of the above as appropriate
+CFLAGS=$(CFLAGSerr)    # Set to one of the above as appropriate
 
-ALIGN=-DALIGN=32     # Can test with other settings of ALIGN and ALIGN_OFFSET
+ALIGN=-DALIGN=32       # Can also test with other settings
+ALOFF=-DALIGN_OFFSET=8
+
 
 all:	$(progs)
 	true
@@ -49,6 +51,11 @@ blas:	$(blas-progs)
 matprod-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) test.c matprod-test.c ../matprod.c \
 		-o matprod-test
+
+matprod-off-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) $(ALOFF) \
+		test.c matprod-test.c ../matprod.c \
+		-o matprod-off-test
 
 matprod-noalign-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) test.c matprod-test.c ../matprod.c \
@@ -66,6 +73,11 @@ matprod-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DDISABLE_SIMD_CODE \
 		test.c matprod-test.c ../matprod.c \
 		-o matprod-nosimd-test
+
+matprod-off-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) $(ALOFF) -DDISABLE_SIMD_CODE \
+		test.c matprod-test.c ../matprod.c \
+		-o matprod-off-nosimd-test
 
 matprod-norestrict-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DMATPROD_NO_RESTRICT \
