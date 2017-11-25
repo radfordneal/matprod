@@ -587,7 +587,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     {
         if (n == 2) { 
 
-#           if CAN_USE_SSE2
+#           if CAN_USE_SSE2 && ALIGN >= 16 && ALIGN_OFFSET%16 == 0
 
                 __m128d S;  /* sums for the two values in the result */
                 __m128d A;
@@ -599,29 +599,17 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 S = _mm_setzero_pd (); 
 
                 while (y < e) {
-#                   if ALIGN >= 16 && ALIGN_OFFSET == 0
-                        A = _mm_mul_pd (_mm_load_pd(x), _mm_load1_pd(y));
-                        S = _mm_add_pd (A, S);
-                        A = _mm_mul_pd (_mm_load_pd(x+2), _mm_load1_pd(y+1));
-                        S = _mm_add_pd (A, S);
-#                   else
-                        A = _mm_mul_pd (_mm_loadu_pd(x), _mm_load1_pd(y));
-                        S = _mm_add_pd (A, S);
-                        A = _mm_mul_pd (_mm_loadu_pd(x+2), _mm_load1_pd(y+1));
-                        S = _mm_add_pd (A, S);
-#                   endif
+                    A = _mm_mul_pd (_mm_load_pd(x), _mm_load1_pd(y));
+                    S = _mm_add_pd (A, S);
+                    A = _mm_mul_pd (_mm_load_pd(x+2), _mm_load1_pd(y+1));
+                    S = _mm_add_pd (A, S);
                     x += 4;
                     y += 2;
                 }
 
                 if (k & 1) {
-#                   if ALIGN >= 16 && ALIGN_OFFSET == 0
-                        A = _mm_mul_pd (_mm_load_pd(x), _mm_load1_pd(y));
-                        S = _mm_add_pd (A, S);
-#                   else
-                        A = _mm_mul_pd (_mm_loadu_pd(x), _mm_load1_pd(y));
-                        S = _mm_add_pd (A, S);
-#                   endif
+                    A = _mm_mul_pd (_mm_load_pd(x), _mm_load1_pd(y));
+                    S = _mm_add_pd (A, S);
                 }
 
                 /* Store the two sums in S in the result vector. */
