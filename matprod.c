@@ -651,16 +651,102 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     }
 #   endif
 
-    /* To start, set result to all zeros. */
+    /* To start, set the result, z, to the sum from the first two columns. */
 
-    int i = 0;
-    do { z[i] = 0.0; } while (++i < n);
+    double *q, *f;
+
+#   if CAN_USE_AVX
+    {
+        q = z;
+        f = z + (n&~3);
+        __m256d Y0b = _mm256_set1_pd(y[0]);
+        __m256d Y1b = _mm256_set1_pd(y[1]);
+        while (q < f) { 
+            __m256d X = _mm256_mul_pd (_mm256_loadu_pd(x), Y0b);
+            __m256d P = _mm256_mul_pd (_mm256_loadu_pd(x+n), Y1b);
+            _mm256_storeu_pd (q, _mm256_add_pd (X, P));
+            x += 4;
+            q += 4;
+        }
+        if (n & 2) {
+            __m128d Y0 = _mm_set1_pd(y[0]);
+            __m128d Y1 = _mm_set1_pd(y[1]);
+            __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
+            __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
+            _mm_storeu_pd (q, _mm_add_pd (X, P));
+            x += 2;
+            q += 2;
+        }
+        if (n & 1) {
+            q[0] = x[0] * y[0] + x[n] * y[1];
+            x += 1;
+        }
+        x += n;
+        y += 2;
+    }
+
+#   elif CAN_USE_SSE2
+    {
+        q = z;
+        f = z + (n&~3);
+        __m128d Y0 = _mm_load1_pd(y);
+        __m128d Y1 = _mm_load1_pd(y+1);
+        while (q < f) { 
+            __m128d X, P;
+            X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
+            P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
+            _mm_storeu_pd (q, _mm_add_pd (X, P));
+            X = _mm_mul_pd (_mm_loadu_pd(x+2), Y0);
+            P = _mm_mul_pd (_mm_loadu_pd(x+n+2), Y1);
+            _mm_storeu_pd (q+2, _mm_add_pd (X, P));
+            x += 4;
+            q += 4;
+        }
+        if (n & 2) {
+            __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
+            __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
+            _mm_storeu_pd (q, _mm_add_pd (X, P));
+            x += 2;
+            q += 2;
+        }
+        if (n & 1) {
+            q[0] = x[0] * y[0] + x[n] * y[1];
+            x += 1;
+        }
+        x += n;
+        y += 2;
+    }
+
+#   else  /* non-SIMD code */
+    {
+        q = z;
+        f = z + (n&~3);
+        while (q < f) { 
+            q[0] = x[0] * y[0] + x[n] * y[1];
+            q[1] = x[1] * y[0] + x[n+1] * y[1];
+            q[2] = x[2] * y[0] + x[n+2] * y[1];
+            q[3] = x[3] * y[0] + x[n+3] * y[1];
+            x += 4;
+            q += 4;
+        }
+        if (n & 2) {
+            q[0] = x[0] * y[0] + x[n] * y[1];
+            q[1] = x[1] * y[0] + x[n+1] * y[1];
+            x += 2;
+            q += 2;
+        }
+        if (n & 1) {
+            q[0] = x[0] * y[0] + x[n] * y[1];
+            x += 1;
+        }
+        x += n;
+        y += 2;
+    }
+#   endif
 
     /* Each time around this loop, add the products of two columns of x 
        with two elements of y to the result vector, z.  Adjust x and y
        to account for this. */
-
-    double *q, *f;
 
 #   if CAN_USE_AVX
 
