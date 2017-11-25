@@ -280,13 +280,36 @@ int main (int argc, char **argv)
   /* Run test on these matrices (do_test may or may not return). */
 
   do_test(rep);
+
+  /* Check that input matrices are the same as they were initialize to above. */
+
+  for (i = 0; i<nmat; i++)
+  { for (j = 0; j<matcols[i]; j++) 
+    { for (k = 0; k<matrows[i]; k++) 
+      { int ix = i==0 && trans1 || i==nmat-1 && trans2 
+                   ? j + matcols[i]*k : k + matrows[i]*j;
+        if (matrix[i][ix] != 0.1*(matrows[i]+matcols[i]) 
+                           + 0.01 * (matrows[i]*matcols[i])
+                           + 0.01 * ((j+1)*(k+1)))
+        { fprintf (stderr, "Input matrix %d changed after operation\n", i);
+          abort();
+        }
+      }
+    }
+  }
+
+  /* Check that memory hasn't been corrupted after result matrices. */
+
   for (i = 0; i<nmat-1; i++)
   { if (product[i][prodlen[i]] != 1.1) 
     { fprintf (stderr, "Memory after product matrix %d corrupted (%f)\n",
-                      i, product[i][prodlen[i]]);
+                        i, product[i][prodlen[i]]);
       abort();
     }
   }
+
+  /* Check against simple implementations. */
+
   if (do_check)
   { check_results();
   }
