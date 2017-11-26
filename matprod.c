@@ -36,6 +36,12 @@
 #define ALIGN_OFFSET 0
 #endif
 
+#if ALIGN_OFFSET >= ALIGN
+#error "alignment offset must be less than alignment"
+#endif
+
+#define ALIGN_FORWARD ((ALIGN - ALIGN_OFFSET) % ALIGN)
+
 #if ALIGN >= 8 && __GNUC__
 #define CAN_ASSUME_ALIGNED 1
 #else
@@ -95,7 +101,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
         double s;
         int i;
 
-#       if (ALIGN_OFFSET & 8)
+#       if (ALIGN_FORWARD & 8)
             s = x[0] * y[0];
             i = 1;
             k -= 1;
@@ -275,7 +281,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         {
             __m256d S, B;
 
-#           if (ALIGN_OFFSET & 8)
+#           if (ALIGN_FORWARD & 8)
                 S = _mm256_set_pd (y[3*k], y[2*k], y[k], y[0]);
                 S = _mm256_mul_pd (_mm256_set1_pd(x[0]), S);
                 p = x+1;
@@ -329,7 +335,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         {
             __m128d S0, S1, B, P;
 
-#           if (ALIGN_OFFSET & 8)
+#           if (ALIGN_FORWARD & 8)
             {
                 P = _mm_set1_pd(x[0]);
                 S0 = _mm_mul_pd (P, _mm_set_pd (y[k], y[0]));
@@ -656,7 +662,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     int n2;     /* number of elements in z after those done to help alignment */
     double *f;  /* point to stop with aligned operations */
 
-#   if ALIGN >= 16 && ALIGN_OFFSET%16 == 8
+#   if ALIGN_FORWARD & 8
     {
         z[0] = x[0] * y[0] + x[n] * y[1];
         x = __builtin_assume_aligned (x+1, ALIGN, (ALIGN_OFFSET+8)&(ALIGN-1));
@@ -751,7 +757,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
     while (y < e) {
 
-#       if ALIGN >= 16 && ALIGN_OFFSET%16 == 8
+#       if ALIGN_FORWARD & 8
         {
             z[0] = (z[0] + x[0] * y[0]) + x[n] * y[1];
             x = __builtin_assume_aligned (x+1,ALIGN,(ALIGN_OFFSET+8)&(ALIGN-1));
@@ -851,7 +857,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
     if (k & 1) {
 
-#       if ALIGN >= 16 && ALIGN_OFFSET%16 == 8
+#       if ALIGN_FORWARD & 8
         {
             z[0] = (z[0] + x[0] * y[0]) + x[n] * y[1];
             x = __builtin_assume_aligned (x+1,ALIGN,(ALIGN_OFFSET+8)&(ALIGN-1));
