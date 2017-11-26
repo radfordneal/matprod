@@ -663,7 +663,6 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     }
 #   else
     {
-        x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
         q = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
         f = q + (n&~3);
     }
@@ -757,7 +756,6 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         }
 #       else
         {
-            x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
             q = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
             f = q + (n&~3);
         }
@@ -851,10 +849,22 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
     if (k & 1) {
 
+#       if ALIGN >= 16 && ALIGN_OFFSET%16 == 8
+        {
+            z[0] = (z[0] + x[0] * y[0]) + x[n] * y[1];
+            x = __builtin_assume_aligned (x+1,ALIGN,(ALIGN_OFFSET+8)&(ALIGN-1));
+            q = __builtin_assume_aligned (z+1,ALIGN,(ALIGN_OFFSET+8)&(ALIGN-1));
+            f = q + ((n-1)&~3);
+        }
+#       else
+        {
+            q = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
+            f = q + (n&~3);
+        }
+#       endif
+
 #       if CAN_USE_AVX
         {
-            q = z;
-            f = z + (n&~3);
             __m256d Yb = _mm256_set1_pd(y[0]);
             while (q < f) { 
                 __m256d Q = _mm256_loadu_pd(q);
@@ -877,8 +887,6 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
 #       elif CAN_USE_SSE2
         {
-            q = z;
-            f = z + (n&~3);
             __m128d Y = _mm_load1_pd(y);
             while (q < f) { 
                 __m128d Q, X;
@@ -904,8 +912,6 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         }
 #       else
         {
-            q = z;
-            f = z + (n&~3);
             while (q < f) { 
                 q[0] += x[0] * y[0];
                 q[1] += x[1] * y[0];
