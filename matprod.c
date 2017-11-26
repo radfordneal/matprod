@@ -652,21 +652,25 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
     /* To start, set the result, z, to the sum from the first two columns. */
 
-    double *q, *f;
+    double *q;  /* pointer going along z */
+    int n2;     /* number of elements in z after those done to help alignment */
+    double *f;  /* point to stop with aligned operations */
 
 #   if ALIGN >= 16 && ALIGN_OFFSET%16 == 8
     {
         z[0] = x[0] * y[0] + x[n] * y[1];
         x = __builtin_assume_aligned (x+1, ALIGN, (ALIGN_OFFSET+8)&(ALIGN-1));
         q = __builtin_assume_aligned (z+1, ALIGN, (ALIGN_OFFSET+8)&(ALIGN-1));
-        f = q + ((n-1)&~3);
+        n2 = n - 1;
     }
 #   else
     {
         q = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
-        f = q + (n&~3);
+        n2 = n;
     }
 #   endif
+
+    f = q + (n2&~3);
 
 #   if CAN_USE_AVX
     {
@@ -679,7 +683,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
             x += 4;
             q += 4;
         }
-        if (q < z+n-1) {
+        if (n2 & 2) {
             __m128d Y0 = _mm_set1_pd(y[0]);
             __m128d Y1 = _mm_set1_pd(y[1]);
             __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
@@ -705,7 +709,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
             x += 4;
             q += 4;
         }
-        if (q < z+n-1) {
+        if (n2 & 2) {
             __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
             __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
             _mm_storeu_pd (q, _mm_add_pd (X, P));
@@ -724,7 +728,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
             x += 4;
             q += 4;
         }
-        if (q < z+n-1) {
+        if (n2 & 2) {
             q[0] = x[0] * y[0] + x[n] * y[1];
             q[1] = x[1] * y[0] + x[n+1] * y[1];
             x += 2;
@@ -733,7 +737,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     }
 #   endif
 
-    if (q < z+n) {
+    if (n2 & 1) {
         q[0] = x[0] * y[0] + x[n] * y[1];
         x += 1;
     }
@@ -752,12 +756,10 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
             z[0] = (z[0] + x[0] * y[0]) + x[n] * y[1];
             x = __builtin_assume_aligned (x+1,ALIGN,(ALIGN_OFFSET+8)&(ALIGN-1));
             q = __builtin_assume_aligned (z+1,ALIGN,(ALIGN_OFFSET+8)&(ALIGN-1));
-            f = q + ((n-1)&~3);
         }
 #       else
         {
             q = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
-            f = q + (n&~3);
         }
 #       endif
 
@@ -774,7 +776,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 x += 4;
                 q += 4;
             }
-            if (q < z+n-1) {
+            if (n2 & 2) {
                 __m128d Y0 = _mm_set1_pd(y[0]);
                 __m128d Y1 = _mm_set1_pd(y[1]);
                 __m128d Q = _mm_loadu_pd(q);
@@ -806,7 +808,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 x += 4;
                 q += 4;
             }
-            if (q < z+n-1) {
+            if (n2 & 2) {
                 __m128d Q = _mm_loadu_pd(q);
                 __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
                 __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
@@ -827,7 +829,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 x += 4;
                 q += 4;
             }
-            if (q < z+n-1) {
+            if (n2 & 2) {
                 q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
                 q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
                 x += 2;
@@ -836,7 +838,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         }
 #       endif
 
-        if (q < z+n) {
+        if (n2 & 1) {
             q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
             x += 1;
         }
@@ -854,12 +856,10 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
             z[0] = (z[0] + x[0] * y[0]) + x[n] * y[1];
             x = __builtin_assume_aligned (x+1,ALIGN,(ALIGN_OFFSET+8)&(ALIGN-1));
             q = __builtin_assume_aligned (z+1,ALIGN,(ALIGN_OFFSET+8)&(ALIGN-1));
-            f = q + ((n-1)&~3);
         }
 #       else
         {
             q = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
-            f = q + (n&~3);
         }
 #       endif
 
@@ -874,7 +874,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 x += 4;
                 q += 4;
             }
-            if (q < z+n-1) { 
+            if (n2 & 2) { 
                 __m128d Y = _mm_set1_pd(y[0]);
                 __m128d Q = _mm_loadu_pd(q);
                 __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y);
@@ -901,7 +901,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 x += 4;
                 q += 4;
             }
-            if (q < z+n-1) { 
+            if (n2 & 2) { 
                 __m128d Q = _mm_loadu_pd(q);
                 __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y);
                 Q = _mm_add_pd (Q, X);
@@ -920,7 +920,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 x += 4;
                 q += 4;
             }
-            if (q < z+n-1) { 
+            if (n2 & 2) { 
                 q[0] += x[0] * y[0];
                 q[1] += x[1] * y[0];
                 x += 2;
@@ -930,7 +930,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
 #       endif
 
-        if (q < z+n) {
+        if (n2 & 1) {
             q[0] += x[0] * y[0];
         }
     }
