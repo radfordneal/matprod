@@ -289,9 +289,13 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             while (p < e) {
                 __m128d Y0, Y1, Y2, Y3;
                 __m256d T0, T1;
-                Y0 = ALIGN >= 16 ? _mm_load_pd(y) : _mm_loadu_pd(y);
+                Y0 = ALIGN >= 16 
+                      ? _mm_load_pd(y) 
+                      : _mm_loadu_pd(y);
                 Y1 = _mm_loadu_pd(y+k);
-                Y2 = ALIGN >= 16 ? _mm_load_pd(y+2*k) : _mm_loadu_pd(y+2*k);
+                Y2 = ALIGN >= 16 
+                      ? _mm_load_pd(y+2*k) 
+                      : _mm_loadu_pd(y+2*k);
                 Y3 = _mm_loadu_pd(y+3*k);
                 T0 = _mm256_castpd128_pd256 (Y0);
                 T0 = _mm256_insertf128_pd (T0, Y2, 1);
