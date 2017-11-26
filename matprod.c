@@ -82,18 +82,19 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 #   endif
 
     double s;
-    int i;
+    int k2, i;
 
 #   if (ALIGN_FORWARD & 8)
         s = x[0] * y[0];
+        k2 = k - 1;
         i = 1;
-        k -= 1;
 #   else
         s = 0.0;
+        k2 = k;
         i = 0;
 #   endif
 
-    int e = k&(~3);
+    int e = k2&(~3);
 
 #   if CAN_USE_SSE2
     {
@@ -114,7 +115,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             S = _mm_add_sd (A, S);
             i += 4;
         }
-        if (k & 2) {
+        if (k2 & 2) {
             A = ALIGN >= 16 
                  ? _mm_mul_pd(_mm_load_pd(x+i),_mm_load_pd(y+i))
                  : _mm_mul_pd(_mm_loadu_pd(x+i),_mm_loadu_pd(y+i));
@@ -134,7 +135,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             s += x[i+3] * y[i+3];
             i += 4;
         }
-        if (k & 2) {
+        if (k2 & 2) {
             s += x[i+0] * y[i+0];
             s += x[i+1] * y[i+1];
             i += 2;
@@ -142,7 +143,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
     }
 #   endif
 
-    if (k & 1) {
+    if (k2 & 1) {
         s += x[i+0] * y[i+0];
     }
 
@@ -203,8 +204,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         return;
     }
 
-    double *p;             /* Pointer that goes along pairs in x */
-    double *e = x+(k&~1);  /* Position after last complete pair in x */
+    double *p;               /* Pointer that goes along pairs in x */
 
     /* In this loop, compute four consecutive elements of the result vector,
        by doing four dot products of x with columns of y.  Adjust y, z, and
@@ -221,6 +221,8 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
 #       if CAN_USE_AVX
         {
+            int k2 = ALIGN_FORWARD & 8 ? k-1 : k;
+            double *f = x+(k2&~1);
             __m256d S, B;
 
 #           if (ALIGN_FORWARD & 8)
@@ -228,13 +230,12 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 S = _mm256_mul_pd (_mm256_set1_pd(x[0]), S);
                 p = x+1;
                 y += 1;
-                e = p+((k-1)&~1);
 #           else
                 S = _mm256_setzero_pd ();
                 p = x;
 #           endif
 
-            while (p < e) {
+            while (p < f) {
                 __m128d Y0, Y1, Y2, Y3;
                 __m256d T0, T1;
                 Y0 = ALIGN >= 16 
@@ -259,7 +260,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 y += 2;
             }
 
-            if (p < x+k) {
+            if (k2 & 1) {
                 B = _mm256_set_pd (y[3*k], y[2*k], y[k], y[0]);
                 B = _mm256_mul_pd (_mm256_set1_pd(p[0]), B);
                 S = _mm256_add_pd (B, S);
@@ -273,6 +274,8 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
 #       elif CAN_USE_SSE2
         {
+            int k2 = ALIGN_FORWARD & 8 ? k-1 : k;
+            double *f = x+(k2&~1);
             __m128d S0, S1, B, P;
 
 #           if (ALIGN_FORWARD & 8)
@@ -282,7 +285,6 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 S1 = _mm_mul_pd (P, _mm_set_pd (y[3*k], y[2*k]));
                 p = x+1;
                 y += 1;
-                e = p+((k-1)&~1);
             }
 #           else
             {
@@ -295,7 +297,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 #           if ALIGN >= 16
             {
                 __m128d Z = _mm_setzero_pd();
-                while (p < e) {
+                while (p < f) {
                     __m128d T0, T1, Q;
                     P = _mm_load_pd (p);
                     Q = _mm_unpacklo_pd (P, P);
@@ -320,7 +322,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             }
 #           else
             {
-                while (p < e) {
+                while (p < f) {
                     P = _mm_set1_pd(p[0]);
                     B = _mm_set_pd (y[k], y[0]);
                     B = _mm_mul_pd (P, B);
@@ -341,7 +343,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             }
 #           endif
 
-            if (p < x+k) {
+            if (k2 & 1) {
                 P = _mm_set1_pd(p[0]);
                 B = _mm_mul_pd (P, _mm_set_pd (y[k], y[0]));
                 S0 = _mm_add_pd (S0, B);
@@ -359,6 +361,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 #       else  /* non-SIMD code */
         {
             double s[4] = { 0, 0, 0, 0 };
+            double *e = x+(k&~1);
             p = x;
             while (p < e) {
                 s[0] += p[0] * y[0];
@@ -402,6 +405,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     if (m & 2) {  /* Do two more dot products */
 
         double s[2] = { 0, 0 };
+        double *e = x+(k&~1);
         p = x;
 
         while (p < e) {
@@ -429,6 +433,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     if (m & 1) {  /* Do one final dot product */
 
         double s = 0.0;
+        double *e = x+(k&~1);
         p = x;
 
         while (p < e) {
@@ -487,12 +492,12 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         return;
     }
 
-    double *e = y+(k&~1);  /* point to stop at in/after vector y */
-
     /* Handle matrix with two rows specially, holding the result vector
        in a local variable. */
 
     if (n == 2) { 
+
+        double *e = y+(k&~1);  /* point to stop at in/after vector y */
 
 #       if CAN_USE_SSE2 && ALIGN >= 16 && ALIGN_OFFSET%16 == 0
 
@@ -647,6 +652,8 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         q[0] = x[0] * y[0] + x[n] * y[1];
         x += 1;
     }
+
+    double *e = y+(k&~1);  /* point to stop at in/after vector y */
 
     x += n;
     y += 2;

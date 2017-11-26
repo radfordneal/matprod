@@ -17,7 +17,7 @@
 #   with this program; if not, write to the Free Software Foundation, Inc.,
 #   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-progs=matprod-test matprod-off-test matprod-noalign-test matprod-alt-test \
+progs=matprod-test matprod-off-test matprod-noalign-test \
       matprod-nosimd-test matprod-off-nosimd-test matprod-noavx-test \
       piped-matprod-test piped-matprod-noalign-test \
       piped-matprod-nohelpers-test
@@ -60,14 +60,6 @@ matprod-off-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 matprod-noalign-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) test.c matprod-test.c ../matprod.c \
 		-o matprod-noalign-test
-
-matprod-alt-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) \
-		-DALT_MATPROD_VEC_VEC -DALT_MATPROD_MAT_VEC \
-		-DALT_MATPROD_VEC_MAT -DALT_MATPROD \
-		-DALT_MATPROD_TRANS1 -DALT_MATPROD_TRANS2 \
-		test.c matprod-test.c ../matprod.c \
-		-o matprod-alt-test
 
 matprod-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DDISABLE_SIMD_CODE \
