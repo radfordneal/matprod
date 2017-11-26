@@ -581,6 +581,16 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     }
 #   endif
 
+#   if ALIGN_FORWARD & 16
+        if (n >= (ALIGN_FORWARD&31)/8) {
+            q[0] = x[0] * y[0] + x[n] * y[1];
+            q[1] = x[1] * y[0] + x[n+1] * y[1];
+            n2 -= 2;
+            x += 2;
+            q += 2;
+        }
+#   endif
+
     f = q + (n2&~3);
 
 #   if CAN_USE_AVX
@@ -588,18 +598,18 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         __m256d Y0b = _mm256_set1_pd(y[0]);
         __m256d Y1b = _mm256_set1_pd(y[1]);
         while (q < f) { 
-            __m256d X = _mm256_mul_pd (_mm256_loadu_pd(x), Y0b);
+            __m256d X = _mm256_mul_pd (_mm256_load_pd(x), Y0b);
             __m256d P = _mm256_mul_pd (_mm256_loadu_pd(x+n), Y1b);
-            _mm256_storeu_pd (q, _mm256_add_pd (X, P));
+            _mm256_store_pd (q, _mm256_add_pd (X, P));
             x += 4;
             q += 4;
         }
         if (n2 & 2) {
             __m128d Y0 = _mm_set1_pd(y[0]);
             __m128d Y1 = _mm_set1_pd(y[1]);
-            __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
+            __m128d X = _mm_mul_pd (_mm_load_pd(x), Y0);
             __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
-            _mm_storeu_pd (q, _mm_add_pd (X, P));
+            _mm_store_pd (q, _mm_add_pd (X, P));
             x += 2;
             q += 2;
         }
@@ -611,19 +621,19 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         __m128d Y1 = _mm_load1_pd(y+1);
         while (q < f) { 
             __m128d X, P;
-            X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
+            X = _mm_mul_pd (_mm_load_pd(x), Y0);
             P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
-            _mm_storeu_pd (q, _mm_add_pd (X, P));
-            X = _mm_mul_pd (_mm_loadu_pd(x+2), Y0);
+            _mm_store_pd (q, _mm_add_pd (X, P));
+            X = _mm_mul_pd (_mm_load_pd(x+2), Y0);
             P = _mm_mul_pd (_mm_loadu_pd(x+n+2), Y1);
-            _mm_storeu_pd (q+2, _mm_add_pd (X, P));
+            _mm_store_pd (q+2, _mm_add_pd (X, P));
             x += 4;
             q += 4;
         }
         if (n2 & 2) {
-            __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
+            __m128d X = _mm_mul_pd (_mm_load_pd(x), Y0);
             __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
-            _mm_storeu_pd (q, _mm_add_pd (X, P));
+            _mm_store_pd (q, _mm_add_pd (X, P));
             x += 2;
             q += 2;
         }
@@ -676,27 +686,36 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         }
 #       endif
 
+#       if ALIGN_FORWARD & 16
+            if (n >= (ALIGN_FORWARD&31)/8) {
+                q[0] = x[0] * y[0] + x[n] * y[1];
+                q[1] = x[1] * y[0] + x[n+1] * y[1];
+                x += 2;
+                q += 2;
+            }
+#       endif
+
 #       if CAN_USE_AVX
         {
             __m256d Y0b = _mm256_set1_pd(y[0]);
             __m256d Y1b = _mm256_set1_pd(y[1]);
             while (q < f) { 
-                __m256d Q = _mm256_loadu_pd(q);
-                __m256d X = _mm256_mul_pd (_mm256_loadu_pd(x), Y0b);
+                __m256d Q = _mm256_load_pd(q);
+                __m256d X = _mm256_mul_pd (_mm256_load_pd(x), Y0b);
                 __m256d P = _mm256_mul_pd (_mm256_loadu_pd(x+n), Y1b);
                 Q = _mm256_add_pd (_mm256_add_pd (Q, X), P);
-                _mm256_storeu_pd (q, Q);
+                _mm256_store_pd (q, Q);
                 x += 4;
                 q += 4;
             }
             if (n2 & 2) {
                 __m128d Y0 = _mm_set1_pd(y[0]);
                 __m128d Y1 = _mm_set1_pd(y[1]);
-                __m128d Q = _mm_loadu_pd(q);
-                __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
+                __m128d Q = _mm_load_pd(q);
+                __m128d X = _mm_mul_pd (_mm_load_pd(x), Y0);
                 __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
                 Q = _mm_add_pd (_mm_add_pd (Q, X), P);
-                _mm_storeu_pd (q, Q);
+                _mm_store_pd (q, Q);
                 x += 2;
                 q += 2;
             }
@@ -708,25 +727,25 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
             __m128d Y1 = _mm_load1_pd(y+1);
             while (q < f) { 
                 __m128d Q, X, P;
-                Q = _mm_loadu_pd(q);
-                X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
+                Q = _mm_load_pd(q);
+                X = _mm_mul_pd (_mm_load_pd(x), Y0);
                 P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
                 Q = _mm_add_pd (_mm_add_pd (Q, X), P);
-                _mm_storeu_pd (q, Q);
-                Q = _mm_loadu_pd(q+2);
-                X = _mm_mul_pd (_mm_loadu_pd(x+2), Y0);
+                _mm_store_pd (q, Q);
+                Q = _mm_load_pd(q+2);
+                X = _mm_mul_pd (_mm_load_pd(x+2), Y0);
                 P = _mm_mul_pd (_mm_loadu_pd(x+n+2), Y1);
                 Q = _mm_add_pd (_mm_add_pd (Q, X), P);
-                _mm_storeu_pd (q+2, Q);
+                _mm_store_pd (q+2, Q);
                 x += 4;
                 q += 4;
             }
             if (n2 & 2) {
-                __m128d Q = _mm_loadu_pd(q);
-                __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
+                __m128d Q = _mm_load_pd(q);
+                __m128d X = _mm_mul_pd (_mm_load_pd(x), Y0);
                 __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
                 Q = _mm_add_pd (_mm_add_pd (Q, X), P);
-                _mm_storeu_pd (q, Q);
+                _mm_store_pd (q, Q);
                 x += 2;
                 q += 2;
             }
@@ -776,23 +795,32 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         }
 #       endif
 
+#       if ALIGN_FORWARD & 16
+            if (n >= (ALIGN_FORWARD&31)/8) {
+                q[0] = x[0] * y[0] + x[n] * y[1];
+                q[1] = x[1] * y[0] + x[n+1] * y[1];
+                x += 2;
+                q += 2;
+            }
+#       endif
+
 #       if CAN_USE_AVX
         {
             __m256d Yb = _mm256_set1_pd(y[0]);
             while (q < f) { 
-                __m256d Q = _mm256_loadu_pd(q);
-                __m256d X = _mm256_mul_pd (_mm256_loadu_pd(x), Yb);
+                __m256d Q = _mm256_load_pd(q);
+                __m256d X = _mm256_mul_pd (_mm256_load_pd(x), Yb);
                 Q = _mm256_add_pd (Q, X);
-                _mm256_storeu_pd (q, Q);
+                _mm256_store_pd (q, Q);
                 x += 4;
                 q += 4;
             }
             if (n2 & 2) { 
                 __m128d Y = _mm_set1_pd(y[0]);
-                __m128d Q = _mm_loadu_pd(q);
-                __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y);
+                __m128d Q = _mm_load_pd(q);
+                __m128d X = _mm_mul_pd (_mm_load_pd(x), Y);
                 Q = _mm_add_pd (Q, X);
-                _mm_storeu_pd (q, Q);
+                _mm_store_pd (q, Q);
                 x += 2;
                 q += 2;
             }
@@ -803,22 +831,22 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
             __m128d Y = _mm_load1_pd(y);
             while (q < f) { 
                 __m128d Q, X;
-                Q = _mm_loadu_pd(q);
-                X = _mm_mul_pd (_mm_loadu_pd(x), Y);
+                Q = _mm_load_pd(q);
+                X = _mm_mul_pd (_mm_load_pd(x), Y);
                 Q = _mm_add_pd (Q, X);
-                _mm_storeu_pd (q, Q);
-                Q = _mm_loadu_pd(q+2);
-                X = _mm_mul_pd (_mm_loadu_pd(x+2), Y);
+                _mm_store_pd (q, Q);
+                Q = _mm_load_pd(q+2);
+                X = _mm_mul_pd (_mm_load_pd(x+2), Y);
                 Q = _mm_add_pd (Q, X);
-                _mm_storeu_pd (q+2, Q);
+                _mm_store_pd (q+2, Q);
                 x += 4;
                 q += 4;
             }
             if (n2 & 2) { 
-                __m128d Q = _mm_loadu_pd(q);
-                __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y);
+                __m128d Q = _mm_load_pd(q);
+                __m128d X = _mm_mul_pd (_mm_load_pd(x), Y);
                 Q = _mm_add_pd (Q, X);
-                _mm_storeu_pd (q, Q);
+                _mm_store_pd (q, Q);
                 x += 2;
                 q += 2;
             }
