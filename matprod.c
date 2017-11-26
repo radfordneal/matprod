@@ -654,10 +654,22 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
     double *q, *f;
 
+#   if ALIGN >= 16 && ALIGN_OFFSET%16 == 8
+    {
+        z[0] = x[0] * y[0] + x[n] * y[1];
+        x = __builtin_assume_aligned (x+1, ALIGN, (ALIGN_OFFSET+8)&(ALIGN-1));
+        q = __builtin_assume_aligned (z+1, ALIGN, (ALIGN_OFFSET+8)&(ALIGN-1));
+        f = q + ((n-1)&~3);
+    }
+#   else
+    {
+        q = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
+        f = q + (n&~3);
+    }
+#   endif
+
 #   if CAN_USE_AVX
     {
-        q = z;
-        f = z + (n&~3);
         __m256d Y0b = _mm256_set1_pd(y[0]);
         __m256d Y1b = _mm256_set1_pd(y[1]);
         while (q < f) { 
@@ -667,7 +679,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
             x += 4;
             q += 4;
         }
-        if (n & 2) {
+        if (q < z+n-1) {
             __m128d Y0 = _mm_set1_pd(y[0]);
             __m128d Y1 = _mm_set1_pd(y[1]);
             __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
@@ -676,18 +688,10 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
             x += 2;
             q += 2;
         }
-        if (n & 1) {
-            q[0] = x[0] * y[0] + x[n] * y[1];
-            x += 1;
-        }
-        x += n;
-        y += 2;
     }
 
 #   elif CAN_USE_SSE2
     {
-        q = z;
-        f = z + (n&~3);
         __m128d Y0 = _mm_load1_pd(y);
         __m128d Y1 = _mm_load1_pd(y+1);
         while (q < f) { 
@@ -701,25 +705,17 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
             x += 4;
             q += 4;
         }
-        if (n & 2) {
+        if (q < z+n-1) {
             __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y0);
             __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
             _mm_storeu_pd (q, _mm_add_pd (X, P));
             x += 2;
             q += 2;
         }
-        if (n & 1) {
-            q[0] = x[0] * y[0] + x[n] * y[1];
-            x += 1;
-        }
-        x += n;
-        y += 2;
     }
 
 #   else  /* non-SIMD code */
     {
-        q = z;
-        f = z + (n&~3);
         while (q < f) { 
             q[0] = x[0] * y[0] + x[n] * y[1];
             q[1] = x[1] * y[0] + x[n+1] * y[1];
@@ -728,30 +724,33 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
             x += 4;
             q += 4;
         }
-        if (n & 2) {
+        if (q < z+n-1) {
             q[0] = x[0] * y[0] + x[n] * y[1];
             q[1] = x[1] * y[0] + x[n+1] * y[1];
             x += 2;
             q += 2;
         }
-        if (n & 1) {
-            q[0] = x[0] * y[0] + x[n] * y[1];
-            x += 1;
-        }
-        x += n;
-        y += 2;
     }
 #   endif
+
+    if (q < z+n) {
+        q[0] = x[0] * y[0] + x[n] * y[1];
+        x += 1;
+    }
+
+    x += n;
+    y += 2;
 
     /* Each time around this loop, add the products of two columns of x 
        with two elements of y to the result vector, z.  Adjust x and y
        to account for this. */
 
-#   if CAN_USE_AVX
+    while (y < e) {
+        q = z;
+        f = z + (n&~3);
 
-        while (y < e) {
-            q = z;
-            f = z + (n&~3);
+#       if CAN_USE_AVX
+        {
             __m256d Y0b = _mm256_set1_pd(y[0]);
             __m256d Y1b = _mm256_set1_pd(y[1]);
             while (q < f) { 
@@ -774,46 +773,10 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 x += 2;
                 q += 2;
             }
-            if (n & 1) {
-                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
-                x += 1;
-            }
-            x += n;
-            y += 2;
         }
 
-        if (k & 1) {
-            q = z;
-            f = z + (n&~3);
-            __m256d Yb = _mm256_set1_pd(y[0]);
-            while (q < f) { 
-                __m256d Q = _mm256_loadu_pd(q);
-                __m256d X = _mm256_mul_pd (_mm256_loadu_pd(x), Yb);
-                Q = _mm256_add_pd (Q, X);
-                _mm256_storeu_pd (q, Q);
-                x += 4;
-                q += 4;
-            }
-            if (n & 2) { 
-                __m128d Y = _mm_set1_pd(y[0]);
-                __m128d Q = _mm_loadu_pd(q);
-                __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y);
-                Q = _mm_add_pd (Q, X);
-                _mm_storeu_pd (q, Q);
-                x += 2;
-                q += 2;
-            }
-            if (n & 1) {
-                q[0] += x[0] * y[0];
-            }
-        }
-
-
-#   elif CAN_USE_SSE2
-
-        while (y < e) {
-            q = z;
-            f = z + (n&~3);
+#       elif CAN_USE_SSE2
+        {
             __m128d Y0 = _mm_load1_pd(y);
             __m128d Y1 = _mm_load1_pd(y+1);
             while (q < f) { 
@@ -840,15 +803,66 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 x += 2;
                 q += 2;
             }
-            if (n & 1) {
-                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
-                x += 1;
-            }
-            x += n;
-            y += 2;
         }
 
-        if (k & 1) {
+#       else  /* non-SIMD code */
+        {
+            while (q < f) { 
+                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
+                q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
+                q[2] = (q[2] + x[2] * y[0]) + x[n+2] * y[1];
+                q[3] = (q[3] + x[3] * y[0]) + x[n+3] * y[1];
+                x += 4;
+                q += 4;
+            }
+            if (n & 2) {
+                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
+                q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
+                x += 2;
+                q += 2;
+            }
+        }
+#       endif
+
+        if (n & 1) {
+            q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
+            x += 1;
+        }
+
+        x += n;
+        y += 2;
+    }
+
+    /* Add the last column if there are an odd number of columns. */
+
+    if (k & 1) {
+
+#       if CAN_USE_AVX
+        {
+            q = z;
+            f = z + (n&~3);
+            __m256d Yb = _mm256_set1_pd(y[0]);
+            while (q < f) { 
+                __m256d Q = _mm256_loadu_pd(q);
+                __m256d X = _mm256_mul_pd (_mm256_loadu_pd(x), Yb);
+                Q = _mm256_add_pd (Q, X);
+                _mm256_storeu_pd (q, Q);
+                x += 4;
+                q += 4;
+            }
+            if (q < z+n-1) { 
+                __m128d Y = _mm_set1_pd(y[0]);
+                __m128d Q = _mm_loadu_pd(q);
+                __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y);
+                Q = _mm_add_pd (Q, X);
+                _mm_storeu_pd (q, Q);
+                x += 2;
+                q += 2;
+            }
+        }
+
+#       elif CAN_USE_SSE2
+        {
             q = z;
             f = z + (n&~3);
             __m128d Y = _mm_load1_pd(y);
@@ -865,7 +879,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 x += 4;
                 q += 4;
             }
-            if (n & 2) { 
+            if (q < z+n-1) { 
                 __m128d Q = _mm_loadu_pd(q);
                 __m128d X = _mm_mul_pd (_mm_loadu_pd(x), Y);
                 Q = _mm_add_pd (Q, X);
@@ -873,39 +887,9 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 x += 2;
                 q += 2;
             }
-            if (n & 1) {
-                q[0] += x[0] * y[0];
-            }
         }
-
-#   else
-
-        while (y < e) {
-            q = z;
-            f = z + (n&~3);
-            while (q < f) { 
-                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
-                q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
-                q[2] = (q[2] + x[2] * y[0]) + x[n+2] * y[1];
-                q[3] = (q[3] + x[3] * y[0]) + x[n+3] * y[1];
-                x += 4;
-                q += 4;
-            }
-            if (n & 2) {
-                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
-                q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
-                x += 2;
-                q += 2;
-            }
-            if (n & 1) {
-                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
-                x += 1;
-            }
-            x += n;
-            y += 2;
-        }
-
-        if (k & 1) {
+#       else
+        {
             q = z;
             f = z + (n&~3);
             while (q < f) { 
@@ -916,18 +900,20 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                 x += 4;
                 q += 4;
             }
-            if (n & 2) { 
+            if (q < z+n-1) { 
                 q[0] += x[0] * y[0];
                 q[1] += x[1] * y[0];
                 x += 2;
                 q += 2;
             }
-            if (n & 1) {
-                q[0] += x[0] * y[0];
-            }
         }
 
-#   endif
+#       endif
+
+        if (q < z+n) {
+            q[0] += x[0] * y[0];
+        }
+    }
 }
 
 
