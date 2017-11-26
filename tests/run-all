@@ -2,7 +2,7 @@
 
 # Run all tests, except ones involving blas, and matprod-norestrict.
 
-for i in matprod matprod-off matprod-noalign matprod-alt \
+for i in matprod matprod-off matprod-noalign \
       matprod-nosimd matprod-off-nosimd matprod-noavx \
       piped-matprod piped-matprod-noalign \
       piped-matprod-norestrict piped-matprod-nohelpers; do

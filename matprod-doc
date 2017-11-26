@@ -82,9 +82,6 @@ These options include the following:
                          correct in any case if the output argument
                          aliases with an input.
 
-There are also options for selecting alternative implementations,
-which are documented in the source code.
-
 Some special code has been written to take advantage of the SSE2 or
 AVX instructions available on some Intel/AMD processors.  It will be
 used only if gcc or a gcc look-alike is used, since this code uses the
@@ -150,9 +147,7 @@ matprod_vec_mat, or matprod_mat_vec have not been optimized, on the
 assumption that the caller will call the specialized routine when
 appropriate.
 
-See the comments in matprod.c for details on the algorithms used,
-including compile options for selecting an alternative algorithm for
-most of the procedures.
+See the comments in matprod.c for details on the algorithms used.
 
 
 Task procedures in piped-matprod.c:
@@ -220,8 +215,6 @@ non-pipelined procedures above, and are as follows:
 
 Note that, to reduce overhead, columns or elements of pipelined output
 may not always be made available immediately after being computed.
-
-There are no alternative algorithms implemented for these procedures.
 
 
 Test programs:
@@ -297,21 +290,12 @@ option, on either the left or right.  Since the initialization is
 invariant to transposition, the result with "T" instead of "t" is also
 the same.
 
-Several test programs can be compiled using the supplied Makefile, as
-follows:
+Several test programs can be compiled using the supplied Makefile,
+including the following (and perhaps others):
 
     matprod-test
 
       Uses the procedures in matprod.c
-
-    matprod-test-alt
-
-      Uses the procedures in matprod.c with the alternative algorithms
-      enabled for all the procedures.
-
-    matprod-norestrict
-
-      As for matprod-test, except compiled with -DMATPROD_NO_RESTRICT.
 
     piped-matprod-test
 
@@ -327,10 +311,6 @@ follows:
       disabled, which allows the overhead of providing for helper
       threads to be assessed, by comparing with piped-matprod-test
       with HELPERS set to 0 (or not set).
-
-    piped-matprod-norestrict
-
-      As for piped-matprod-test, except compiled with -DMATPROD_NO_RESTRICT.
 
     blas0-test
 
