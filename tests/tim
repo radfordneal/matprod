@@ -2,7 +2,7 @@
 
 # tim prefix [ N ]
 #
-# Creates prefix.timN from prefix.outN by extracting elpased time information,
+# Creates prefix.timN from prefix.outN by extracting elapased time information,
 # plus headers.
 
 grep "^[a-zA-Z]" $1.out$2 | fgrep -v "user" | fgrep -v "sys"| fgrep -v "Check" \
