@@ -105,12 +105,6 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             s = x[0] * y[0];
             i = 1;
             k -= 1;
-#           if CAN_ASSUME_ALIGNED
-                x = __builtin_assume_aligned (x, ALIGN,
-                        (ALIGN_OFFSET+8)&(ALIGN-1));
-                y = __builtin_assume_aligned (y, ALIGN,
-                        (ALIGN_OFFSET+8)&(ALIGN-1));
-#           endif
 #       else
             s = 0.0;
             i = 0;
@@ -286,12 +280,6 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 S = _mm256_mul_pd (_mm256_set1_pd(x[0]), S);
                 p = x+1;
                 y += 1;
-#               if CAN_ASSUME_ALIGNED
-                    p = __builtin_assume_aligned (p, ALIGN, 
-                             (ALIGN_OFFSET+8)&(ALIGN-1));
-                    y = __builtin_assume_aligned (y, ALIGN,
-                             (ALIGN_OFFSET+8)&(ALIGN-1));
-#               endif
                 e = p+((k-1)&~1);
 #           else
                 S = _mm256_setzero_pd ();
@@ -342,13 +330,6 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 S1 = _mm_mul_pd (P, _mm_set_pd (y[3*k], y[2*k]));
                 p = x+1;
                 y += 1;
-#               if CAN_ASSUME_ALIGNED
-                    p = __builtin_assume_aligned (p, ALIGN,
-                             (ALIGN_OFFSET+8)&(ALIGN-1));
-
-                    y = __builtin_assume_aligned (y, ALIGN,
-                             (ALIGN_OFFSET+8)&(ALIGN-1));
-#               endif
                 e = p+((k-1)&~1);
             }
 #           else
@@ -665,13 +646,13 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 #   if ALIGN_FORWARD & 8
     {
         z[0] = x[0] * y[0] + x[n] * y[1];
-        x = __builtin_assume_aligned (x+1, ALIGN, (ALIGN_OFFSET+8)&(ALIGN-1));
-        q = __builtin_assume_aligned (z+1, ALIGN, (ALIGN_OFFSET+8)&(ALIGN-1));
+        x += 1;
+        q = z + 1;
         n2 = n - 1;
     }
 #   else
     {
-        q = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
+        q = z;
         n2 = n;
     }
 #   endif
@@ -760,12 +741,12 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 #       if ALIGN_FORWARD & 8
         {
             z[0] = (z[0] + x[0] * y[0]) + x[n] * y[1];
-            x = __builtin_assume_aligned (x+1,ALIGN,(ALIGN_OFFSET+8)&(ALIGN-1));
-            q = __builtin_assume_aligned (z+1,ALIGN,(ALIGN_OFFSET+8)&(ALIGN-1));
+            x += 1;
+            q = z + 1;
         }
 #       else
         {
-            q = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
+            q = z;
         }
 #       endif
 
@@ -860,12 +841,12 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 #       if ALIGN_FORWARD & 8
         {
             z[0] = (z[0] + x[0] * y[0]) + x[n] * y[1];
-            x = __builtin_assume_aligned (x+1,ALIGN,(ALIGN_OFFSET+8)&(ALIGN-1));
-            q = __builtin_assume_aligned (z+1,ALIGN,(ALIGN_OFFSET+8)&(ALIGN-1));
+            x += 1;
+            q = z + 1;
         }
 #       else
         {
-            q = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
+            q = z;
         }
 #       endif
 
