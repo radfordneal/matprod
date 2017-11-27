@@ -226,8 +226,6 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         return;
     }
 
-    double *p;               /* Pointer that goes along pairs in x */
-
     /* In this loop, compute four consecutive elements of the result vector,
        by doing four dot products of x with columns of y.  Adjust y, z, and
        m as we go. */
@@ -240,6 +238,8 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
            then added afterwards.  The sums may be initialized to zero
            or to the result of one product, if that helps
            alignment. */
+
+        double *p;               /* Pointer that goes along pairs in x */
 
 #       if CAN_USE_AVX
         {
@@ -424,7 +424,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
         double s[2] = { 0, 0 };
         double *e = x+(k&~1);
-        p = x;
+        double *p = x;
 
         while (p < e) {
             s[0] += p[0] * y[0];
@@ -452,7 +452,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
         double s = 0.0;
         double *e = x+(k&~1);
-        p = x;
+        double *p = x;
 
         while (p < e) {
             s += p[0] * y[0];
@@ -583,21 +583,19 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
     /* To start, set the result, z, to the sum from the first two columns. */
 
-    double *q;  /* pointer going along z */
     int n2;     /* number of elements in z after those done to help alignment */
     double *f;  /* point to stop with aligned operations */
+    double *q;  /* pointer going along z */
+
+    q = z;
+    n2 = n;
 
 #   if ALIGN_FORWARD & 8
     {
-        z[0] = x[0] * y[0] + x[n] * y[1];
+        q[0] = x[0] * y[0] + x[n] * y[1];
+        n2 -= 1;
         x += 1;
-        q = z + 1;
-        n2 = n - 1;
-    }
-#   else
-    {
-        q = z;
-        n2 = n;
+        q += 1;
     }
 #   endif
 
@@ -694,15 +692,13 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
     while (y < e) {
 
+        q = z;
+
 #       if ALIGN_FORWARD & 8
         {
-            z[0] = (z[0] + x[0] * y[0]) + x[n] * y[1];
+            q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
             x += 1;
-            q = z + 1;
-        }
-#       else
-        {
-            q = z;
+            q += 1;
         }
 #       endif
 
@@ -803,15 +799,13 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
     if (k & 1) {
 
+        q = z;
+
 #       if ALIGN_FORWARD & 8
         {
-            z[0] = (z[0] + x[0] * y[0]) + x[n] * y[1];
+            q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
             x += 1;
-            q = z + 1;
-        }
-#       else
-        {
-            q = z;
+            q += 1;
         }
 #       endif
 
