@@ -336,8 +336,8 @@ including the following (and perhaps others):
     blas3-test
 
       Like blas-test, except that BLAS routines are taken from the
-      /usr/lib/libblas.so.3 library, which can be set to various
-      BLAS implementations.
+      /etc/alternatives/libblas.so.3 library, which can be set to
+      various BLAS implementations.
 
 The blas test programs are not compiled by default, but are by "make
 blas" (except for blas0-test).
