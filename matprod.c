@@ -48,6 +48,17 @@
 #define CAN_ASSUME_ALIGNED 0
 #endif
 
+#if 1  /* Enable for debug check */
+#   include <stdint.h>
+#   include <stdlib.h>
+#   define CHK_ALIGN(p) \
+      do { if (((uintptr_t)(p)&(ALIGN-1)) != ALIGN_OFFSET) abort(); } while (0)
+#else
+#   define CHK_ALIGN(p) \
+      do {} while (0)
+#endif
+
+
 
 /* Set up SIMD definitions. */
 
@@ -76,6 +87,10 @@
 double matprod_vec_vec (double * MATPROD_RESTRICT x, 
                         double * MATPROD_RESTRICT y, int k)
 {
+    if (k <= 0) return 0.0;
+
+    CHK_ALIGN(x); CHK_ALIGN(y);
+
 #   if CAN_ASSUME_ALIGNED
         x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
         y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
@@ -162,6 +177,10 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                       double * MATPROD_RESTRICT y, 
                       double * MATPROD_RESTRICT z, int k, int m)
 {
+    if (m <= 0) return;
+
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
 #   if CAN_ASSUME_ALIGNED
         x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
         y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
@@ -468,6 +487,8 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 {
     if (n <= 0) return;
 
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
 #   if CAN_ASSUME_ALIGNED
         x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
         y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
@@ -582,7 +603,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 #   endif
 
 #   if ALIGN_FORWARD & 16
-        if (n >= (ALIGN_FORWARD&31)/8) {
+        if (n >= (ALIGN_FORWARD%32)/8) {
             q[0] = x[0] * y[0] + x[n] * y[1];
             q[1] = x[1] * y[0] + x[n+1] * y[1];
             n2 -= 2;
@@ -687,7 +708,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 #       endif
 
 #       if ALIGN_FORWARD & 16
-            if (n >= (ALIGN_FORWARD&31)/8) {
+            if (n >= (ALIGN_FORWARD%32)/8) {
                 q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
                 q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
                 x += 2;
@@ -796,7 +817,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 #       endif
 
 #       if ALIGN_FORWARD & 16
-            if (n >= (ALIGN_FORWARD&31)/8) {
+            if (n >= (ALIGN_FORWARD%32)/8) {
                 q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
                 q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
                 x += 2;
@@ -894,7 +915,9 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                       double * MATPROD_RESTRICT y, 
                       double * MATPROD_RESTRICT z, int n, int k, int m)
 {
-    if (n <= 0) return;
+    if (n <= 0 || m <= 0) return;
+
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
 #   if CAN_ASSUME_ALIGNED
         x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
@@ -1154,7 +1177,9 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                      double * MATPROD_RESTRICT y, 
                      double * MATPROD_RESTRICT z, int n, int k, int m)
 {
-    if (n <= 0) return;
+    if (n <= 0 || m <= 0) return;
+
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
 #   if CAN_ASSUME_ALIGNED
         x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
@@ -1360,7 +1385,9 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                      double * MATPROD_RESTRICT y, 
                      double * MATPROD_RESTRICT z, int n, int k, int m)
 {
-    if (n <= 0) return;
+    if (n <= 0 || m <= 0) return;
+
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
 #   if CAN_ASSUME_ALIGNED
         x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
