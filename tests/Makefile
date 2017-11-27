@@ -18,9 +18,10 @@
 #   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 progs=matprod-test matprod-off-test matprod-noalign-test \
-      matprod-nosimd-test matprod-off-nosimd-test matprod-noavx-test \
-      piped-matprod-test piped-matprod-noalign-test \
-      piped-matprod-nohelpers-test
+      matprod-nosimd-test matprod-noalign-nosimd-test \
+      matprod-off-nosimd-test matprod-noavx-test \
+      matprod-off-noalign-nosimd-test \
+      piped-matprod-test piped-matprod-nohelpers-test
       # matprod-norestrict-test and piped-matprod-norestrict-test omitted
 
 blas-progs=blas0-test blas1-test blas2-test blas3-test
@@ -34,7 +35,7 @@ CFLAGSerr=-Xneed-to-set-CFLAGS
 
 CC=gcc-7               # Compiler to be used, must be gcc look-alike for CFLAGS
 
-CFLAGS=$(CFLAGSerr)    # Set to one of the above as appropriate
+CFLAGS=$(CFLAGSavx2)   # Set to one of the above as appropriate
 
 ALIGN=-DALIGN=32       # Can also test with other settings
 ALOFF=-DALIGN_OFFSET=8
@@ -58,7 +59,8 @@ matprod-off-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 		-o matprod-off-test
 
 matprod-noalign-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGS) test.c matprod-test.c ../matprod.c \
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -c test.c
+	$(CC) -I.. -I. $(CFLAGS) test.o matprod-test.c ../matprod.c \
 		-o matprod-noalign-test
 
 matprod-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
@@ -66,20 +68,32 @@ matprod-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 		test.c matprod-test.c ../matprod.c \
 		-o matprod-nosimd-test
 
+matprod-noalign-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -c test.c
+	$(CC) -I.. -I. $(CFLAGS) -DDISABLE_SIMD_CODE \
+		test.o matprod-test.c ../matprod.c \
+		-o matprod-noalign-nosimd-test
+
 matprod-off-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) $(ALOFF) -DDISABLE_SIMD_CODE \
 		test.c matprod-test.c ../matprod.c \
 		-o matprod-off-nosimd-test
 
-matprod-norestrict-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DMATPROD_NO_RESTRICT \
-		test.c matprod-test.c ../matprod.c \
-		-o matprod-norestrict-test
+matprod-off-noalign-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) $(ALOFF) -c test.c
+	$(CC) -I.. -I. $(CFLAGS) -DDISABLE_SIMD_CODE \
+		test.o matprod-test.c ../matprod.c \
+		-o matprod-off-noalign-nosimd-test
 
 matprod-noavx-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DDISABLE_AVX_CODE \
 		test.c matprod-test.c ../matprod.c \
 		-o matprod-noavx-test
+
+matprod-norestrict-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DMATPROD_NO_RESTRICT \
+		test.c matprod-test.c ../matprod.c \
+		-o matprod-norestrict-test
 
 # -----------------------------------------------------------------------------
 
@@ -89,23 +103,17 @@ piped-matprod-test:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
 		test.c piped-matprod-test.c ../piped-matprod.c helpers.c \
 		-o piped-matprod-test
 
-piped-matprod-noalign-test:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
+piped-matprod-nohelpers-test:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
 			../piped-matprod.c helpers-app.h helpers.h helpers.c
-	$(CC) -I.. -I. $(CFLAGS) -fopenmp \
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -fopenmp -DHELPERS_DISABLED \
 		test.c piped-matprod-test.c ../piped-matprod.c helpers.c \
-		-o piped-matprod-noalign-test
+		-o piped-matprod-nohelpers-test
 
 piped-matprod-norestrict-test:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
 			../piped-matprod.c helpers-app.h helpers.h helpers.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -fopenmp -DMATPROD_NO_RESTRICT \
 		test.c piped-matprod-test.c ../piped-matprod.c helpers.c \
 		-o piped-matprod-norestrict-test
-
-piped-matprod-nohelpers-test:	test.h test.c piped-matprod-test.c ../piped-matprod.h \
-			../piped-matprod.c helpers-app.h helpers.h helpers.c
-	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -fopenmp -DHELPERS_DISABLED \
-		test.c piped-matprod-test.c ../piped-matprod.c helpers.c \
-		-o piped-matprod-nohelpers-test
 
 # -----------------------------------------------------------------------------
 
@@ -115,11 +123,11 @@ blas0-test:		test.h test.c blas-test.c \
 		test.c blas-test.c ddot.f dgemm.f dgemv.f dsyrk.f lsame.f \
 		-o blas0-test
 
-blas1-test:		test.h test.c blas-test.c blas.f
-	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) test.c blas-test.c blas.f \
+blas1-test:		test.h test.c blas-test.c blas1.f
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) test.c blas-test.c blas1.f \
 		-lm -o blas1-test
 
-blas2-test:		test.h test.c blas-test.c blas.f
+blas2-test:		test.h test.c blas-test.c blas2.f
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) test.c blas-test.c blas2.f \
 		-lm -o blas2-test
 
