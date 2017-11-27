@@ -601,7 +601,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     }
 #   endif
 
-#   if ALIGN_FORWARD & 16
+#   if CAN_USE_AVX && (ALIGN_FORWARD & 16)
         if (n >= (ALIGN_FORWARD%32)/8) {
             q[0] = x[0] * y[0] + x[n] * y[1];
             q[1] = x[1] * y[0] + x[n+1] * y[1];
@@ -706,7 +706,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         }
 #       endif
 
-#       if ALIGN_FORWARD & 16
+#       if CAN_USE_AVX && (ALIGN_FORWARD & 16)
             if (n >= (ALIGN_FORWARD%32)/8) {
                 q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
                 q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
@@ -815,7 +815,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         }
 #       endif
 
-#       if ALIGN_FORWARD & 16
+#       if CAN_USE_AVX && (ALIGN_FORWARD & 16)
             if (n >= (ALIGN_FORWARD%32)/8) {
                 q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
                 q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];

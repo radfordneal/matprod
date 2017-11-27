@@ -35,7 +35,7 @@ CFLAGSerr=-Xneed-to-set-CFLAGS
 
 CC=gcc-7               # Compiler to be used, must be gcc look-alike for CFLAGS
 
-CFLAGS=$(CFLAGSavx2)   # Set to one of the above as appropriate
+CFLAGS=$(CFLAGSerr)    # Set to one of the above as appropriate
 
 ALIGN=-DALIGN=32       # Can also test with other settings
 ALOFF=-DALIGN_OFFSET=8
