@@ -291,11 +291,13 @@ invariant to transposition, the result with "T" instead of "t" is also
 the same.
 
 Several test programs can be compiled using the supplied Makefile,
-including the following (and perhaps others):
+including the following:
 
     matprod-test
 
-      Uses the procedures in matprod.c
+      Uses the procedures in matprod.c.  A number of other versions of
+      this test program are also compiled, with varying alignment
+      options, etc.  See the Makefile for details.
 
     piped-matprod-test
 
@@ -303,14 +305,8 @@ including the following (and perhaps others):
       The number of helper threads used is given by the environment
       variable HELPERS (default 0).  If an environment variable TRACE
       is defined, trace output from the helpers library is enabled.
-      See below for the special role of a last argument of "V".
-
-    piped-matprod-d-test
-
-      The same as piped-matprod-test, except that helper threads are
-      disabled, which allows the overhead of providing for helper
-      threads to be assessed, by comparing with piped-matprod-test
-      with HELPERS set to 0 (or not set).
+      See below for the special role of a last argument of "V".  Some
+      other versions are also compiled; see the Makefile for details.
 
     blas0-test
 
@@ -323,29 +319,34 @@ including the following (and perhaps others):
       is specified, along with a C routine for filling in the lower 
       triangle of the matrix from the upper triangle.  
 
+      The versions of these files distributed here were downloaded on
+      2017-11-27 from www.netlib.org/blas.
+
     blas1-test
 
-      Like blas-test, except that all BLAS routines are taken from
-      one file called blas.f.
+      Like blas-test, except that all BLAS routines are taken from one
+      file called blas1.f.  The version of blas1.f distributed is the
+      one used in R-2.15.0, which is a modifed version of the
+      reference BLAS.
 
     blas2-test
 
-      Like blas-test, except that all BLAS routines are taken from
-      one file called blas2.f.
+      Like blas-test, except that all BLAS routines are taken from one
+      file called blas2.f.  The vesion of blas2.f distributed is the
+      modified version of the one from R-2.15.0 that is used in pqR.
 
     blas3-test
 
       Like blas-test, except that BLAS routines are taken from the
-      /etc/alternatives/libblas.so.3 library, which can be set to
-      various BLAS implementations.
+      Linux library /usr/lib/libblas.so.3, which can be set to various
+      BLAS implementations using "update-alternatives".  The location
+      of this library may be different on some Linux systems.
 
 The blas test programs are not compiled by default, but are by "make
-blas" (except for blas0-test).
+blas".
 
 The helpers procedures that are used in the piped-matprod test
 programs can be obtained from github.com/radfordneal/helpers.
-
-Reference BLAS routines can be obtained from www.netlib.org/blas.
 
 If the last argument to piped-matprod-test is "V" (only, not "v"), the
 final matrix (a column vector) will be supplied as pipelined output
@@ -356,5 +357,4 @@ pipelined input cannot otherwise be arranged.  (Of course, this is
 slower than just accessing the already-initialized matrix.)
 
 The shell file run-tests runs a series of tests, with the test program
-specified by its first argument (eg, matprod-test).
-
+specified by its first argument (eg, "matprod", for matprod-test).
