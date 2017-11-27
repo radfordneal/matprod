@@ -111,21 +111,21 @@ piped-matprod-nohelpers-test:	test.h test.c piped-matprod-test.c ../piped-matpro
 
 blas0-test:		test.h test.c blas-test.c \
 			ddot.f dgemm.f dgemv.f dsyrk.f lsame.f
-	$(CC) -I.. -I. $(CFLAGS) \
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) \
 		test.c blas-test.c ddot.f dgemm.f dgemv.f dsyrk.f lsame.f \
 		-o blas0-test
 
 blas1-test:		test.h test.c blas-test.c blas.f
-	$(CC) -I.. -I. $(CFLAGS) test.c blas-test.c blas.f \
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) test.c blas-test.c blas.f \
 		-lm -o blas1-test
 
 blas2-test:		test.h test.c blas-test.c blas.f
-	$(CC) -I.. -I. $(CFLAGS) test.c blas-test.c blas2.f \
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) test.c blas-test.c blas2.f \
 		-lm -o blas2-test
 
 blas3-test:		test.h test.c blas-test.c
-	$(CC) -I.. -I. $(CFLAGS) test.c blas-test.c \
-		/usr/lib/x86_64-linux-gnu/libblas.so.3 \
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) test.c blas-test.c \
+		/etc/alternatives/libblas.so.3 \
 		-lm -o blas3-test
 
 clean:
