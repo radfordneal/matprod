@@ -56,7 +56,7 @@
 #define CAN_ASSUME_ALIGNED 0
 #endif
 
-#if 1  /* Enable for debug check */
+#if 0  /* Enable for debug check */
 #   include <stdint.h>
 #   include <stdlib.h>
 #   define CHK_ALIGN(p) \
