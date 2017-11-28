@@ -51,9 +51,9 @@
 #define ALIGN_FORWARD ((ALIGN - ALIGN_OFFSET) % ALIGN)
 
 #if ALIGN >= 8 && __GNUC__
-#define CAN_ASSUME_ALIGNED 1
+#define ASSUME_ALIGNED(x,a,o) __builtin_assume_aligned(x,a,o);
 #else
-#define CAN_ASSUME_ALIGNED 0
+#define ASSUME_ALIGNED(x,a,o) (x)
 #endif
 
 #if 0  /* Enable for debug check */
@@ -108,10 +108,8 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 
     CHK_ALIGN(x); CHK_ALIGN(y);
 
-#   if CAN_ASSUME_ALIGNED
-        x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
-        y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
-#   endif
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
 
     double s;
     int k2, i;
@@ -192,11 +190,9 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
-#   if CAN_ASSUME_ALIGNED
-        x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
-        y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
-        z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
-#   endif
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     /* Specially handle cases where y has two or fewer rows. */
 
@@ -496,11 +492,9 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
-#   if CAN_ASSUME_ALIGNED
-        x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
-        y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
-        z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
-#   endif
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     /* Specially handle scalar times row vector and zero-length matrix. */
 
@@ -953,7 +947,8 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
    Cases where n is two are handled specially, accumulating sums in two
    local variables rather than in a column of the result, and then storing
-   them in the result column at the end. */
+   them in the result column at the end.  Outer products (where k is one)
+   are also handled specially, with the outer_product procedure. */
 
 void matprod_mat_mat (double * MATPROD_RESTRICT x, 
                       double * MATPROD_RESTRICT y, 
@@ -963,11 +958,9 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
-#   if CAN_ASSUME_ALIGNED
-        x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
-        y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
-        z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
-#   endif
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     /* Handle n=2 specially. */
 
@@ -1225,11 +1218,9 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
-#   if CAN_ASSUME_ALIGNED
-        x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
-        y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
-        z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
-#   endif
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     int sym = x==y && n==m;  /* same operands, so symmetric result? */
     int j = 0;               /* number of columns of result produced so far */
@@ -1433,11 +1424,9 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
-#   if CAN_ASSUME_ALIGNED
-        x = __builtin_assume_aligned (x, ALIGN, ALIGN_OFFSET);
-        y = __builtin_assume_aligned (y, ALIGN, ALIGN_OFFSET);
-        z = __builtin_assume_aligned (z, ALIGN, ALIGN_OFFSET);
-#   endif
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     int sym = x==y && n==m;  /* same operands, so symmetric result? */
     double *ex = x + n*k;    /* point past end of x */
