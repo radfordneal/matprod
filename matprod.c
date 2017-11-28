@@ -642,8 +642,13 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 #   endif
 
 #   if CAN_USE_AVX && (ALIGN_FORWARD & 16)
-        q[0] = x[0] * y[0] + x[n] * y[1];
-        q[1] = x[1] * y[0] + x[n+1] * y[1];
+        /* q[0] = x[0] * y[0] + x[n] * y[1];
+           q[1] = x[1] * y[0] + x[n+1] * y[1]; */
+        __m128d Y0 = _mm_set1_pd(y[0]);
+        __m128d Y1 = _mm_set1_pd(y[1]);
+        __m128d X = _mm_mul_pd (_mm_loadA_pd(x), Y0);
+        __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
+        _mm_storeA_pd (q, _mm_add_pd (X, P));
         n2 -= 2;
         x += 2;
         q += 2;
@@ -741,8 +746,15 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 #       endif
 
 #       if CAN_USE_AVX && (ALIGN_FORWARD & 16)
-            q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
-            q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
+            /* q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
+               q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1]; */
+            __m128d Y0 = _mm_set1_pd(y[0]);
+            __m128d Y1 = _mm_set1_pd(y[1]);
+            __m128d Q = _mm_loadA_pd(q);
+            __m128d X = _mm_mul_pd (_mm_loadA_pd(x), Y0);
+            __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
+            Q = _mm_add_pd (_mm_add_pd (Q, X), P);
+            _mm_storeA_pd (q, Q);
             x += 2;
             q += 2;
 #       endif
@@ -844,8 +856,15 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 #       endif
 
 #       if CAN_USE_AVX && (ALIGN_FORWARD & 16)
-            q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
-            q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
+            /* q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
+               q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1]; */
+            __m128d Y0 = _mm_set1_pd(y[0]);
+            __m128d Y1 = _mm_set1_pd(y[1]);
+            __m128d Q = _mm_loadA_pd(q);
+            __m128d X = _mm_mul_pd (_mm_loadA_pd(x), Y0);
+            __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
+            Q = _mm_add_pd (_mm_add_pd (Q, X), P);
+            _mm_storeA_pd (q, Q);
             x += 2;
             q += 2;
 #       endif
