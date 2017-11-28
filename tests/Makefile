@@ -24,8 +24,8 @@ progs=matprod-test matprod-off-test matprod-noalign-test \
       piped-matprod-test piped-matprod-nohelpers-test
       # matprod-norestrict-test and piped-matprod-norestrict-test omitted
 
-blas-progs=blas0-test blas1-test blas2-test blas3-test \
-           blas2-off-test blas3-off-test
+blas-progs=blas0-test blas1-test blas2-test blas2-off-test \
+           blas3-test blas3-off-test
 
 CFLAGSgen=-g -std=gnu99 -O3 -ffp-contract=off # Generic processor
 CFLAGSi32=-g -std=gnu99 -O3 -ffp-contract=off  -msse2 -mfpmath=sse
