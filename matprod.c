@@ -512,7 +512,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         return;
     }
 
-    /* Handle matrix with two rows specially, holding the result vector
+    /* Handle matrices with 2 or 3 rows specially, holding the result vector
        in a local variable. */
 
     if (n == 2) { 
@@ -581,7 +581,43 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         return;
     }
 
-    /* To start, set the result, z, to the sum from the first two columns. */
+    if (n == 3) { 
+
+        double *e = y+(k&~1);  /* point to stop at in/after vector y */
+
+        double s[3];  /* sums for the three values in the result */
+
+        s[0] = s[1] = s[2] = 0;
+
+        /* Each time around this loop, add the products of two columns
+           of x with two elements of y to s[0], s[1], and s[2].
+           Adjust x and y to account for this. */
+
+        while (y < e) {
+            s[0] = (s[0] + (x[0] * y[0])) + (x[3] * y[1]);
+            s[1] = (s[1] + (x[1] * y[0])) + (x[4] * y[1]);
+            s[2] = (s[2] + (x[2] * y[0])) + (x[5] * y[1]);
+            x += 6;
+            y += 2;
+        }
+
+        if (k & 1) {
+            s[0] += x[0] * y[0];
+            s[1] += x[1] * y[0];
+            s[2] += x[2] * y[0];
+        }
+
+        /* Store the three sums in s[0], s[1], and s[2] in the result vector. */
+
+        z[0] = s[0];
+        z[1] = s[1];
+        z[2] = s[2];
+
+        return;
+    }
+
+    /* To start, set the result, z, to the sum from the first two columns.
+       Note that n is at least 4 here, since lower values are handled above. */
 
     int n2;     /* number of elements in z after those done to help alignment */
     double *f;  /* point to stop with aligned operations */
@@ -591,22 +627,18 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     n2 = n;
 
 #   if ALIGN_FORWARD & 8
-    {
         q[0] = x[0] * y[0] + x[n] * y[1];
         n2 -= 1;
         x += 1;
         q += 1;
-    }
 #   endif
 
 #   if CAN_USE_AVX && (ALIGN_FORWARD & 16)
-        if (n >= (ALIGN_FORWARD%32)/8) {
-            q[0] = x[0] * y[0] + x[n] * y[1];
-            q[1] = x[1] * y[0] + x[n+1] * y[1];
-            n2 -= 2;
-            x += 2;
-            q += 2;
-        }
+        q[0] = x[0] * y[0] + x[n] * y[1];
+        q[1] = x[1] * y[0] + x[n+1] * y[1];
+        n2 -= 2;
+        x += 2;
+        q += 2;
 #   endif
 
     f = q + (n2&~3);
@@ -695,20 +727,16 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         q = z;
 
 #       if ALIGN_FORWARD & 8
-        {
             q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
             x += 1;
             q += 1;
-        }
 #       endif
 
 #       if CAN_USE_AVX && (ALIGN_FORWARD & 16)
-            if (n >= (ALIGN_FORWARD%32)/8) {
-                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
-                q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
-                x += 2;
-                q += 2;
-            }
+            q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
+            q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
+            x += 2;
+            q += 2;
 #       endif
 
 #       if CAN_USE_AVX
@@ -802,20 +830,16 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         q = z;
 
 #       if ALIGN_FORWARD & 8
-        {
             q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
             x += 1;
             q += 1;
-        }
 #       endif
 
 #       if CAN_USE_AVX && (ALIGN_FORWARD & 16)
-            if (n >= (ALIGN_FORWARD%32)/8) {
-                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
-                q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
-                x += 2;
-                q += 2;
-            }
+            q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
+            q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
+            x += 2;
+            q += 2;
 #       endif
 
 #       if CAN_USE_AVX
