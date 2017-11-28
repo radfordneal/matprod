@@ -36,8 +36,16 @@
 #define ALIGN_OFFSET 0
 #endif
 
+#if ALIGN < 0 || (ALIGN & (ALIGN-1)) != 0
+#error "alignment must be a power of two"
+#endif
+
 #if ALIGN_OFFSET >= ALIGN
 #error "alignment offset must be less than alignment"
+#endif
+
+#if ALIGN_OFFSET % 8 != 0
+#error "alignment offset must be a multiple of eight"
 #endif
 
 #define ALIGN_FORWARD ((ALIGN - ALIGN_OFFSET) % ALIGN)
