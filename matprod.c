@@ -952,9 +952,16 @@ void outer_product (double * MATPROD_RESTRICT x,
 
     while (z < e) {
         double t = y[0];
-        double *f = z+(n&~3);
         double *p = x;
-        while (z < f) {
+        int n2 = n;
+#       if ALIGN_FORWARD & 8
+            z[0] = p[0] * t;
+            n2 -= 1;
+            z += 1;
+            p += 1;
+#       endif
+        double *f = p+(n2&~3);
+        while (p < f) {
             z[0] = p[0] * t;
             z[1] = p[1] * t;
             z[2] = p[2] * t;
@@ -962,13 +969,13 @@ void outer_product (double * MATPROD_RESTRICT x,
             z += 4;
             p += 4;
         }
-        if (n & 2) {
+        if (n2 & 2) {
             z[0] = p[0] * t;
             z[1] = p[1] * t;
             z += 2;
             p += 2;
         }
-        if (n & 1) {
+        if (n2 & 1) {
             z[0] = p[0] * t;
             z += 1;
         }

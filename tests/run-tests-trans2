@@ -46,7 +46,8 @@ echo " "; time $prog 1$Z 1271 1341 1013 t
 
 echo " "; time $prog 1$Z 1271 1341 1271 t
 
-echo " "; time $prog 10000$Z 230 1 341 t
+echo " "; time $prog 2000000$Z 23 1 34 t
+echo " "; time $prog 20000$Z 230 1 341 t
 echo " "; time $prog 100$Z 2031 1 3201 t
 
 echo " "; time $prog 1$Z 1271 1341 1271 T
