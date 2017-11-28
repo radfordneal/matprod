@@ -30,7 +30,7 @@ prog=$1-test
 
 echo " "; echo MAT_MAT
 
-echo " "; time $prog 1000000 2222$Z 1 1
+echo " "; time $prog 1000000$Z 2222 1 1
 
 echo " "; time $prog 500000$Z 1 901 1
 echo " "; time $prog 1000$Z 301 2222 1
