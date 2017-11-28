@@ -24,7 +24,8 @@ progs=matprod-test matprod-off-test matprod-noalign-test \
       piped-matprod-test piped-matprod-nohelpers-test
       # matprod-norestrict-test and piped-matprod-norestrict-test omitted
 
-blas-progs=blas0-test blas1-test blas2-test blas3-test
+blas-progs=blas0-test blas1-test blas2-test blas3-test \
+           blas2-off-test blas3-off-test
 
 CFLAGSgen=-g -std=gnu99 -O3 -ffp-contract=off # Generic processor
 CFLAGSi32=-g -std=gnu99 -O3 -ffp-contract=off  -msse2 -mfpmath=sse
@@ -131,10 +132,19 @@ blas2-test:		test.h test.c blas-test.c blas2.f
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) test.c blas-test.c blas2.f \
 		-lm -o blas2-test
 
+blas2-off-test:		test.h test.c blas-test.c blas2.f
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) $(ALOFF) test.c blas-test.c blas2.f \
+		-lm -o blas2-off-test
+
 blas3-test:		test.h test.c blas-test.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) test.c blas-test.c \
 		/usr/lib/libblas.so.3 \
 		-lm -o blas3-test
+
+blas3-off-test:		test.h test.c blas-test.c
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) $(ALOFF) test.c blas-test.c \
+		/usr/lib/libblas.so.3 \
+		-lm -o blas3-off-test
 
 clean:
 	rm -f $(progs) $(blas-progs)
