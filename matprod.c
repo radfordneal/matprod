@@ -937,6 +937,46 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 }
 
 
+/* Outer product - a special case for matprod_mat_mat, matprod_trans1, and
+   matprod_trans2. */
+
+void outer_product (double * MATPROD_RESTRICT x, 
+                           double * MATPROD_RESTRICT y, 
+                           double * MATPROD_RESTRICT z, int n, int m)
+{
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    double *e = z + n*m;
+
+    while (z < e) {
+        double t = y[0];
+        double *f = z+(n&~3);
+        double *p = x;
+        while (z < f) {
+            z[0] = p[0] * t;
+            z[1] = p[1] * t;
+            z[2] = p[2] * t;
+            z[3] = p[3] * t;
+            z += 4;
+            p += 4;
+        }
+        if (n & 2) {
+            z[0] = p[0] * t;
+            z[1] = p[1] * t;
+            z += 2;
+            p += 2;
+        }
+        if (n & 1) {
+            z[0] = p[0] * t;
+            z += 1;
+        }
+        y += 1;
+    }
+}
+
+
 /* Product of an n x k matrix (x) and a k x m matrix (y) with result stored 
    in z. 
 
@@ -955,6 +995,11 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                       double * MATPROD_RESTRICT z, int n, int k, int m)
 {
     if (n <= 0 || m <= 0) return;
+
+    if (k == 1) {
+        outer_product (x, y, z, n, m);
+        return;
+    }
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -1216,6 +1261,11 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 {
     if (n <= 0 || m <= 0) return;
 
+    if (k == 1) {
+        outer_product (x, y, z, n, m);
+        return;
+    }
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -1421,6 +1471,11 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                      double * MATPROD_RESTRICT z, int n, int k, int m)
 {
     if (n <= 0 || m <= 0) return;
+
+    if (k == 1) {
+        outer_product (x, y, z, n, m);
+        return;
+    }
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
