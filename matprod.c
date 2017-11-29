@@ -944,23 +944,31 @@ void outer_product (double * MATPROD_RESTRICT x,
                            double * MATPROD_RESTRICT y, 
                            double * MATPROD_RESTRICT z, int n, int m)
 {
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
+    const int n2 = (ALIGN_FORWARD & 8) ? n-1 : n;
+
     double *e = z + n*m;
 
     while (z < e) {
+
         double t = y[0];
-        double *p = x;
-        int n2 = n;
+        double *p;
+
 #       if ALIGN_FORWARD & 8
-            z[0] = p[0] * t;
-            n2 -= 1;
+            z[0] = x[0] * t;
             z += 1;
-            p += 1;
+            p = ASSUME_ALIGNED (x+1, ALIGN, (ALIGN_OFFSET+8)%ALIGN);
+#       else
+            p = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
 #       endif
+
         double *f = p+(n2&~3);
+
         while (p < f) {
             z[0] = p[0] * t;
             z[1] = p[1] * t;
@@ -969,16 +977,19 @@ void outer_product (double * MATPROD_RESTRICT x,
             z += 4;
             p += 4;
         }
+
         if (n2 & 2) {
             z[0] = p[0] * t;
             z[1] = p[1] * t;
             z += 2;
             p += 2;
         }
+
         if (n2 & 1) {
             z[0] = p[0] * t;
             z += 1;
         }
+
         y += 1;
     }
 }
