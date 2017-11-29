@@ -940,9 +940,9 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 /* Outer product - a special case for matprod_mat_mat, matprod_trans1, and
    matprod_trans2. */
 
-void outer_product (double * MATPROD_RESTRICT x, 
-                           double * MATPROD_RESTRICT y, 
-                           double * MATPROD_RESTRICT z, int n, int m)
+void matprod_outer_product (double * MATPROD_RESTRICT x, 
+                            double * MATPROD_RESTRICT y, 
+                            double * MATPROD_RESTRICT z, int n, int m)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -950,47 +950,151 @@ void outer_product (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    const int n2 = (ALIGN_FORWARD & 8) ? n-1 : n;
-
     double *e = z + n*m;
+ 
+    if (n > 4) {
 
-    while (z < e) {
+        const int n2 = (ALIGN_FORWARD & 8) ? n-1 : n;
 
-        double t = y[0];
-        double *p;
+        while (z < e) {
 
-#       if ALIGN_FORWARD & 8
-            z[0] = x[0] * t;
-            z += 1;
-            p = ASSUME_ALIGNED (x+1, ALIGN, (ALIGN_OFFSET+8)%ALIGN);
+            double t = y[0];
+            double *p;
+
+#           if ALIGN_FORWARD & 8
+                z[0] = x[0] * t;
+                z += 1;
+                p = ASSUME_ALIGNED (x+1, ALIGN, (ALIGN_OFFSET+8)%ALIGN);
+#           else
+                p = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+#           endif
+
+            double *f = p+(n2&~3);
+
+            while (p < f) {
+                z[0] = p[0] * t;
+                z[1] = p[1] * t;
+                z[2] = p[2] * t;
+                z[3] = p[3] * t;
+                z += 4;
+                p += 4;
+            }
+
+            if (n2 & 2) {
+                z[0] = p[0] * t;
+                z[1] = p[1] * t;
+                z += 2;
+                p += 2;
+            }
+
+            if (n2 & 1) {
+                z[0] = p[0] * t;
+                z += 1;
+            }
+
+            y += 1;
+        }
+    }
+
+    else if (n == 4) {
+#       if CAN_USE_AVX
+        {
+            __m256d X = _mm256_loadu_pd (x);
+            while (z < e) {
+                __m256d Y0 = _mm256_set1_pd (y[0]);
+                _mm256_storeu_pd (z, _mm256_mul_pd(X,Y0));
+                z += 4;
+                y += 1;
+            }
+        }
+#       elif CAN_USE_SSE2
+        {
+            __m128d Xa = _mm_loadu_pd (x);
+            __m128d Xb = _mm_loadu_pd (x+2);
+            while (z < e) {
+                __m128d Y0 = _mm_set1_pd (y[0]);
+                _mm_storeu_pd (z, _mm_mul_pd(Xa,Y0));
+                _mm_storeu_pd (z+2, _mm_mul_pd(Xb,Y0));
+                z += 4;
+                y += 1;
+            }
+        }
 #       else
-            p = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+        {
+            double X[4] = { x[0], x[1], x[2], x[3] };
+            while (z < e) {
+                double y0 = y[0];
+                z[0] = y0 * X[0];
+                z[1] = y0 * X[1];
+                z[2] = y0 * X[2];
+                z[3] = y0 * X[3];
+                z += 4;
+                y += 1;
+            }
+        }
 #       endif
+    }
 
-        double *f = p+(n2&~3);
-
-        while (p < f) {
-            z[0] = p[0] * t;
-            z[1] = p[1] * t;
-            z[2] = p[2] * t;
-            z[3] = p[3] * t;
-            z += 4;
-            p += 4;
+    else if (n == 3) {
+#       if CAN_USE_SSE2
+        {
+            __m128d Xa = _mm_loadu_pd (x);
+            __m128d Xb = _mm_load_sd (x+2);
+            while (z < e) {
+                __m128d Y0 = _mm_set1_pd (y[0]);
+                _mm_storeu_pd (z, _mm_mul_pd(Xa,Y0));
+                _mm_store_sd (z+2, _mm_mul_sd(Xb,Y0));
+                z += 3;
+                y += 1;
+            }
         }
-
-        if (n2 & 2) {
-            z[0] = p[0] * t;
-            z[1] = p[1] * t;
-            z += 2;
-            p += 2;
+#       else
+        {
+            double X[3] = { x[0], x[1], x[2] };
+            while (z < e) {
+                double y0 = y[0];
+                z[0] = y0 * X[0];
+                z[1] = y0 * X[1];
+                z[2] = y0 * X[2];
+                z += 3;
+                y += 1;
+            }
         }
+#       endif
+    }
 
-        if (n2 & 1) {
-            z[0] = p[0] * t;
+    else if (n == 2) {
+#       if CAN_USE_SSE2
+        {
+            __m128d X = _mm_loadu_pd (x);
+            while (z < e) {
+                __m128d Y0 = _mm_set1_pd (y[0]);
+                _mm_storeu_pd (z, _mm_mul_pd(X,Y0));
+                z += 2;
+                y += 1;
+            }
+        }
+#       else
+        {
+            double X[3] = { x[0], x[1] };
+            while (z < e) {
+                double y0 = y[0];
+                z[0] = y0 * X[0];
+                z[1] = y0 * X[1];
+                z += 2;
+                y += 1;
+            }
+        }
+#       endif
+    }
+
+    else if (n == 1) {
+        double t = x[0];
+        while (z < e) {
+            z[0] = y[0] * t;
             z += 1;
+            y += 1;
         }
-
-        y += 1;
     }
 }
 
@@ -1006,7 +1110,7 @@ void outer_product (double * MATPROD_RESTRICT x,
    Cases where n is two are handled specially, accumulating sums in two
    local variables rather than in a column of the result, and then storing
    them in the result column at the end.  Outer products (where k is one)
-   are also handled specially, with the outer_product procedure. */
+   are also handled specially, with the matprod_outer_product procedure. */
 
 void matprod_mat_mat (double * MATPROD_RESTRICT x, 
                       double * MATPROD_RESTRICT y, 
@@ -1015,7 +1119,7 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
     if (n <= 0 || m <= 0) return;
 
     if (k == 1) {
-        outer_product (x, y, z, n, m);
+        matprod_outer_product (x, y, z, n, m);
         return;
     }
 
@@ -1280,7 +1384,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
     if (n <= 0 || m <= 0) return;
 
     if (k == 1) {
-        outer_product (x, y, z, n, m);
+        matprod_outer_product (x, y, z, n, m);
         return;
     }
 
@@ -1491,7 +1595,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
     if (n <= 0 || m <= 0) return;
 
     if (k == 1) {
-        outer_product (x, y, z, n, m);
+        matprod_outer_product (x, y, z, n, m);
         return;
     }
 
