@@ -21,8 +21,9 @@ Copyright (C) 2013, 2014, 2017 Radford M. Neal.
 The matprod library provides double-precision real matrix/vector by
 matrix/vector multiplication routines.  These routines are written
 with some attention to cache performance and other efficiency issues,
-but they are probably not as efficient as some other matrix
-multiplication packages.  
+and with optional code to take advantage of SSE2 and AVX instructions
+on Intel/AMD processors.  But they may not be as fast as the matrix
+multiplication routines in optimized BLAS libraries.
 
 However, these routines have been written to produce the same results
 as the obvious matrix multiplication algorithms, that sequentially sum
@@ -31,9 +32,9 @@ zero, and therefore propagate Inf and NaN values properly.  They do
 not re-group additions assuming associativity holds, so round-off
 errors will be the same as for the obvious algorithms.  Note that
 producing the exact same result as the obvious methods requires that
-the routine be built with any contraction of floating-point operations
-(eg, fused multiply-add) that might be done by the compiler/processor
-disabled.
+the routine be built disabling any contraction of floating-point
+operations (eg, fused multiply-add) that might be done by the
+compiler/processor.
 
 There are also versions of these routines that allow for possible
 parallel operation in the context of a program using the helpers
@@ -109,30 +110,38 @@ source is compiled with -DMATPROD_NO_RESTRICT.
       Multiply row vector x and column vector y, both of dimension k,
       returning the result.
 
-    void matprod_vec_mat (double *x, double *y, double *z, int k, int m);
+    void matprod_vec_mat (double *x, double *y, double *z, int k, int m)
 
       Multiply row vector x, of dimension k, and matrix y, of dimension
       k x m, storing the result in row vector z, of dimension m.
 
-    void matprod_mat_vec (double *x, double *y, double *z, int n, int k);
+    void matprod_mat_vec (double *x, double *y, double *z, int n, int k)
 
       Multiply matrix x, of dimension n x k, and column vector y, of
       dimension k, storing the result in column vector z, of dimension n.
 
-    void matprod_mat_mat (double *x, double *y, double *z, int n, int k, int m);
+    void matprod_mat_mat (double *x, double *y, double *z, int n, int k, int m)
 
-      Multiply matrix x, of dimension n x k, and matrix y, of dimension
-      k x m, storing the result in matrix z, of dimension n x m.
+      Multiply matrix x, of dimension n x k, and matrix y, of dimension k
+       x m, storing the result in matrix z, of dimension n x m.
 
-    void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m);
+    void matprod_outer (double *x, double *y, double *z, int n, int m)
 
-      Multiply transpose of matrix x, of dimension k x n, and matrix y, 
-      of dimension k x m, storing the result in matrix z, of dimension n x m.
+      Multiply the length-n column vector x (ie, n x 1 matrix) by the
+      length-m row vector y (ie, 1 x m matrix), storing the result in
+      the matrix z, of dimension n x m.
 
-    void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m);
+    void matprod_trans1 (double *x, double *y, double *z, int n, int k, int m)
 
-      Multiply matrix x, of dimension n x k, and the transpose of matrix y, 
-      of dimension m x k, storing the result in matrix z, of dimension n x m.
+      Multiply the transpose of matrix x, of dimension k x n, and
+      matrix y, of dimension k x m, storing the result in matrix z, of
+      dimension n x m.
+
+    void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
+
+      Multiply matrix x, of dimension n x k, and the transpose of
+      matrix y, of dimension m x k, storing the result in matrix z, of
+      dimension n x m.
 
 For the above procedures, the result matrix, z, must have no overlap
 with the operands, x and y.  However, the operands may be the same or
@@ -141,11 +150,13 @@ may overlap.
 Some attention has been paid to making special cases of these routines
 be fast - such as matprod_vec_mat when the vector is of length one,
 which reduces to simply multiplying the elements of the matrix (with
-one row) by a scalar.  However, the cases of matprod_mat_mat,
-matprod_trans1, and matprod_trans2 that reduce to matprod_vec_vec,
-matprod_vec_mat, or matprod_mat_vec have not been optimized, on the
-assumption that the caller will call the specialized routine when
-appropriate.
+one row) by a scalar.  The matprod_outer procedure will be called from
+matprod_mat_mat, matprod_trans1, or matprod_trans2 when the value of k
+passed is one (though calling it directly will of course be slightly
+faster).  However, the cases of matprod_mat_mat, matprod_trans1, and
+matprod_trans2 that reduce to matprod_vec_vec, matprod_vec_mat, or
+matprod_mat_vec have not been optimized, on the assumption that the
+caller will call the specialized procedure when appropriate.
 
 See the comments in matprod.c for details on the algorithms used.
 
@@ -173,7 +184,10 @@ helpers_task_proc, for which the arguments are an op value, a pointer
 to the result matrix, a pointer to the first operand matrix, and a
 pointer to the second operand matrix.  (For some of the task
 procedures, an operand may be a vector rather than a matrix, and the
-result may be a vector or scalar instead of a matrix.)
+result may be a vector or scalar instead of a matrix.)  The op value
+is used only for the mat_mat, trans1, and trans2 procedures, for which
+it gives the value of k (the number of products summed to compute each
+element of the result).
 
 The task procedures (found in piped-matprod.c) correspond to the
 non-pipelined procedures above, and are as follows:
@@ -197,6 +211,12 @@ non-pipelined procedures above, and are as follows:
 
       Matrix-matrix multiply, with column-by-column pipelining of the
       second operand, and column-by-column pipelining of the output.
+
+    task_piped_matprod_outer
+
+      Matrix outer product of column vector and row vector, with
+      element-by-element pipelining of the second operand, and
+      column-by-column pipelining of the output.
 
     task_piped_matprod_trans1
 

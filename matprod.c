@@ -937,8 +937,8 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 }
 
 
-/* Outer product - a special case for matprod_mat_mat, matprod_trans1, and
-   matprod_trans2. */
+/* Outer product - n x 1 matrix x times 1 x m matrix y, with result stored
+   in the n x m matrix z. */
 
 void matprod_outer_product (double * MATPROD_RESTRICT x, 
                             double * MATPROD_RESTRICT y, 

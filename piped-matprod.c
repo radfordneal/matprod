@@ -625,6 +625,18 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
         y = y2;
         z += 2*n;
     }
+
+}
+
+/* Product of an n x 1 matrix (x) and a 1 x m matrix (y) with result stored 
+   in z, with pipelining of the input y and the output (by column).
+
+   Currently, just calls the general matrix multiply procedure, with k=1. */
+
+void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz, 
+                               helpers_var_ptr sx, helpers_var_ptr sy)
+{
+   task_piped_matprod_mat_mat (1, sz, sx, sy);
 }
 
 

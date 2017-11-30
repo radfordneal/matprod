@@ -50,6 +50,11 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
           int n,
           int k,
           int m);
+void matprod_outer (double * MATPROD_RESTRICT x,
+          double * MATPROD_RESTRICT y,
+          double * MATPROD_RESTRICT z,
+          int n,
+          int m);
 void matprod_trans1 (double * MATPROD_RESTRICT x,
           double * MATPROD_RESTRICT y,
           double * MATPROD_RESTRICT z,
