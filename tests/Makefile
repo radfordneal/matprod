@@ -17,10 +17,11 @@
 #   with this program; if not, write to the Free Software Foundation, Inc.,
 #   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-progs=matprod-test matprod-off-test matprod-noalign-test \
-      matprod-nosimd-test matprod-noalign-nosimd-test \
-      matprod-off-nosimd-test matprod-noavx-test \
-      matprod-off-noalign-nosimd-test \
+progs=matprod-test matprod-off-test \
+      matprod-noalign-test matprod-off-noalign-test \
+      matprod-nosimd-test matprod-off-nosimd-test \
+      matprod-noavx-test matprod-off-noavx-test \
+      matprod-noalign-nosimd-test matprod-off-noalign-nosimd-test \
       piped-matprod-test piped-matprod-nohelpers-test
       # matprod-norestrict-test and piped-matprod-norestrict-test omitted
 
@@ -64,10 +65,30 @@ matprod-noalign-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) test.o matprod-test.c ../matprod.c \
 		-o matprod-noalign-test
 
+matprod-off-noalign-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) $(ALOFF) -c test.c
+	$(CC) -I.. -I. $(CFLAGS) test.o matprod-test.c ../matprod.c \
+		-o matprod-off-noalign-test
+
 matprod-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DDISABLE_SIMD_CODE \
 		test.c matprod-test.c ../matprod.c \
 		-o matprod-nosimd-test
+
+matprod-off-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) $(ALOFF) -DDISABLE_SIMD_CODE \
+		test.c matprod-test.c ../matprod.c \
+		-o matprod-off-nosimd-test
+
+matprod-noavx-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DDISABLE_AVX_CODE \
+		test.c matprod-test.c ../matprod.c \
+		-o matprod-noavx-test
+
+matprod-off-noavx-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
+	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) $(ALOFF) -DDISABLE_AVX_CODE \
+		test.c matprod-test.c ../matprod.c \
+		-o matprod-off-noavx-test
 
 matprod-noalign-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -c test.c
@@ -75,21 +96,11 @@ matprod-noalign-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matpro
 		test.o matprod-test.c ../matprod.c \
 		-o matprod-noalign-nosimd-test
 
-matprod-off-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) $(ALOFF) -DDISABLE_SIMD_CODE \
-		test.c matprod-test.c ../matprod.c \
-		-o matprod-off-nosimd-test
-
 matprod-off-noalign-nosimd-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) $(ALOFF) -c test.c
 	$(CC) -I.. -I. $(CFLAGS) -DDISABLE_SIMD_CODE \
 		test.o matprod-test.c ../matprod.c \
 		-o matprod-off-noalign-nosimd-test
-
-matprod-noavx-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
-	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DDISABLE_AVX_CODE \
-		test.c matprod-test.c ../matprod.c \
-		-o matprod-noavx-test
 
 matprod-norestrict-test:	test.h test.c matprod-test.c ../matprod.h ../matprod.c
 	$(CC) -I.. -I. $(CFLAGS) $(ALIGN) -DMATPROD_NO_RESTRICT \
