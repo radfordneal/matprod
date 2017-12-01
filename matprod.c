@@ -224,10 +224,12 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
     if (k <= 2) {
 
-        if (k == 0)
-            set_to_zeros (z, m);
-        else if (k == 1)
-            scalar_multiply (x[0], y, z, m);
+        if (k != 2) {
+            if (k == 1)
+                scalar_multiply (x[0], y, z, m);
+            else  /* k == 0 */
+                set_to_zeros (z, m);
+        }
         else {  /* k == 2 */
             double t[2] = { x[0], x[1] };
             double *f = y + 2*(m&~1);
@@ -514,10 +516,10 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     /* Specially handle scalar times row vector and zero-length matrix. */
 
     if (k <= 1) {
-        if (k == 0)
-            set_to_zeros (z, n);
-        else /* k == 1 */
+        if (k == 1)
             scalar_multiply (y[0], x, z, n);
+        else /* k == 0 */
+            set_to_zeros (z, n);
         return;
     }
 
@@ -1465,8 +1467,11 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 {
     if (n <= 0 || m <= 0) return;
 
-    if (k == 1) {
-        matprod_outer (x, y, z, n, m);
+    if (k <= 1) {
+        if (k == 1)
+            matprod_outer (x, y, z, n, m);
+        else
+            set_to_zeros (z, n*m);
         return;
     }
 
@@ -1478,14 +1483,6 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 
     int sym = x==y && n==m;  /* same operands, so symmetric result? */
     int j = 0;               /* number of columns of result produced so far */
-
-    /* Set result to zeros if k is zero. */
-
-    if (k <= 0) {
-        double *e = z + n*m;
-        while (z < e) *z++ = 0;
-        return;
-    }
 
     /* If m is odd, compute the first column of the result, updating y, z, and 
        m to account for this column having been computed (so that the situation
@@ -1676,8 +1673,11 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
 {
     if (n <= 0 || m <= 0) return;
 
-    if (k == 1) {
-        matprod_outer (x, y, z, n, m);
+    if (k <= 1) {
+        if (k == 1)
+            matprod_outer (x, y, z, n, m);
+        else
+            set_to_zeros (z, n*m);
         return;
     }
 

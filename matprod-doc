@@ -43,8 +43,8 @@ library for parallel computation.
 Note that matrices are assumed to be stored in FORTRAN memory order,
 proceeding down columns (not across rows).  To use the matprod
 routines with matrices stored in standard C (row-major) order, just
-reverse the order of the operands (and exchange matprod_trans1 and
-matprod_trans2).
+reverse the order of the input operands (and exchange matprod_trans1
+and matprod_trans2, as well as matprod_vec_mat and matprod_mat_vec).
 
 
 Building and using the procedures:
