@@ -1082,7 +1082,7 @@ void matprod_outer (double * MATPROD_RESTRICT x,
             if (ALIGN_FORWARD & 8) {
                 Y = _mm_set1_pd (y[0]);
                 _mm_store_sd (z, _mm_mul_sd(Xa,Y));
-                _mm_store_pd (z+1, _mm_mul_pd(Xc,Y));
+                _mm_storeA_pd (z+1, _mm_mul_pd(Xc,Y));
                 z += 3;
                 y += 1;
                 m -= 1;
@@ -1090,17 +1090,17 @@ void matprod_outer (double * MATPROD_RESTRICT x,
             double *e = z + 3*(m&~1);
             while (z < e) {
                 Y = _mm_set1_pd (y[0]);
-                _mm_store_pd (z, _mm_mul_pd(Xa,Y));
+                _mm_storeA_pd (z, _mm_mul_pd(Xa,Y));
                 Y = _mm_set_pd (y[1],y[0]);
-                _mm_store_pd (z+2, _mm_mul_pd(Xb,Y));
+                _mm_storeA_pd (z+2, _mm_mul_pd(Xb,Y));
                 Y = _mm_set1_pd (y[1]);
-                _mm_store_pd (z+4, _mm_mul_pd(Xc,Y));
+                _mm_storeA_pd (z+4, _mm_mul_pd(Xc,Y));
                 z += 6;
                 y += 2;
             }
             if (m & 1) {
                 Y = _mm_set1_pd (y[0]);
-                _mm_store_pd (z, _mm_mul_pd(Xa,Y));
+                _mm_storeA_pd (z, _mm_mul_pd(Xa,Y));
                 _mm_store_sd (z+2, _mm_mul_sd(Xb,Y));
             }
         }
