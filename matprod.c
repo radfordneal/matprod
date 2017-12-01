@@ -1446,20 +1446,16 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
 /* Product of the transpose of a k x n matrix (x) and a k x m matrix (y) 
    with result stored in z.  
 
-   Each element of the result is the dot product of a column of x and a
-   column of y.  The result is computed two columns at a time, which 
-   allows the memory accesses to columns of x to be used for two such
-   dot products (with two columns of y).  Two columns of x are also done 
-   at once, again so memory accesses can be re-used.  The result is that,
-   except perhaps for the first column or first element in a column, four
-   elements of the result are computed at a time, using four accesses to
-   columns of x and y (half the number of accesses that would be needed
-   for doing four dot products in the obvious way).
+   Each element of the result is the dot product of a column of x and
+   a column of y.  Four elements of this result are computed at once,
+   using two consecutive columns of x and two consecutive columns of y
+   (except perhaps for odd columns at the end), thereby reducing the
+   number of memory accesses.
 
    When the two operands are the same, the result will be a symmetric
-   matrix.  After computation of each column or pair of columns, they are
-   copied to the corresponding rows; hence each column need be computed
-   only from the diagonal element down. */
+   matrix.  After computation of each column or pair of columns, they
+   are copied to the corresponding rows; hence each column need be
+   computed only from the diagonal element down. */
 
 void matprod_trans1 (double * MATPROD_RESTRICT x, 
                      double * MATPROD_RESTRICT y, 
