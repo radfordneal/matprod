@@ -1485,6 +1485,23 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
+    /* Handle the case where k is two specially. */
+
+    if (k == 2) {
+        double *e = y + 2*m;
+        double *f = x + 2*n;
+        while (y < e) {
+            double *p = x;
+            while (p < f) {
+                z[0] = p[0] * y[0] + p[1] * y[1];
+                p += 2;
+                z += 1;
+            }
+            y += 2;
+        }
+        return;
+    }
+
     int sym = x==y && n==m;  /* same operands, so symmetric result? */
     int j = 0;               /* number of columns of result produced so far */
     int me = m&~1;           /* no. of columns that can be computed as pairs */

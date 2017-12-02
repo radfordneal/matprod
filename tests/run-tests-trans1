@@ -37,6 +37,9 @@ echo " "; time $prog 2000000$Z t 7 12 9
 echo " "; time $prog 20000$Z t 23 222 34
 echo " "; time $prog 2000$Z t 50 445 62
 
+echo " "; time $prog 100000$Z t 101 2 100
+echo " "; time $prog 500$Z t 1200 2 1299
+
 echo " "; time $prog 20000$Z t 43 72 64
 echo " "; time $prog 2000$Z t 100 155 112
 
