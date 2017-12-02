@@ -232,8 +232,16 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         }
         else {  /* k == 2 */
             double t[2] = { x[0], x[1] };
-            double *f = y + 2*(m&~1);
+            double *f = y + 2*(m&~3);
             while (y < f) {
+                z[0] = t[0] * y[0] + t[1] * y[1];
+                z[1] = t[0] * y[2] + t[1] * y[3];
+                z[2] = t[0] * y[4] + t[1] * y[5];
+                z[3] = t[0] * y[6] + t[1] * y[7];
+                y += 8;
+                z += 4;
+            }
+            if (m & 2) {
                 z[0] = t[0] * y[0] + t[1] * y[1];
                 z[1] = t[0] * y[2] + t[1] * y[3];
                 y += 4;
