@@ -1488,17 +1488,111 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
     /* Handle the case where k is two specially. */
 
     if (k == 2) {
-        double *e = y + 2*m;
-        double *f = x + 2*n;
-        while (y < e) {
-            double *p = x;
-            while (p < f) {
-                z[0] = p[0] * y[0] + p[1] * y[1];
-                p += 2;
-                z += 1;
+#       if CAN_USE_AVX
+        {
+            double *e = y + 2*m;
+            double *f = x + 2*(n&~3);
+            while (y < e) {
+                __m256d Y = _mm256_set_pd (y[1], y[0], y[1], y[0]);
+                double *p = x;
+                while (p < f) {
+                    __m256d M0 = _mm256_mul_pd (Y, _mm256_loadu_pd(p));
+                    __m256d M1 = _mm256_mul_pd (Y, _mm256_loadu_pd(p+4));
+                    __m256d Z = _mm256_hadd_pd (M0, M1);
+                    __m256d Zp = _mm256_permute2f128_pd (Z, Z, 0x21);
+                    _mm256_storeu_pd (z, 
+                      _mm256_permute_pd (_mm256_shuffle_pd (Zp, Z, 12), 9));
+                    p += 8;
+                    z += 4;
+                }
+                if (n & 2) {
+                    __m128d M0 = _mm_mul_pd (_mm256_castpd256_pd128(Y),
+                                             _mm_loadu_pd(p));
+                    __m128d M1 = _mm_mul_pd (_mm256_castpd256_pd128(Y),
+                                             _mm_loadu_pd(p+2));
+                    _mm_storeu_pd (z, _mm_hadd_pd (M0, M1));
+                    p += 4;
+                    z += 2;
+                }
+                if (n & 1) {
+                    __m128d M0 = _mm_mul_pd (_mm256_castpd256_pd128(Y),
+                                             _mm_loadu_pd(p));
+                    _mm_store_sd (z, _mm_hadd_pd (M0, M0));
+                    p += 2;
+                    z += 1;
+                }
+                y += 2;
             }
-            y += 2;
         }
+#       elif CAN_USE_SSE2
+        {
+            double *e = y + 2*m;
+            double *f = x + 2*(n&~3);
+            while (y < e) {
+                __m128d Y = _mm_set_pd (y[1], y[0]);
+                __m128d M0, M1;
+                double *p = x;
+                while (p < f) {
+                    M0 = _mm_mul_pd (Y, _mm_loadu_pd(p));
+                    M1 = _mm_mul_pd (Y, _mm_loadu_pd(p+2));
+                    _mm_storeu_pd (z, _mm_hadd_pd (M0, M1));
+                    M0 = _mm_mul_pd (Y, _mm_loadu_pd(p+4));
+                    M1 = _mm_mul_pd (Y, _mm_loadu_pd(p+6));
+                    _mm_storeu_pd (z+2, _mm_hadd_pd (M0, M1));
+                    p += 8;
+                    z += 4;
+                }
+                if (n & 2) {
+                    M0 = _mm_mul_pd (Y, _mm_loadu_pd(p));
+                    M1 = _mm_mul_pd (Y, _mm_loadu_pd(p+2));
+                    _mm_storeu_pd (z, _mm_hadd_pd (M0, M1));
+                    p += 4;
+                    z += 2;
+                }
+                if (n & 1) {
+                    M0 = _mm_mul_pd (Y, _mm_loadu_pd(p));
+                    _mm_store_sd (z, _mm_hadd_pd (M0, M0));
+                    p += 2;
+                    z += 1;
+                }
+                y += 2;
+            }
+        }
+#       elif 0
+        {
+            double *e = y + 2*m;
+            double *f = x + 2*(n&~1);
+            while (y < e) {
+                double *p = x;
+                while (p < f) {
+                    z[0] = p[0] * y[0] + p[1] * y[1];
+                    z[1] = p[2] * y[0] + p[3] * y[1];
+                    p += 4;
+                    z += 2;
+                }
+                if (n & 1) {
+                    z[0] = p[0] * y[0] + p[1] * y[1];
+                    p += 2;
+                    z += 1;
+                }
+                y += 2;
+            }
+        }
+#       else
+        {
+            double *e = y + 2*m;
+            double *f = x + 2*n;
+            while (y < e) {
+                double *p = x;
+                while (p < f) {
+                    z[0] = p[0] * y[0] + p[1] * y[1];
+                    p += 2;
+                    z += 1;
+                }
+                y += 2;
+            }
+        }
+#       endif
         return;
     }
 
