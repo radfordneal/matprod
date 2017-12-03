@@ -49,4 +49,4 @@ echo " "; time $prog 1$Z t 1271 1341 1013
 
 echo " "; time $prog 1$Z t 1271 1341 1271
 
-echo " "; time $prog 1$Z t 1271 1341 1271
+echo " "; time $prog 1$Z T 1271 1341 1271
