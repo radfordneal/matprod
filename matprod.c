@@ -1630,9 +1630,32 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 
         while (z < ze) {
 #           if CAN_USE_AVX
-                __m256d S = _mm256_setzero_pd();
-                double *q = y;
-                double *qe = y+(k&~3);
+                double *q, *qe;
+                __m256d S;
+#               if ALIGN_FORWARD & 8
+                    S = _mm256_set_pd 
+                           (r[k]*y[k], r[0]*y[k], r[k]*y[0], r[0]*y[0]);
+                    r += 1;
+                    q = y+1;
+                    qe = q+((k-1)&~3);
+#               else
+                    S = _mm256_setzero_pd();
+                    q = y;
+                    qe = q+(k&~3);
+#               endif
+#               if ALIGN_FORWARD & 16
+                {   /* Note that k >= 3, so these elements are present. */
+                    __m256d X, Y;
+                    X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
+                    Y = _mm256_set_pd (q[k], q[k], q[0], q[0]);
+                    S = _mm256_add_pd (_mm256_mul_pd(X,Y), S);
+                    X = _mm256_set_pd (r[k+1], r[1], r[k+1], r[1]);
+                    Y = _mm256_set_pd (q[k+1], q[k+1], q[1], q[1]);
+                    S = _mm256_add_pd (_mm256_mul_pd(X,Y), S);
+                    r += 2;
+                    q += 2;
+                }
+#               endif
                 while (q < qe) {
                     __m256d Q0 = _mm256_loadu_pd(q);
                     __m256d Qk = _mm256_loadu_pd(q+k);
