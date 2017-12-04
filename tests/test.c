@@ -281,17 +281,20 @@ int main (int argc, char **argv)
 
   do_test(rep);
 
-  /* Check that input matrices are the same as they were initialize to above. */
+  /* Check that input matrices are the same as they were initialized to above.*/
 
   for (i = 0; i<nmat; i++)
   { for (j = 0; j<matcols[i]; j++) 
     { for (k = 0; k<matrows[i]; k++) 
       { int ix = i==0 && trans1 || i==nmat-1 && trans2 
                    ? j + matcols[i]*k : k + matrows[i]*j;
-        if (matrix[i][ix] != 0.1*(matrows[i]+matcols[i]) 
+        double chv =  0.1*(matrows[i]+matcols[i]) 
                            + 0.01 * (matrows[i]*matcols[i])
-                           + 0.01 * ((j+1)*(k+1)))
-        { fprintf (stderr, "Input matrix %d changed after operation\n", i);
+                           + 0.01 * ((j+1)*(k+1));
+        if (matrix[i][ix] != chv)
+        { fprintf (stderr, 
+                  "Input matrix %d changed after operation (%d, %g, %g)\n",
+                   i, ix, matrix[i][ix], chv);
           abort();
         }
       }
