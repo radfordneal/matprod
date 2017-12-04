@@ -73,7 +73,7 @@ void print_result (void)
   if (s>2) printf (" %.16g", m[s-1]);
   printf("\n");
 
-#if 0  /* enable to print entire result */
+# if 0  /* enable to print entire result */
   { int i, j;
     printf("\n");
     for (i = 0; i<matrows[0]; i++)
@@ -83,7 +83,7 @@ void print_result (void)
       printf("\n");
     }
   }
-#endif
+# endif
 }
 
 /* Check that results are correct. */
@@ -265,16 +265,35 @@ int main (int argc, char **argv)
      be initialized twice, but to the same thing both times (due to care
      in placement of parentheses below). */
 
+# if 0  /* Enable for special debugging initialization */
+#   define INITVAL(i,j,k) (i == 0 ? (j==0 && k==0 ? 1.1 : 1) \
+                                  : (j==0 && k==0 ? 2.2 : 1))
+# else
+#   define INITVAL(i,j,k) (0.1*(matrows[i]+matcols[i])  \
+                            + 0.01 * (matrows[i]*matcols[i]) \
+                            + 0.01 * ((j+1)*(k+1)))
+# endif
+
   for (i = 0; i<nmat; i++)
   { for (j = 0; j<matcols[i]; j++) 
     { for (k = 0; k<matrows[i]; k++) 
       { int ix = i==0 && trans1 || i==nmat-1 && trans2 
                    ? j + matcols[i]*k : k + matrows[i]*j;
-        matrix[i][ix] = 0.1*(matrows[i]+matcols[i]) 
-                      + 0.01 * (matrows[i]*matcols[i])
-                      + 0.01 * ((j+1)*(k+1));
+        matrix[i][ix] = INITVAL(i,j,k);
       }
     }
+#   if 0  /* enable to print initialized matrices */
+    { printf("\nInput matrix %d\n\n",i);
+      for (k = 0; k<matrows[i]; k++) 
+      { for (j = 0; j<matcols[i]; j++) 
+        { int ix = i==0 && trans1 || i==nmat-1 && trans2 
+                     ? j + matcols[i]*k : k + matrows[i]*j;
+          printf(" %f",matrix[i][ix]);
+        }
+        printf("\n");
+      }
+    }
+#   endif
   }
 
   /* Run test on these matrices (do_test may or may not return). */
@@ -288,13 +307,10 @@ int main (int argc, char **argv)
     { for (k = 0; k<matrows[i]; k++) 
       { int ix = i==0 && trans1 || i==nmat-1 && trans2 
                    ? j + matcols[i]*k : k + matrows[i]*j;
-        double chv =  0.1*(matrows[i]+matcols[i]) 
-                           + 0.01 * (matrows[i]*matcols[i])
-                           + 0.01 * ((j+1)*(k+1));
-        if (matrix[i][ix] != chv)
+        if (matrix[i][ix] != INITVAL(i,j,k))
         { fprintf (stderr, 
                   "Input matrix %d changed after operation (%d, %g, %g)\n",
-                   i, ix, matrix[i][ix], chv);
+                   i, ix, matrix[i][ix], INITVAL(i,j,k));
           abort();
         }
       }
