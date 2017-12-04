@@ -1632,23 +1632,48 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 #           if CAN_USE_AVX
                 __m256d S = _mm256_setzero_pd();
                 double *q = y;
-                int i = k;
-                do {
+                double *qe = y+(k&~3);
+                while (q < qe) {
+                    __m256d Q0 = _mm256_loadu_pd(q);
+                    __m256d Qk = _mm256_loadu_pd(q+k);
+                    __m256d R0 = _mm256_loadu_pd(r);
+                    __m256d Rk = _mm256_loadu_pd(r+k);
+                    __m256d M00 = _mm256_mul_pd (Q0, R0);
+                    __m256d M0k = _mm256_mul_pd (Q0, Rk);
+                    __m256d Mk0 = _mm256_mul_pd (Qk, R0);
+                    __m256d Mkk = _mm256_mul_pd (Qk, Rk);
+                    __m256d L0 = _mm256_unpacklo_pd (M00, M0k);
+                    __m256d Lk = _mm256_unpacklo_pd (Mk0, Mkk);
+                    __m256d H0 = _mm256_unpackhi_pd (M00, M0k);
+                    __m256d Hk = _mm256_unpackhi_pd (Mk0, Mkk);
+                    S = _mm256_add_pd (S, 
+                        _mm256_insertf128_pd(L0,_mm256_castpd256_pd128(Lk),1));
+                    S = _mm256_add_pd (S, 
+                        _mm256_insertf128_pd(H0,_mm256_castpd256_pd128(Hk),1));
+                    S = _mm256_add_pd (S, 
+                        _mm256_insertf128_pd(Lk,_mm256_extractf128_pd(L0,1),0));
+                    S = _mm256_add_pd (S, 
+                        _mm256_insertf128_pd(Hk,_mm256_extractf128_pd(H0,1),0));
+                    r += 4;
+                    q += 4;
+                }
+                qe = y+k;
+                while (q < qe) {
                     __m256d X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
                     __m256d Y = _mm256_set_pd (q[k], q[k], q[0], q[0]);
                     S = _mm256_add_pd (_mm256_mul_pd(X,Y), S);
                     r += 1;
                     q += 1;
-                } while (--i > 0);
+                }
                 __m128d H = _mm256_extractf128_pd(S,1);
-                _mm_storeu_pd (z, _mm256_extractf128_pd(S,0));
+                _mm_storeu_pd (z, _mm256_castpd256_pd128(S));
                 _mm_storeu_pd (z2, H);
                 if (sym) {
                     _mm_storeu_pd (rz, 
-                       _mm_unpacklo_pd(_mm256_extractf128_pd(S,0),H));
+                       _mm_unpacklo_pd(_mm256_castpd256_pd128(S),H));
                     rz += n;
                     _mm_storeu_pd (rz, 
-                       _mm_unpackhi_pd(_mm256_extractf128_pd(S,0),H));
+                       _mm_unpackhi_pd(_mm256_castpd256_pd128(S),H));
                     rz += n;
                 }
                 z += 2;
