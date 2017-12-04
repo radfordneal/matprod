@@ -1643,19 +1643,6 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                     q = y;
                     qe = q+(k&~3);
 #               endif
-#               if ALIGN_FORWARD & 16
-                {   /* Note that k >= 3, so these elements are present. */
-                    __m256d X, Y;
-                    X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
-                    Y = _mm256_set_pd (q[k], q[k], q[0], q[0]);
-                    S = _mm256_add_pd (_mm256_mul_pd(X,Y), S);
-                    X = _mm256_set_pd (r[k+1], r[1], r[k+1], r[1]);
-                    Y = _mm256_set_pd (q[k+1], q[k+1], q[1], q[1]);
-                    S = _mm256_add_pd (_mm256_mul_pd(X,Y), S);
-                    r += 2;
-                    q += 2;
-                }
-#               endif
                 while (q < qe) {
                     __m256d Q0 = _mm256_loadu_pd(q);
                     __m256d Qk = _mm256_loadu_pd(q+k);
