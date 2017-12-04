@@ -1623,8 +1623,8 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
             rz = z;
         }
 
-        /* Compute pairs of columns of the result.  Copy them to the
-           corresponding rows too, if the result is symmetric. */
+        /* Compute pairs of elements in the two columns being computed.  Copy
+           them to the corresponding rows too, if the result is symmetric. */
 
         double *ze = z + (nn&~1);
 
@@ -1687,19 +1687,19 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 
         /* If an odd number of elements are to be computed in the two columns,
            compute the remaining elements here.  If result is symmetric, store
-           in symmetric place as well. */
+           in the symmetric places as well. */
 
         if (nn & 1) {
             double s0 = 0;
             double s1 = 0;
             double *q = y;
-            double *f = y+k;
+            int i = k;
             do {
                 double t = *r++;
                 s0 += t * *q;
                 s1 += t * *(q+k);
                 q += 1;
-            } while (q < f);
+            } while (--i > 0);
             *z = s0;
             *z2 = s1;
             z2 += 1;
@@ -1717,53 +1717,59 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
     }
 
     /* If m is odd, compute the final column of the result. If the result is
-       symmetric, also copy the first column to the first row. */
+       symmetric, only the final element needs to be computed, the others
+       having already been filled in. */
 
     if (m & 1) {
 
-        double *r = x;
-        double *e = z+n;
-        double *rz = z;
-
-        /* If n is odd, compute the first element of the first column of the
-           result here.  Also, move r to point to the second column of x, and
-           increment z.  For use if result is symmetric, advance rz to second
-           element of the first row (no need to copy 1st element to itself). */
-
-        if (n & 1) {
-            double s = 0;
-            double *q = y;
-            double *e = y+k;
-            do { s += *r++ * *q++; } while (q < e);
-            *z++ = s;
-            rz += n;
-        }
-
-        /* Compute the remainder of the first column of the result two
-           elements at a time (looking at two columns of x).  Note that 
-           e-z will be even.  If result is symmetric, copy elements to
-           the first row as well. */
-
-        while (z < e) {
-            double s0 = 0;
-            double s1 = 0;
+        if (sym) {
+            double *r = x+(n-1)*k;
             double *q = y;
             double *f = y+k;
+            double s = 0;
             do {
-                double t = *q;
-                s0 += *r * t;
-                s1 += *(r+k) * t;
-                r += 1;
-                q += 1;
+                s += *r++ * *q++;
             } while (q < f);
-            r += k;
-            *z++ = s0;
-            *z++ = s1;
-            if (sym) {
-                *rz = s0;
-                rz += n;
-                *rz = s1;
-                rz += n;
+            *(z+n-1) = s;
+        }
+
+        else {
+
+            double *r = x;
+            double *e = z+n;
+
+            /* If n is odd, compute the first element of the first
+               column of the result here.  Also, move r to point to
+               the second column of x, and increment z. */
+
+            if (n & 1) {
+                double s = 0;
+                double *q = y;
+                double *e = y+k;
+                do { s += *r++ * *q++; } while (q < e);
+                *z++ = s;
+            }
+
+            /* Compute the remainder of the first column of the result two
+               elements at a time (looking at two columns of x).  Note that 
+               e-z will be even.  If result is symmetric, copy elements to
+               the first row as well. */
+
+            while (z < e) {
+                double s0 = 0;
+                double s1 = 0;
+                double *q = y;
+                double *f = y+k;
+                do {
+                    double t = *q;
+                    s0 += *r * t;
+                    s1 += *(r+k) * t;
+                    r += 1;
+                    q += 1;
+                } while (q < f);
+                r += k;
+                *z++ = s0;
+                *z++ = s1;
             }
         }
     }
