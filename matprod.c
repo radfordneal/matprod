@@ -1634,8 +1634,11 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                 double *q, *qe;
                 __m256d S;
 #               if ALIGN_FORWARD & 8
-                    S = _mm256_set_pd 
-                           (r[k]*y[k], r[0]*y[k], r[k]*y[0], r[0]*y[0]);
+                    __m256d X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
+                    __m256d Y = _mm256_set_pd (y[k], y[k], y[0], y[0]);
+                    S = _mm256_mul_pd(X,Y);
+                        /* ie, _mm256_set_pd 
+                                 (r[k]*y[k], r[0]*y[k], r[k]*y[0], r[0]*y[0]) */
                     r += 1;
                     q = y+1;
                     qe = q+((k-1)&~3);
@@ -1646,16 +1649,16 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 #               endif
                 while (q < qe) {
                     __m256d Q0 = _mm256_loadu_pd(q);
-                    __m256d Qk = _mm256_loadu_pd(q+k);
                     __m256d R0 = _mm256_loadu_pd(r);
                     __m256d Rk = _mm256_loadu_pd(r+k);
+                    __m256d Qk = _mm256_loadu_pd(q+k);
                     __m256d M00 = _mm256_mul_pd (Q0, R0);
                     __m256d M0k = _mm256_mul_pd (Q0, Rk);
                     __m256d Mk0 = _mm256_mul_pd (Qk, R0);
                     __m256d Mkk = _mm256_mul_pd (Qk, Rk);
                     __m256d L0 = _mm256_unpacklo_pd (M00, M0k);
-                    __m256d Lk = _mm256_unpacklo_pd (Mk0, Mkk);
                     __m256d H0 = _mm256_unpackhi_pd (M00, M0k);
+                    __m256d Lk = _mm256_unpacklo_pd (Mk0, Mkk);
                     __m256d Hk = _mm256_unpackhi_pd (Mk0, Mkk);
                     S = _mm256_add_pd (S, 
                         _mm256_insertf128_pd(L0,_mm256_castpd256_pd128(Lk),1));
@@ -1693,8 +1696,14 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                 double *q, *qe;
                 __m128d S0, S1;
 #               if ALIGN_FORWARD & 8
-                    S0 = _mm_set_pd (r[k]*y[0], r[0]*y[0]);
-                    S1 = _mm_set_pd (r[k]*y[k], r[0]*y[k]);
+                    __m128d X, Y;
+                    X = _mm_set_pd (r[k], r[0]);
+                    Y = _mm_set_pd (y[0], y[0]);
+                    S0 = _mm_mul_pd(X,Y);
+                         /* ie, _mm_set_pd (r[k]*y[0], r[0]*y[0]) */
+                    Y = _mm_set_pd (y[k], y[k]);
+                    S1 = _mm_mul_pd(X,Y);
+                         /* ie, _mm_set_pd (r[k]*y[k], r[0]*y[k]) */
                     r += 1;
                     q = y+1;
                     qe = q+((k-1)&~1);
@@ -1706,20 +1715,20 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 #               endif
                 while (q < qe) {
                     __m128d Q0 = _mm_loadu_pd(q);
-                    __m128d Qk = _mm_loadu_pd(q+k);
                     __m128d R0 = _mm_loadu_pd(r);
                     __m128d Rk = _mm_loadu_pd(r+k);
+                    __m128d Qk = _mm_loadu_pd(q+k);
                     __m128d M00 = _mm_mul_pd (Q0, R0);
                     __m128d M0k = _mm_mul_pd (Q0, Rk);
                     __m128d Mk0 = _mm_mul_pd (Qk, R0);
                     __m128d Mkk = _mm_mul_pd (Qk, Rk);
                     __m128d L0 = _mm_unpacklo_pd (M00, M0k);
-                    __m128d Lk = _mm_unpacklo_pd (Mk0, Mkk);
                     __m128d H0 = _mm_unpackhi_pd (M00, M0k);
+                    __m128d Lk = _mm_unpacklo_pd (Mk0, Mkk);
                     __m128d Hk = _mm_unpackhi_pd (Mk0, Mkk);
                     S0 = _mm_add_pd (S0, L0);
-                    S1 = _mm_add_pd (S1, Lk);
                     S0 = _mm_add_pd (S0, H0);
+                    S1 = _mm_add_pd (S1, Lk);
                     S1 = _mm_add_pd (S1, Hk);
                     r += 2;
                     q += 2;
@@ -1729,7 +1738,6 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                     X = _mm_set_pd (r[k], r[0]);
                     Y = _mm_set_pd (q[0], q[0]);
                     S0 = _mm_add_pd (_mm_mul_pd(X,Y), S0);
-                    X = _mm_set_pd (r[k], r[0]);
                     Y = _mm_set_pd (q[k], q[k]);
                     S1 = _mm_add_pd (_mm_mul_pd(X,Y), S1);
                     r += 1;
