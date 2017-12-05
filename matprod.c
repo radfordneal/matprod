@@ -1599,13 +1599,19 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
         /* If the result is symmetric, skip down to the diagonal element
            of the first column.  Also, let nn be the number of elements to 
            compute for this column, and set r to the start of the column
-           of x to use. */
+           of x to use.  However, skip down one less than this if it
+           helps alignment. */
            
         if (sym) {
-            z += j;
-            z2 += j;
-            nn -= j;
-            r += j*k;
+#           if (CAN_USE_AVX || CAN_USE_SSE2) && ALIGN >= 16
+                int jj = j & ~1;
+#           else
+                int jj = j;
+#           endif
+            z += jj;
+            z2 += jj;
+            nn -= jj;
+            r += jj*k;
             rz = z;
         }
 
@@ -1696,8 +1702,8 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                     qe = q+(k-1);
 #               endif
                 while (q < qe) {
-                    __m128d Q0 = _mm_loadu_pd(q);
-                    __m128d R0 = _mm_loadu_pd(r);
+                    __m128d Q0 = _mm_loadA_pd(q);
+                    __m128d R0 = _mm_loadA_pd(r);
                     __m128d Rk = _mm_loadu_pd(r+k);
                     __m128d Qk = _mm_loadu_pd(q+k);
                     __m128d M00 = _mm_mul_pd (Q0, R0);
@@ -1725,7 +1731,11 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                     r += 1;
                     q += 1;
                 }
-                _mm_storeu_pd (z, S0);
+#               if ALIGN >= 16 && ALIGN_OFFSET%16 == 0
+                    _mm_store_pd (z, S0);
+#               else
+                    _mm_storeu_pd (z, S0);
+#               endif
                 _mm_storeu_pd (z2, S1);
                 if (sym) {
                     _mm_storeu_pd (rz, _mm_unpacklo_pd(S0,S1));
