@@ -152,8 +152,59 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 
     int e = i+k2-3;
 
-#   if CAN_USE_SSE2
+#   if CAN_USE_AVX
     {
+        int e = i+k2-7;
+        __m128d S = _mm_load_sd(&s);
+        __m256d AA;
+        __m128d A;
+        while (i < e) {
+            AA = _mm256_mul_pd (_mm256_loadu_pd(x+i), _mm256_loadu_pd(y+i));
+            A = _mm256_castpd256_pd128(AA);
+            S = _mm_add_sd (A, S);
+            A = _mm_unpackhi_pd (A, A);
+            S = _mm_add_sd (A, S);
+            A = _mm256_extractf128_pd(AA,1);
+            S = _mm_add_sd (A, S);
+            A = _mm_unpackhi_pd (A, A);
+            S = _mm_add_sd (A, S);
+            AA = _mm256_mul_pd (_mm256_loadu_pd(x+i+4), _mm256_loadu_pd(y+i+4));
+            A = _mm256_castpd256_pd128(AA);
+            S = _mm_add_sd (A, S);
+            A = _mm_unpackhi_pd (A, A);
+            S = _mm_add_sd (A, S);
+            A = _mm256_extractf128_pd(AA,1);
+            S = _mm_add_sd (A, S);
+            A = _mm_unpackhi_pd (A, A);
+            S = _mm_add_sd (A, S);
+            i += 8;
+        }
+        if (k2 & 4) {
+            AA = _mm256_mul_pd (_mm256_loadu_pd(x+i), _mm256_loadu_pd(y+i));
+            A = _mm256_castpd256_pd128(AA);
+            S = _mm_add_sd (A, S);
+            A = _mm_unpackhi_pd (A, A);
+            S = _mm_add_sd (A, S);
+            A = _mm256_extractf128_pd(AA,1);
+            S = _mm_add_sd (A, S);
+            A = _mm_unpackhi_pd (A, A);
+            S = _mm_add_sd (A, S);
+            i += 4;
+        }
+        if (k2 & 2) {
+            __m128d A;
+            A = _mm_mul_pd (_mm_loadA_pd(x+i), _mm_loadA_pd(y+i));
+            S = _mm_add_sd (A, S);
+            A = _mm_unpackhi_pd (A, A);
+            S = _mm_add_sd (A, S);
+            i += 2;
+        }
+        _mm_store_sd (&s, S);
+    }
+
+#   elif CAN_USE_SSE2
+    {
+        int e = i+k2-3;
         __m128d S = _mm_load_sd(&s);
         __m128d A;
         while (i < e) {
@@ -176,8 +227,10 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
         }
         _mm_store_sd (&s, S);
     }
+
 #   else  /* non-SIMD */
     {
+        int e = i+k2-3;
         while (i < e) {
             s += x[i+0] * y[i+0];
             s += x[i+1] * y[i+1];
