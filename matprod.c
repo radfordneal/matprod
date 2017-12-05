@@ -1498,10 +1498,10 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                 while (p < f) {
                     __m256d M0 = _mm256_mul_pd (Y, _mm256_loadu_pd(p));
                     __m256d M1 = _mm256_mul_pd (Y, _mm256_loadu_pd(p+4));
-                    __m256d Z = _mm256_hadd_pd (M0, M1);
-                    __m256d Zp = _mm256_permute2f128_pd (Z, Z, 0x21);
-                    _mm256_storeu_pd (z, 
-                      _mm256_permute_pd (_mm256_shuffle_pd (Zp, Z, 12), 9));
+                    __m256d Z = _mm256_hadd_pd 
+                                  (_mm256_permute2f128_pd (M0, M1, 0x20),
+                                   _mm256_permute2f128_pd (M0, M1, 0x31));
+                    _mm256_storeu_pd (z, Z);
                     p += 8;
                     z += 4;
                 }
@@ -1552,26 +1552,6 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                 if (n & 1) {
                     M0 = _mm_mul_pd (Y, _mm_loadu_pd(p));
                     _mm_store_sd (z, _mm_hadd_pd (M0, M0));
-                    p += 2;
-                    z += 1;
-                }
-                y += 2;
-            }
-        }
-#       elif 0
-        {
-            double *e = y + 2*m;
-            double *f = x + 2*(n&~1);
-            while (y < e) {
-                double *p = x;
-                while (p < f) {
-                    z[0] = p[0] * y[0] + p[1] * y[1];
-                    z[1] = p[2] * y[0] + p[3] * y[1];
-                    p += 4;
-                    z += 2;
-                }
-                if (n & 1) {
-                    z[0] = p[0] * y[0] + p[1] * y[1];
                     p += 2;
                     z += 1;
                 }
@@ -1660,14 +1640,10 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                     __m256d H0 = _mm256_unpackhi_pd (M00, M0k);
                     __m256d Lk = _mm256_unpacklo_pd (Mk0, Mkk);
                     __m256d Hk = _mm256_unpackhi_pd (Mk0, Mkk);
-                    S = _mm256_add_pd (S, 
-                        _mm256_insertf128_pd(L0,_mm256_castpd256_pd128(Lk),1));
-                    S = _mm256_add_pd (S, 
-                        _mm256_insertf128_pd(H0,_mm256_castpd256_pd128(Hk),1));
-                    S = _mm256_add_pd (S, 
-                        _mm256_insertf128_pd(Lk,_mm256_extractf128_pd(L0,1),0));
-                    S = _mm256_add_pd (S, 
-                        _mm256_insertf128_pd(Hk,_mm256_extractf128_pd(H0,1),0));
+                    S = _mm256_add_pd (S, _mm256_permute2f128_pd(L0, Lk, 0x20));
+                    S = _mm256_add_pd (S, _mm256_permute2f128_pd(H0, Hk, 0x20));
+                    S = _mm256_add_pd (S, _mm256_permute2f128_pd(L0, Lk, 0x31));
+                    S = _mm256_add_pd (S, _mm256_permute2f128_pd(H0, Hk, 0x31));
                     r += 4;
                     q += 4;
                 }
