@@ -98,9 +98,9 @@
    (ALIGN>=32 ? _mm256_store_pd(w,v) : _mm256_storeu_pd(w,v))
 
 #define _mm_loadAA_pd(w) \
-   (ALIGN>=16 && ALIGN_OFFSET==0 ? _mm_load_pd(w) : _mm_loadu_pd(w))
+   (ALIGN>=16 && ALIGN_OFFSET%16==0 ? _mm_load_pd(w) : _mm_loadu_pd(w))
 #define _mm_storeAA_pd(w,v) \
-   (ALIGN>=16 && ALIGN_OFFSET==0 ? _mm_store_pd(w,v) : _mm_storeu_pd(w,v))
+   (ALIGN>=16 && ALIGN_OFFSET%16==0 ? _mm_store_pd(w,v) : _mm_storeu_pd(w,v))
 #define _mm256_loadAA_pd(w) \
    (ALIGN>=32 && ALIGN_OFFSET==0 ? _mm256_load_pd(w) : _mm256_loadu_pd(w))
 #define _mm256_storeAA_pd(w,v) \
@@ -295,7 +295,43 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 set_to_zeros (z, m);
         }
         else {  /* k == 2 */
-#           if CAN_USE_SSE2
+#           if CAN_USE_AVX
+            {
+                __m256d T = _mm256_set_pd (x[1], x[0], x[1], x[0]);
+#               if ALIGN_FORWARD & 8
+                    __m128d A = _mm_mul_pd (_mm256_castpd256_pd128(T),
+                                            _mm_loadAA_pd(y));
+                    _mm_store_sd (z, _mm_hadd_pd(A,A));
+                    z += 1;
+                    y += 2;
+                    m -= 1;
+#               endif
+                double *f = y + 2*(m-3);
+                while (y < f) {
+                     __m256d A = _mm256_mul_pd (T, _mm256_loadAA_pd(y));
+                     __m256d B = _mm256_mul_pd (T, _mm256_loadAA_pd(y+4));
+                     _mm256_storeAA_pd(z,_mm256_hadd_pd
+                                         (_mm256_permute2f128_pd (A, B, 0x20),
+                                          _mm256_permute2f128_pd (A, B, 0x31)));
+                    y += 8;
+                    z += 4;
+                }
+                if (m & 2) {
+                     __m128d A = _mm_mul_pd (_mm256_castpd256_pd128(T), 
+                                             _mm_loadAA_pd(y));
+                     __m128d B = _mm_mul_pd (_mm256_castpd256_pd128(T), 
+                                             _mm_loadAA_pd(y+2));
+                     _mm_storeAA_pd (z, _mm_hadd_pd(A,B));
+                    y += 4;
+                    z += 2;
+                }
+                if (m & 1) {
+                    __m128d A = _mm_mul_pd (_mm256_castpd256_pd128(T),
+                                            _mm_loadAA_pd(y));
+                    _mm_store_sd (z, _mm_hadd_pd(A,A));
+                }
+            }
+#           elif CAN_USE_SSE2
             {
                 __m128d T = _mm_set_pd (x[1], x[0]);
                 __m128d A, B;
@@ -1641,24 +1677,24 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                 __m128d M0, M1;
                 double *p = x;
                 while (p < f) {
-                    M0 = _mm_mul_pd (Y, _mm_loadu_pd(p));
-                    M1 = _mm_mul_pd (Y, _mm_loadu_pd(p+2));
+                    M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p));
+                    M1 = _mm_mul_pd (Y, _mm_loadAA_pd(p+2));
                     _mm_storeu_pd (z, _mm_hadd_pd (M0, M1));
-                    M0 = _mm_mul_pd (Y, _mm_loadu_pd(p+4));
-                    M1 = _mm_mul_pd (Y, _mm_loadu_pd(p+6));
+                    M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p+4));
+                    M1 = _mm_mul_pd (Y, _mm_loadAA_pd(p+6));
                     _mm_storeu_pd (z+2, _mm_hadd_pd (M0, M1));
                     p += 8;
                     z += 4;
                 }
                 if (n & 2) {
-                    M0 = _mm_mul_pd (Y, _mm_loadu_pd(p));
-                    M1 = _mm_mul_pd (Y, _mm_loadu_pd(p+2));
+                    M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p));
+                    M1 = _mm_mul_pd (Y, _mm_loadAA_pd(p+2));
                     _mm_storeu_pd (z, _mm_hadd_pd (M0, M1));
                     p += 4;
                     z += 2;
                 }
                 if (n & 1) {
-                    M0 = _mm_mul_pd (Y, _mm_loadu_pd(p));
+                    M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p));
                     _mm_store_sd (z, _mm_hadd_pd (M0, M0));
                     p += 2;
                     z += 1;
