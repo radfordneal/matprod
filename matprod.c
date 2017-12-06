@@ -149,27 +149,32 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
 
     double s;
-    int k2, i;
+    int i;
 
 #   if (ALIGN_FORWARD & 8)
         s = x[0] * y[0];
-        k2 = k - 1;
         i = 1;
 #   else
         s = 0.0;
-        k2 = k;
         i = 0;
 #   endif
 
-    int e = i+k2-3;
+#   if (ALIGN_FORWARD & 16)
+        if (i+2 <= k) {
+            s += x[i] * y[i];
+            s += x[i+1] * y[i+1];
+            i += 2;
+        }
+#   endif
+
+    int k2 = k-i;
 
 #   if CAN_USE_AVX
     {
-        int e = i+k2-7;
         __m128d S = _mm_load_sd(&s);
         __m256d AA;
         __m128d A;
-        while (i < e) {
+        while (i < k-7) {
             AA = _mm256_mul_pd (_mm256_loadu_pd(x+i), _mm256_loadu_pd(y+i));
             A = _mm256_castpd256_pd128(AA);
             S = _mm_add_sd (A, S);
@@ -215,10 +220,9 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 
 #   elif CAN_USE_SSE2
     {
-        int e = i+k2-3;
         __m128d S = _mm_load_sd(&s);
         __m128d A;
-        while (i < e) {
+        while (i < k-3) {
             A = _mm_mul_pd (_mm_loadA_pd(x+i), _mm_loadA_pd(y+i));
             S = _mm_add_sd (A, S);
             A = _mm_unpackhi_pd (A, A);
@@ -241,8 +245,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 
 #   else  /* non-SIMD */
     {
-        int e = i+k2-3;
-        while (i < e) {
+        while (i < k-3) {
             s += x[i+0] * y[i+0];
             s += x[i+1] * y[i+1];
             s += x[i+2] * y[i+2];
