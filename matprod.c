@@ -302,12 +302,14 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             {
                 __m256d T = _mm256_set_pd (x[1], x[0], x[1], x[0]);
 #               if ALIGN_FORWARD & 8
+                {
                     __m128d A = _mm_mul_pd (_mm256_castpd256_pd128(T),
                                             _mm_loadAA_pd(y));
                     _mm_store_sd (z, _mm_hadd_pd(A,A));
                     z += 1;
                     y += 2;
                     m -= 1;
+                }
 #               endif
                 double *f = y + 2*(m-3);
                 while (y < f) {
@@ -324,7 +326,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                                              _mm_loadAA_pd(y));
                      __m128d B = _mm_mul_pd (_mm256_castpd256_pd128(T), 
                                              _mm_loadAA_pd(y+2));
-                     _mm_storeAA_pd (z, _mm_hadd_pd(A,B));
+                     _mm_storeA_pd (z, _mm_hadd_pd(A,B));
                     y += 4;
                     z += 2;
                 }
@@ -406,8 +408,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
            to the sums for each of the four dot products, adjusting p
            and y as they go.  A possible final set of four products is
            then added afterwards.  The sums may be initialized to zero
-           or to the result of one product, if that helps
-           alignment. */
+           or to the result of one product, if that helps alignment. */
 
         double *p;               /* Pointer that goes along pairs in x */
 
