@@ -66,16 +66,6 @@
       do {} while (0)
 #endif
 
-#define _mm_loadA_pd(w) \
-    (ALIGN>=16 ? _mm_load_pd(w) : _mm_loadu_pd(w))
-#define _mm_storeA_pd(w,v) \
-    (ALIGN>=16 ? _mm_store_pd(w,v) : _mm_storeu_pd(w,v))
-#define _mm256_loadA_pd(w) \
-    (ALIGN>=32 ? _mm256_load_pd(w) : _mm256_loadu_pd(w))
-#define _mm256_storeA_pd(w,v) \
-    (ALIGN>=32 ? _mm256_store_pd(w,v) : _mm256_storeu_pd(w,v))
-
-
 
 /* Set up SIMD definitions. */
 
@@ -94,6 +84,27 @@
 #if CAN_USE_SSE2 || CAN_USE_AVX
 #include <immintrin.h>
 #endif
+
+
+/* Versions of load and store that take advantage of known alignment. */
+
+#define _mm_loadA_pd(w) \
+   (ALIGN>=16 ? _mm_load_pd(w) : _mm_loadu_pd(w))
+#define _mm_storeA_pd(w,v) \
+   (ALIGN>=16 ? _mm_store_pd(w,v) : _mm_storeu_pd(w,v))
+#define _mm256_loadA_pd(w) \
+   (ALIGN>=32 ? _mm256_load_pd(w) : _mm256_loadu_pd(w))
+#define _mm256_storeA_pd(w,v) \
+   (ALIGN>=32 ? _mm256_store_pd(w,v) : _mm256_storeu_pd(w,v))
+
+#define _mm_loadAA_pd(w) \
+   (ALIGN>=16 && ALIGN_OFFSET==0 ? _mm_load_pd(w) : _mm_loadu_pd(w))
+#define _mm_storeAA_pd(w,v) \
+   (ALIGN>=16 && ALIGN_OFFSET==0 ? _mm_store_pd(w,v) : _mm_storeu_pd(w,v))
+#define _mm256_loadAA_pd(w) \
+   (ALIGN>=32 && ALIGN_OFFSET==0 ? _mm256_load_pd(w) : _mm256_loadu_pd(w))
+#define _mm256_storeAA_pd(w,v) \
+   (ALIGN>=32 && ALIGN_OFFSET==0 ? _mm256_store_pd(w,v) : _mm256_storeu_pd(w,v))
 
 
 /* Set vector z of length n to all zeros.  This is a degenerate special
@@ -284,25 +295,63 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 set_to_zeros (z, m);
         }
         else {  /* k == 2 */
-            double t[2] = { x[0], x[1] };
-            double *f = y + 2*(m-3);
-            while (y < f) {
-                z[0] = t[0] * y[0] + t[1] * y[1];
-                z[1] = t[0] * y[2] + t[1] * y[3];
-                z[2] = t[0] * y[4] + t[1] * y[5];
-                z[3] = t[0] * y[6] + t[1] * y[7];
-                y += 8;
-                z += 4;
+#           if CAN_USE_SSE2
+            {
+                __m128d T = _mm_set_pd (x[1], x[0]);
+                __m128d A, B;
+#               if ALIGN_FORWARD & 8
+                     A = _mm_mul_pd (T, _mm_loadAA_pd(y));
+                    _mm_store_sd (z, _mm_hadd_pd(A,A));
+                    z += 1;
+                    y += 2;
+                    m -= 1;
+#               endif
+                double *f = y + 2*(m-3);
+                while (y < f) {
+                     A = _mm_mul_pd (T, _mm_loadAA_pd(y));
+                     B = _mm_mul_pd (T, _mm_loadAA_pd(y+2));
+                     _mm_storeA_pd (z, _mm_hadd_pd(A,B));
+                     A = _mm_mul_pd (T, _mm_loadAA_pd(y+4));
+                     B = _mm_mul_pd (T, _mm_loadAA_pd(y+6));
+                     _mm_storeA_pd (z+2, _mm_hadd_pd(A,B));
+                    y += 8;
+                    z += 4;
+                }
+                if (m & 2) {
+                     A = _mm_mul_pd (T, _mm_loadAA_pd(y));
+                     B = _mm_mul_pd (T, _mm_loadAA_pd(y+2));
+                     _mm_storeA_pd (z, _mm_hadd_pd(A,B));
+                    y += 4;
+                    z += 2;
+                }
+                if (m & 1) {
+                     A = _mm_mul_pd (T, _mm_loadAA_pd(y));
+                    _mm_store_sd (z, _mm_hadd_pd(A,A));
+                }
             }
-            if (m & 2) {
-                z[0] = t[0] * y[0] + t[1] * y[1];
-                z[1] = t[0] * y[2] + t[1] * y[3];
-                y += 4;
-                z += 2;
+#           else  /* no SIMD */
+            {
+                double t[2] = { x[0], x[1] };
+                double *f = y + 2*(m-3);
+                while (y < f) {
+                    z[0] = t[0] * y[0] + t[1] * y[1];
+                    z[1] = t[0] * y[2] + t[1] * y[3];
+                    z[2] = t[0] * y[4] + t[1] * y[5];
+                    z[3] = t[0] * y[6] + t[1] * y[7];
+                    y += 8;
+                    z += 4;
+                }
+                if (m & 2) {
+                    z[0] = t[0] * y[0] + t[1] * y[1];
+                    z[1] = t[0] * y[2] + t[1] * y[3];
+                    y += 4;
+                    z += 2;
+                }
+                if (m & 1) {
+                    z[0] = t[0] * y[0] + t[1] * y[1];
+                }
             }
-            if (m & 1) {
-                z[0] = t[0] * y[0] + t[1] * y[1];
-            }
+#           endif
         }
 
         return;
