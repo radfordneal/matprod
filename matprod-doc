@@ -262,8 +262,9 @@ second and third matrices is computed (note the right associativity),
 with this computation repeated rep times (with identical results each
 time, one hopes).  The first, second, second-to-last, and last
 elements of the result are then printed on standard output, except
-that fewer elements are printed when only fewer exist.  (An #if in the
-source code can be changed to enable printing of the entire result.)
+that fewer elements are printed when only fewer exist.  If the
+environment variable PRINTWHOLE is defined (as anything), the entire
+result matrix is also printed.
 
 If the environment variable CHECK is defined (as anything), the
 results are checked against simple code, resulting in either "Check
