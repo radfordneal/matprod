@@ -321,8 +321,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    /* Specially handle cases where y has two or fewer rows (except 
-       that cases with k == 2 and m <= 2 two are handled below). */
+    /* Specially handle cases where y has two or fewer rows. */
 
     if (k <= 2) {
 
@@ -332,7 +331,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             else  /* k == 0 */
                 set_to_zeros (z, m);
         }
-        else if (m > 2) {  /* k == 2 */
+        else {  /* k == 2 */
 #           if CAN_USE_AVX
             {
                 __m256d T = _mm256_set_pd (x[1], x[0], x[1], x[0]);
@@ -346,8 +345,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     m -= 1;
                 }
 #               endif
-                double *f = y + 2*(m-3);
-                while (y < f) {
+                while (m >= 4) {
                      __m256d A = _mm256_mul_pd (T, _mm256_loadAA_pd(y));
                      __m256d B = _mm256_mul_pd (T, _mm256_loadAA_pd(y+4));
                      _mm256_storeAA_pd(z,_mm256_hadd_pd
@@ -355,8 +353,9 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                                           _mm256_permute2f128_pd (A, B, 0x31)));
                     y += 8;
                     z += 4;
+                    m -= 4;
                 }
-                if (m & 2) {
+                if (m > 1) {
                      __m128d A = _mm_mul_pd (_mm256_castpd256_pd128(T), 
                                              _mm_loadAA_pd(y));
                      __m128d B = _mm_mul_pd (_mm256_castpd256_pd128(T), 
@@ -364,8 +363,9 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                      _mm_storeA_pd (z, _mm_hadd_pd(A,B));
                     y += 4;
                     z += 2;
+                    m -= 2;
                 }
-                if (m & 1) {
+                if (m >= 1) {
                     __m128d A = _mm_mul_pd (_mm256_castpd256_pd128(T),
                                             _mm_loadAA_pd(y));
                     _mm_store_sd (z, _mm_hadd_pd(A,A));
@@ -382,8 +382,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     y += 2;
                     m -= 1;
 #               endif
-                double *f = y + 2*(m-3);
-                while (y < f) {
+                while (m >= 4) {
                      A = _mm_mul_pd (T, _mm_loadAA_pd(y));
                      B = _mm_mul_pd (T, _mm_loadAA_pd(y+2));
                      _mm_storeA_pd (z, _mm_hadd_pd(A,B));
@@ -392,15 +391,17 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                      _mm_storeA_pd (z+2, _mm_hadd_pd(A,B));
                     y += 8;
                     z += 4;
+                    m -= 4;
                 }
-                if (m & 2) {
+                if (m > 1) {
                      A = _mm_mul_pd (T, _mm_loadAA_pd(y));
                      B = _mm_mul_pd (T, _mm_loadAA_pd(y+2));
                      _mm_storeA_pd (z, _mm_hadd_pd(A,B));
                     y += 4;
                     z += 2;
+                    m -= 2;
                 }
-                if (m & 1) {
+                if (m >= 1) {
                      A = _mm_mul_pd (T, _mm_loadAA_pd(y));
                     _mm_store_sd (z, _mm_hadd_pd(A,A));
                 }
@@ -408,22 +409,23 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 #           else  /* no SIMD */
             {
                 double t[2] = { x[0], x[1] };
-                double *f = y + 2*(m-3);
-                while (y < f) {
+                while (m >= 4) {
                     z[0] = t[0] * y[0] + t[1] * y[1];
                     z[1] = t[0] * y[2] + t[1] * y[3];
                     z[2] = t[0] * y[4] + t[1] * y[5];
                     z[3] = t[0] * y[6] + t[1] * y[7];
                     y += 8;
                     z += 4;
+                    m -= 4;
                 }
-                if (m & 2) {
+                if (m > 1) {
                     z[0] = t[0] * y[0] + t[1] * y[1];
                     z[1] = t[0] * y[2] + t[1] * y[3];
                     y += 4;
                     z += 2;
+                    m -= 2;
                 }
-                if (m & 1) {
+                if (m >= 1) {
                     z[0] = t[0] * y[0] + t[1] * y[1];
                 }
             }
