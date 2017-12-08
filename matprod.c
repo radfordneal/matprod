@@ -152,7 +152,16 @@ static inline void scalar_multiply (double s,
 double matprod_vec_vec (double * MATPROD_RESTRICT x, 
                         double * MATPROD_RESTRICT y, int k)
 {
-    if (k <= 0) return 0.0;
+    /* Handle k = 0, 1, or 2 specially. */
+
+    if (k <= 2) {
+        if (k == 2)
+            return x[0] * y[0] + x[1] * y[1];
+        if (k == 1) 
+            return x[0] * y[0];
+        else  /* k <= 0 */
+            return 0.0;
+    }
 
     CHK_ALIGN(x); CHK_ALIGN(y);
 
@@ -161,6 +170,9 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 
     double s;
     int i;
+
+    /* Initialize the sum, s, perhaps doing a few products to improve alignment.
+       Set i to number of products done.  Note that k is at least 3 here. */
 
 #   if (ALIGN_FORWARD & 8)
         s = x[0] * y[0];
@@ -171,14 +183,16 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 #   endif
 
 #   if (ALIGN_FORWARD & 16)
-        if (i+2 <= k) {
-            s += x[i] * y[i];
-            s += x[i+1] * y[i+1];
-            i += 2;
-        }
+        s += x[i] * y[i];
+        s += x[i+1] * y[i+1];
+        i += 2;
 #   endif
 
-    int k2 = k-i;
+    /* Use an unrolled loop to add the remaining products to s, perhaps using
+       SSE2 or AVX instructions (possible final product is handled after
+       main code below). */
+
+    int k2 = k-i;  /* number of products left to do */
 
 #   if CAN_USE_AVX
     {
@@ -226,6 +240,11 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             S = _mm_add_sd (A, S);
             i += 2;
         }
+        if (k2 & 1) {
+            __m128d A;
+            A = _mm_mul_sd (_mm_load_sd(x+i), _mm_load_sd(y+i));
+            S = _mm_add_sd (A, S);
+        }
         _mm_store_sd (&s, S);
     }
 
@@ -251,6 +270,10 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             S = _mm_add_sd (A, S);
             i += 2;
         }
+        if (k2 & 1) {
+            A = _mm_mul_sd (_mm_load_sd(x+i), _mm_load_sd(y+i));
+            S = _mm_add_sd (A, S);
+        }
         _mm_store_sd (&s, S);
     }
 
@@ -268,12 +291,11 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             s += x[i+1] * y[i+1];
             i += 2;
         }
+        if (k2 & 1) {
+            s += x[i+0] * y[i+0];
+        }
     }
 #   endif
-
-    if (k2 & 1) {
-        s += x[i+0] * y[i+0];
-    }
 
     return s;
 }
