@@ -304,9 +304,10 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 /* Product of row vector (x) of length k and k x m matrix (y), result
    stored in z.
 
-   Cases where k is 0 or 1 are handled specially.  Otherwise, the
-   inner loop is unrollwed to do a set of four vector dot products,
-   and these dot products are also done with loop unrolling. */
+   Cases where k is 0, 1, or 2 are handled specially, perhaps using
+   SSE3 or AVX instructions.  Otherwise, the inner loop is unrolled to
+   do a set of four vector dot products, and these dot products are also
+   done with loop unrolling, perhaps using SSE2 or AVX instructions. */
 
 void matprod_vec_mat (double * MATPROD_RESTRICT x, 
                       double * MATPROD_RESTRICT y, 
@@ -320,7 +321,8 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    /* Specially handle cases where y has two or fewer rows. */
+    /* Specially handle cases where y has two or fewer rows (except 
+       that cases with k == 2 and m <= 2 two are handled below). */
 
     if (k <= 2) {
 
@@ -330,7 +332,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             else  /* k == 0 */
                 set_to_zeros (z, m);
         }
-        else {  /* k == 2 */
+        else if (m > 2) {  /* k == 2 */
 #           if CAN_USE_AVX
             {
                 __m256d T = _mm256_set_pd (x[1], x[0], x[1], x[0]);
@@ -441,7 +443,8 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
            to the sums for each of the four dot products, adjusting p
            and y as they go.  A possible final set of four products is
            then added afterwards.  The sums may be initialized to zero
-           or to the result of one product, if that helps alignment. */
+           or to the result of one product, if that helps alignment 
+           (k is at least one, zero k being handled above). */
 
         double *p;               /* Pointer that goes along pairs in x */
 
@@ -462,9 +465,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 k2 = k;
 #           endif
 
-            double *f = p+(k2-1);
-
-            while (p < f) {
+            while (k2 > 1) {
                 __m128d Y0, Y1, Y2, Y3;
                 __m256d T0, T1;
                 Y0 = _mm_loadA_pd(y);
@@ -483,9 +484,10 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 S = _mm256_add_pd (B, S);
                 p += 2;
                 y += 2;
+                k2 -= 2;
             }
 
-            if (k2 & 1) {
+            if (k2 >= 1) {
                 B = _mm256_set_pd (y[3*k], y[2*k], y[k], y[0]);
                 B = _mm256_mul_pd (_mm256_set1_pd(p[0]), B);
                 S = _mm256_add_pd (B, S);
@@ -520,12 +522,10 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             }
 #           endif
 
-            double *f = p+(k2-1);
-
 #           if ALIGN >= 16
             {
                 __m128d Z = _mm_setzero_pd();
-                while (p < f) {
+                while (k2 > 1) {
                     __m128d T0, T1, Q;
                     P = _mm_load_pd (p);
                     Q = _mm_unpacklo_pd (P, P);
@@ -546,11 +546,12 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     S1 = _mm_add_pd (S1, B);
                     p += 2;
                     y += 2;
+                    k2 -= 2;
                 }
             }
 #           else
             {
-                while (p < f) {
+                while (k2 > 1) {
                     P = _mm_set1_pd(p[0]);
                     B = _mm_set_pd (y[k], y[0]);
                     B = _mm_mul_pd (P, B);
@@ -567,11 +568,12 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     S1 = _mm_add_pd (S1, B);
                     p += 2;
                     y += 2;
+                    k2 -= 2;
                 }
             }
 #           endif
 
-            if (k2 & 1) {
+            if (k2 >= 1) {
                 P = _mm_set1_pd(p[0]);
                 B = _mm_mul_pd (P, _mm_set_pd (y[k], y[0]));
                 S0 = _mm_add_pd (S0, B);
@@ -589,9 +591,9 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 #       else  /* non-SIMD code */
         {
             double s[4] = { 0, 0, 0, 0 };
-            double *e = x+(k-1);
+            int k2 = k;
             p = x;
-            while (p < e) {
+            while (k2 > 1) {
                 s[0] += p[0] * y[0];
                 s[1] += p[0] * y[k];
                 s[2] += p[0] * y[2*k];
@@ -602,9 +604,10 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 s[3] += p[1] * y[3*k+1];
                 y += 2;
                 p += 2;
+                k2 -= 2;
             }
 
-            if (k & 1) {
+            if (k2 >= 1) {
                 s[0] += p[0] * y[0];
                 s[1] += p[0] * y[k];
                 s[2] += p[0] * y[2*k];
@@ -630,22 +633,23 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
        There appears to be no advantage to explicitly using AVX or SSE2 
        to do this. */
 
-    if (m & 2) {  /* Do two more dot products */
+    if (m > 1) {  /* Do two more dot products */
 
         double s[2] = { 0, 0 };
-        double *e = x+(k-1);
         double *p = x;
+        int k2 = k;
 
-        while (p < e) {
+        while (k2 > 1) {
             s[0] += p[0] * y[0];
             s[1] += p[0] * y[k];
             s[0] += p[1] * y[1];
             s[1] += p[1] * y[k+1];
             p += 2;
             y += 2;
+            k2 -= 2;
         }
 
-        if (k & 1) {
+        if (k2 >= 1) {
             s[0] += p[0] * y[0];
             s[1] += p[0] * y[k];
             y += 1;
@@ -658,20 +662,21 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         z += 2;
     }
 
-    if (m & 1) {  /* Do one final dot product */
+    if (m >= 1) {  /* Do one final dot product */
 
         double s = 0.0;
-        double *e = x+(k-1);
         double *p = x;
+        int k2 = k;
 
-        while (p < e) {
+        while (k2 > 1) {
             s += p[0] * y[0];
             s += p[1] * y[1];
             p += 2;
             y += 2;
+            k2 -= 2;
         }
 
-        if (k & 1) {
+        if (k2 >= 1) {
             s += p[0] * y[0];
         }
 
