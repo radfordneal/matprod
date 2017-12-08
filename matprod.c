@@ -660,6 +660,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         z[1] = s[1];
 
         z += 2;
+        m -= 2;
     }
 
     if (m >= 1) {  /* Do one final dot product */
