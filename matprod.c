@@ -172,7 +172,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
     int i;
 
     /* Initialize the sum, s, perhaps doing a few products to improve alignment.
-       Set i to number of products done.  Note that k is at least 3 here. */
+       Set i to the number of products done.  Note that k is at least 3 here. */
 
 #   if (ALIGN_FORWARD & 8)
         s = x[0] * y[0];
@@ -188,9 +188,9 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
         i += 2;
 #   endif
 
-    /* Use an unrolled loop to add the remaining products to s, perhaps using
-       SSE2 or AVX instructions (possible final product is handled after
-       main code below). */
+    /* Use an unrolled loop to add (most) remaining products to s,
+       perhaps using SSE2 or AVX instructions.  A possible final
+       product is handled after main code below. */
 
     int k2 = k-i;  /* number of products left to do */
 
@@ -200,7 +200,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
         __m256d AA;
         __m128d A;
         while (i < k-7) {
-            AA = _mm256_mul_pd (_mm256_loadu_pd(x+i), _mm256_loadu_pd(y+i));
+            AA = _mm256_mul_pd (_mm256_loadA_pd(x+i), _mm256_loadA_pd(y+i));
             A = _mm256_castpd256_pd128(AA);
             S = _mm_add_sd (A, S);
             A = _mm_unpackhi_pd (A, A);
@@ -209,7 +209,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             S = _mm_add_sd (A, S);
             A = _mm_unpackhi_pd (A, A);
             S = _mm_add_sd (A, S);
-            AA = _mm256_mul_pd (_mm256_loadu_pd(x+i+4), _mm256_loadu_pd(y+i+4));
+            AA = _mm256_mul_pd (_mm256_loadA_pd(x+i+4), _mm256_loadA_pd(y+i+4));
             A = _mm256_castpd256_pd128(AA);
             S = _mm_add_sd (A, S);
             A = _mm_unpackhi_pd (A, A);
@@ -221,7 +221,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             i += 8;
         }
         if (k2 & 4) {
-            AA = _mm256_mul_pd (_mm256_loadu_pd(x+i), _mm256_loadu_pd(y+i));
+            AA = _mm256_mul_pd (_mm256_loadA_pd(x+i), _mm256_loadA_pd(y+i));
             A = _mm256_castpd256_pd128(AA);
             S = _mm_add_sd (A, S);
             A = _mm_unpackhi_pd (A, A);
