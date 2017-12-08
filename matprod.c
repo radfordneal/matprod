@@ -75,18 +75,29 @@
 #define CAN_USE_SSE2 0
 #endif
 
+#if __SSE3__ && !defined(DISABLE_SIMD_CODE)
+#define CAN_USE_SSE3 1
+#else
+#define CAN_USE_SSE3 0
+#endif
+
 #if __AVX__ && !defined(DISABLE_SIMD_CODE) && !defined(DISABLE_AVX_CODE)
 #define CAN_USE_AVX 1
 #else
 #define CAN_USE_AVX 0
 #endif
 
-#if CAN_USE_SSE2 || CAN_USE_AVX
+#if CAN_USE_SSE2 || CAN_USE_SSE3 || CAN_USE_AVX
 #include <immintrin.h>
 #endif
 
 
-/* Versions of load and store that take advantage of known alignment. */
+/* Versions of load and store that take advantage of known alignment.
+   The loadA and storeA macros do an aligned load/store if ALIGN is
+   suitably large, assuming that any offset has been compensated for.
+   The loadAA and storeAA macro do an unalign load/store only if ALIGN
+   is suitably large and ALIGN_OFFSET is zero, as is appropriate for
+   an address that is one of the arguments plus a multiple of of ALIGN. */
 
 #define _mm_loadA_pd(w) \
    (ALIGN>=16 ? _mm_load_pd(w) : _mm_loadu_pd(w))
@@ -136,7 +147,7 @@ static inline void scalar_multiply (double s,
 /* Dot product of two vectors of length k. 
 
    An unrolled loop is used that adds four products to the sum each
-   iteration, perhaps using SSE2 instructions. */
+   iteration, perhaps using SSE2 or AVX instructions. */
 
 double matprod_vec_vec (double * MATPROD_RESTRICT x, 
                         double * MATPROD_RESTRICT y, int k)
@@ -336,7 +347,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     _mm_store_sd (z, _mm_hadd_pd(A,A));
                 }
             }
-#           elif CAN_USE_SSE2
+#           elif CAN_USE_SSE3
             {
                 __m128d T = _mm_set_pd (x[1], x[0]);
                 __m128d A, B;
@@ -1672,7 +1683,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                 y += 2;
             }
         }
-#       elif CAN_USE_SSE2
+#       elif CAN_USE_SSE3
         {
             double *e = y + 2*m;
             double *f = x + 2*(n-3);

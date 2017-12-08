@@ -21,20 +21,20 @@ Copyright (C) 2013, 2014, 2017 Radford M. Neal.
 The matprod library provides double-precision real matrix/vector by
 matrix/vector multiplication routines.  These routines are written
 with some attention to cache performance and other efficiency issues,
-and with optional code to take advantage of SSE2 and AVX instructions
-on Intel/AMD processors.  But they may not be as fast as the matrix
-multiplication routines in optimized BLAS libraries.
+and with optional code to take advantage of SSE2, SSE3, or AVX
+instructions on Intel/AMD processors.  But they may not be as fast as
+the matrix multiplication routines in optimized BLAS libraries.
 
 However, these routines have been written to produce the same results
 as the obvious matrix multiplication algorithms, that sequentially sum
 products of elements.  These routines do not bypass multiplications by
 zero, and therefore propagate Inf and NaN values properly.  They do
 not re-group additions assuming associativity holds, so round-off
-errors will be the same as for the obvious algorithms.  Note that
-producing the exact same result as the obvious methods requires that
-the routine be built disabling any contraction of floating-point
-operations (eg, fused multiply-add) that might be done by the
-compiler/processor.
+errors (and overflows) will be the same as for the obvious algorithms.
+Note that producing the exact same result as the obvious methods
+requires that the routine be built disabling any contraction of
+floating-point operations (eg, fused multiply-add) that might be done
+by the compiler/processor.
 
 There are also versions of these routines that allow for possible
 parallel operation in the context of a program using the helpers
@@ -79,23 +79,26 @@ These options include the following:
     MATPROD_NO_RESTRICT  If defined, the arguments of the matprod and
                          piped_matprod functions will not be declared
                          with the "restricted" keyword.  This is meant
-                         for testing - results are not guaranteed
-                         correct in any case if the output argument
-                         aliases with an input.
+                         for performance testing - results are not
+                         guaranteed correct in any case if the output
+                         argument aliases with an input.
 
-Some special code has been written to take advantage of the SSE2 or
-AVX instructions available on some Intel/AMD processors.  It will be
-used only if gcc or a gcc look-alike is used, since this code uses the
-builtin intrinsic functions that gcc provides.  This code can be
-disabled by defining the symbol DISABLE_SIMD_CODE with a compiler
+Some special code has been written to take advantage of the SSE2,
+SSE3, or AVX instructions available on some Intel/AMD processors.  It
+will be used only if gcc or a gcc look-alike is used, since this code
+uses the builtin intrinsic functions that gcc provides.  This code can
+be disabled by defining the symbol DISABLE_SIMD_CODE with a compiler
 option; just the AVX code can be disabled by defining DISABLE_AVX_CODE
-(in which case SSE2 code may still be used).  The SIMD code is
-automatically disabled when the routines are compiled for an
-architecture without the required instructions.  If compiled for some
-architectures, the SSE2 or AVX intrinsics may generate SSE3 or AVX2
-instructions, but intrinsics available only with SSE3 are not used in
-SSE2 code, and intrinsics available only with AVX2 are not used in AVX
-code.
+(in which case SSE2 or SSE3 code may still be used).  The SIMD code
+sections are automatically disabled when the routines are compiled for
+an architecture without the required instructions.
+
+Note that depending on what architecture the compiler is told to
+generate code for, instrinsics designed for SSE2 may actually generate
+AVX instructions (and perhaps similarly for SSE2/SSE3, SSE3/SSE4.1,
+AVX/AVX2, etc.).  However, code enabled for only SSE2, or SSE3, or AVX
+should work on a processor having only the specified level of SIMD
+instructions, if compiled for that processor.
 
 
 Procedures in matprod.c:
@@ -156,7 +159,7 @@ passed is one (though calling it directly will of course be slightly
 faster).  However, the cases of matprod_mat_mat, matprod_trans1, and
 matprod_trans2 that reduce to matprod_vec_vec, matprod_vec_mat, or
 matprod_mat_vec have not been optimized, on the assumption that the
-caller will call the specialized procedure when appropriate.
+caller will use the specialized procedure when appropriate.
 
 See the comments in matprod.c for details on the algorithms used.
 
@@ -252,25 +255,28 @@ These programs are invoked by a command such as the following:
     matprod-test rep [ "t" | "T" ] A B C D [ "t" | "T" ]
 
 Where the arguments (other than the optional "t" arguments) are
-positive integers.  In this example, three matrices of dimensions AxB,
-BxC, and CxD are created, and the product of the first of these
-matrices with the product of the second and third matrices is computed
-(note the right associativity), with this computation repeated rep
-times (with identical results each time, one hopes).  The first,
-second, second-to-last, and last elements of the result are then
-printed on standard output, with elements ordered downwards by column,
-except that fewer elements are printed when only fewer exist.  If the
-environment variable CHECK is defined (as anything), the results are
-checked against simple code, resulting in either "Check OK" being
-printed, or an error message followed by an abort.  Note that these
-checks take time, and so should not be done when running the test
-programs for performance evaluation.
+positive integers (or "v" or "V", as discussed below).  In this
+example, three matrices of dimensions AxB, BxC, and CxD are created,
+and the product of the first of these matrices with the product of the
+second and third matrices is computed (note the right associativity),
+with this computation repeated rep times (with identical results each
+time, one hopes).  The first, second, second-to-last, and last
+elements of the result are then printed on standard output, except
+that fewer elements are printed when only fewer exist.  (An #if in the
+source code can be changed to enable printing of the entire result.)
+
+If the environment variable CHECK is defined (as anything), the
+results are checked against simple code, resulting in either "Check
+OK" being printed, or an error message followed by an abort.  Note
+that these checks take time, and so should not be done when running
+the test programs for performance evaluation.
 
 In general, n>2 arguments (other than "t" or "T") follow the rep
 argument, defining the dimensions of n-1 matrices, which are used as
 operands in n-2 matrix multiplication operations, which associate to
 the right.  The result of each of these products will be a matrix with
-number of columns equal to the last argument.
+number of rows equal to the first argument and number of columns equal
+to the last argument.
 
 If the optional "t" or "T" argument precedes the matrix dimensions,
 the final multiply (by the AxB matrix in the example above) is done by
@@ -309,6 +315,10 @@ the results obtained should be the same with or without the "t"
 option, on either the left or right.  Since the initialization is
 invariant to transposition, the result with "T" instead of "t" is also
 the same.
+
+The matprod_outer procedure is never called directly from the test
+program, but will be called indirectly via matprod_mat_mat,
+matprod_trans1, or matrod_trans2 when the k argument is 1.
 
 Several test programs can be compiled using the supplied Makefile,
 including the following:
@@ -359,8 +369,8 @@ including the following:
 
       Like blas-test, except that BLAS routines are taken from the
       Linux library /usr/lib/libblas.so.3, which can be set to various
-      BLAS implementations using "update-alternatives".  The location
-      of this library may be different on some Linux systems.
+      BLAS implementations (eg, by using "update-alternatives").  The
+      location of this library may be different on some Linux systems.
 
 The blas test programs are not compiled by default, but are by "make
 blas".
