@@ -524,63 +524,28 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             }
 #           endif
 
-#           if ALIGN >= 16
-            {
-                __m128d Z = _mm_setzero_pd();
-                while (k2 > 1) {
-                    __m128d T0, T1, Q;
-                    P = _mm_load_pd (p);
-                    Q = _mm_unpacklo_pd (P, P);
-                    T0 = _mm_load_pd(y);
-                    B = _mm_mul_pd (Q, _mm_loadh_pd (T0, y+k));
-                    S0 = _mm_add_pd (S0, B);
-                    T1 = _mm_load_pd(y+2*k);
-                    Q = _mm_mul_pd (Q, _mm_loadh_pd (T1, y+3*k));
-                    S1 = _mm_add_pd (S1, Q);
-                    P = _mm_unpackhi_pd (P, P);
-                    Z = _mm_loadh_pd (Z, y+k+1);
-                    T0 = _mm_unpackhi_pd (T0, Z);
-                    B = _mm_mul_pd (P, T0);
-                    S0 = _mm_add_pd (S0, B);
-                    Z = _mm_loadh_pd (Z, y+3*k+1);
-                    T1 = _mm_unpackhi_pd (T1, Z);
-                    B = _mm_mul_pd (P, T1);
-                    S1 = _mm_add_pd (S1, B);
-                    p += 2;
-                    y += 2;
-                    k2 -= 2;
-                }
+            while (k2 > 1) {
+                __m128d T0, T1;
+                __m128d P = _mm_loadA_pd(p);
+                T0 = _mm_mul_pd (_mm_loadA_pd(y), P);
+                T1 = _mm_mul_pd (_mm_loadu_pd(y+k), P);
+                S0 = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S0);
+                S0 = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S0);
+                T0 = _mm_mul_pd (_mm_loadA_pd(y+2*k), P);
+                T1 = _mm_mul_pd (_mm_loadu_pd(y+3*k), P);
+                S1 = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S1);
+                S1 = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S1);
+                p += 2;
+                y += 2;
+                k2 -= 2;
             }
-#           else
-            {
-                while (k2 > 1) {
-                    P = _mm_set1_pd(p[0]);
-                    B = _mm_set_pd (y[k], y[0]);
-                    B = _mm_mul_pd (P, B);
-                    S0 = _mm_add_pd (S0, B);
-                    B = _mm_set_pd (y[3*k], y[2*k]);
-                    B = _mm_mul_pd (P, B);
-                    S1 = _mm_add_pd (S1, B);
-                    P = _mm_set1_pd(p[1]);
-                    B = _mm_set_pd (y[k+1], y[1]);
-                    B = _mm_mul_pd (P, B);
-                    S0 = _mm_add_pd (S0, B);
-                    B = _mm_set_pd (y[3*k+1], y[2*k+1]);
-                    B = _mm_mul_pd (P, B);
-                    S1 = _mm_add_pd (S1, B);
-                    p += 2;
-                    y += 2;
-                    k2 -= 2;
-                }
-            }
-#           endif
 
             if (k2 >= 1) {
-                P = _mm_set1_pd(p[0]);
-                B = _mm_mul_pd (P, _mm_set_pd (y[k], y[0]));
-                S0 = _mm_add_pd (S0, B);
-                B = _mm_mul_pd (P, _mm_set_pd (y[3*k], y[2*k]));
-                S1 = _mm_add_pd (S1, B);
+                __m128d B;
+                B = _mm_mul_pd (_mm_set1_pd(p[0]), _mm_set_pd(y[k],y[0]));
+                S0 = _mm_add_pd (B, S0);
+                B = _mm_mul_pd (_mm_set1_pd(p[0]), _mm_set_pd(y[3*k],y[2*k]));
+                S1 = _mm_add_pd (B, S1);
                 y += 1;
             }
 
@@ -684,7 +649,8 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             }
 
             if (k2 >= 1) {
-                __m128d B = _mm_mul_pd(_mm_set1_pd(p[0]),_mm_set_pd(y[k],y[0]));
+                __m128d B;
+                B = _mm_mul_pd (_mm_set1_pd(p[0]), _mm_set_pd(y[k],y[0]));
                 S = _mm_add_pd (B, S);
                 y += 1;
             }
@@ -742,7 +708,8 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             }
 
             if (k2 >= 1) {
-                __m128d B = _mm_mul_pd(_mm_set1_pd(p[0]),_mm_set_pd(y[k],y[0]));
+                __m128d B;
+                B = _mm_mul_pd (_mm_set1_pd(p[0]), _mm_set_pd(y[k],y[0]));
                 S = _mm_add_pd (B, S);
                 y += 1;
             }
