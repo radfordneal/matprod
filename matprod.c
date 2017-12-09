@@ -277,7 +277,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
         _mm_store_sd (&s, S);
     }
 
-#   else  /* non-SIMD */
+#   else  /* non-SIMD code */
     {
         while (i < k-3) {
             s += x[i+0] * y[i+0];
@@ -406,7 +406,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     _mm_store_sd (z, _mm_hadd_pd(A,A));
                 }
             }
-#           else  /* no SIMD */
+#           else  /* non-SIMD code */
             {
                 double t[2] = { x[0], x[1] };
                 while (m >= 4) {
@@ -524,7 +524,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             }
 #           endif
 
-            if (k & 1) {
+            if (k & 1) {  /* second column not aligned if first is */
                 while (k2 > 1) {
                     __m128d T0, T1;
                     __m128d P = _mm_loadA_pd(p);
@@ -541,7 +541,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     k2 -= 2;
                 }
             }
-            else {
+            else {  /* second column has same 16-byte alignment as first */
                 while (k2 > 1) {
                     __m128d T0, T1;
                     __m128d P = _mm_loadA_pd(p);
@@ -699,7 +699,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             }
 #           endif
 
-            if (k & 1) {
+            if (k & 1) {  /* second column not aligned if first is */
                 while (k2 >= 4) {
                     __m128d P, T0, T1;
                     P = _mm_loadA_pd(p);
@@ -717,7 +717,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                     k2 -= 4;
                 }
            }
-           else {
+           else {  /* second column has same 16-byte alignment as first */
                 while (k2 >= 4) {
                     __m128d P, T0, T1;
                     P = _mm_loadA_pd(p);
@@ -758,7 +758,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             y += k;
         }
 
-#       else
+#       else  /* non-SIMD code */
         {
             double s[2] = { 0, 0 };
             int k2 = k;
@@ -797,7 +797,17 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         double *p = x;
         int k2 = k;
 
-        while (k2 > 1) {
+        while (k2 >= 4) {
+            s += p[0] * y[0];
+            s += p[1] * y[1];
+            s += p[2] * y[2];
+            s += p[3] * y[3];
+            p += 4;
+            y += 4;
+            k2 -= 4;
+        }
+
+        if (k2 > 1) {
             s += p[0] * y[0];
             s += p[1] * y[1];
             p += 2;
