@@ -637,7 +637,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
         double *p;               /* Pointer that goes along pairs in x */
 
-#       if CAN_USE_SSE2
+#       if CAN_USE_AVX
         {
             __m128d S;
             int k2;
@@ -657,7 +657,80 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             }
 #           endif
 
-            while (k2 > 1) {
+            while (k2 >= 4) {
+                __m256d P = _mm256_loadAA_pd(p);
+                __m256d T0 = _mm256_mul_pd (_mm256_loadAA_pd(y), P);
+                __m256d T1 = _mm256_mul_pd (_mm256_loadAA_pd(y+k), P);
+                __m256d L = _mm256_unpacklo_pd(T0,T1);
+                __m256d H = _mm256_unpackhi_pd(T0,T1);
+                S = _mm_add_pd (_mm256_castpd256_pd128(L), S);
+                S = _mm_add_pd (_mm256_castpd256_pd128(H), S);
+                S = _mm_add_pd (_mm256_extractf128_pd(L,1), S);
+                S = _mm_add_pd (_mm256_extractf128_pd(H,1), S);
+                p += 4;
+                y += 4;
+                k2 -= 4;
+            }
+
+            if (k2 > 1) {
+                __m128d P = _mm_loadA_pd(p);
+                __m128d T0 = _mm_mul_pd (_mm_loadA_pd(y), P);
+                __m128d T1 = _mm_mul_pd (_mm_loadu_pd(y+k), P);
+                S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
+                S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
+                p += 2;
+                y += 2;
+                k2 -= 2;
+            }
+
+            if (k2 >= 1) {
+                __m128d B = _mm_mul_pd(_mm_set1_pd(p[0]),_mm_set_pd(y[k],y[0]));
+                S = _mm_add_pd (B, S);
+                y += 1;
+            }
+
+           _mm_storeu_pd (z, S);
+            y += k;
+        }
+
+#       elif CAN_USE_SSE2
+        {
+            __m128d S;
+            int k2;
+
+#           if (ALIGN_FORWARD & 8)
+            {
+                S = _mm_mul_pd (_mm_set1_pd(x[0]), _mm_set_pd (y[k], y[0]));
+                p = x+1;
+                y += 1;
+                k2 = k-1;
+            }
+#           else
+            {
+                S = _mm_setzero_pd ();
+                p = x;
+                k2 = k;
+            }
+#           endif
+
+            while (k2 >= 4) {
+                __m128d P, T0, T1;
+                P = _mm_loadA_pd(p);
+                T0 = _mm_mul_pd (_mm_loadA_pd(y), P);
+                T1 = _mm_mul_pd (_mm_loadu_pd(y+k), P);
+                S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
+                S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
+                P = _mm_loadA_pd(p+2);
+                T0 = _mm_mul_pd (_mm_loadA_pd(y+2), P);
+                T1 = _mm_mul_pd (_mm_loadu_pd(y+k+2), P);
+                S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
+                S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
+                p += 4;
+                y += 4;
+                k2 -= 4;
+            }
+
+           if (k2 > 1) {
                 __m128d P = _mm_loadA_pd(p);
                 __m128d T0 = _mm_mul_pd (_mm_loadA_pd(y), P);
                 __m128d T1 = _mm_mul_pd (_mm_loadu_pd(y+k), P);
