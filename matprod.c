@@ -631,35 +631,155 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
         m -= 4;
     }
 
-    /* Compute the final few dot products left over from the loop above. 
-       There appears to be no advantage to explicitly using AVX or SSE2 
-       to do this. */
+    /* Compute the final few dot products left over from the loop above. */
 
     if (m > 1) {  /* Do two more dot products */
 
-        double s[2] = { 0, 0 };
-        double *p = x;
-        int k2 = k;
+        double *p;               /* Pointer that goes along pairs in x */
 
-        while (k2 > 1) {
-            s[0] += p[0] * y[0];
-            s[1] += p[0] * y[k];
-            s[0] += p[1] * y[1];
-            s[1] += p[1] * y[k+1];
-            p += 2;
-            y += 2;
-            k2 -= 2;
+#       if CAN_USE_AVX
+        {
+            __m128d S;
+            int k2;
+
+#           if (ALIGN_FORWARD & 8)
+            {
+                S = _mm_mul_pd (_mm_set1_pd(x[0]), _mm_set_pd (y[k], y[0]));
+                p = x+1;
+                y += 1;
+                k2 = k-1;
+            }
+#           else
+            {
+                S = _mm_setzero_pd ();
+                p = x;
+                k2 = k;
+            }
+#           endif
+
+            while (k2 > 1) {
+                __m128d Y0, Y1, H, L;
+                __m256d T, B;
+                __m256d P = _mm256_set_pd (p[1], p[1], p[0], p[0]);
+                Y0 = _mm_loadA_pd(y);
+                Y1 = _mm_loadu_pd(y+k);
+                L = _mm_unpacklo_pd (Y0, Y1);
+                H = _mm_unpackhi_pd (Y0, Y1);
+                T = _mm256_castpd128_pd256 (L);
+                T = _mm256_insertf128_pd (T, H, 1);
+                B = _mm256_mul_pd (T, P);
+                S = _mm_add_pd (_mm256_castpd256_pd128(B), S);
+                S = _mm_add_pd (_mm256_extractf128_pd(B,1), S);
+                p += 2;
+                y += 2;
+                k2 -= 2;
+            }
+
+            if (k2 >= 1) {
+                __m128d B;
+                B = _mm_mul_pd (_mm_set1_pd(p[0]), _mm_set_pd (y[k], y[0]));
+                S = _mm_add_pd (B, S);
+                y += 1;
+            }
+
+           _mm_storeu_pd (z, S);
+            y += k;
         }
+#       elif CAN_USE_SSE2
+        {
+            __m128d S;
+            int k2;
 
-        if (k2 >= 1) {
-            s[0] += p[0] * y[0];
-            s[1] += p[0] * y[k];
-            y += 1;
+#           if (ALIGN_FORWARD & 8)
+            {
+                S = _mm_mul_pd (_mm_set1_pd(x[0]), _mm_set_pd (y[k], y[0]));
+                p = x+1;
+                y += 1;
+                k2 = k-1;
+            }
+#           else
+            {
+                S = _mm_setzero_pd ();
+                p = x;
+                k2 = k;
+            }
+#           endif
+
+#           if ALIGN >= 16
+            {
+                __m128d Z = _mm_setzero_pd();
+                while (k2 > 1) {
+                    __m128d B, T, Q, P;
+                    P = _mm_load_pd (p);
+                    Q = _mm_unpacklo_pd (P, P);
+                    T = _mm_load_pd(y);
+                    B = _mm_mul_pd (Q, _mm_loadh_pd (T, y+k));
+                    S = _mm_add_pd (S, B);
+                    P = _mm_unpackhi_pd (P, P);
+                    Z = _mm_loadh_pd (Z, y+k+1);
+                    T = _mm_unpackhi_pd (T, Z);
+                    B = _mm_mul_pd (P, T);
+                    S = _mm_add_pd (S, B);
+                    p += 2;
+                    y += 2;
+                    k2 -= 2;
+                }
+            }
+#           else
+            {
+                while (k2 > 1) {
+                    __m128d B, P;
+                    P = _mm_set1_pd(p[0]);
+                    B = _mm_set_pd (y[k], y[0]);
+                    B = _mm_mul_pd (P, B);
+                    S = _mm_add_pd (S, B);
+                    P = _mm_set1_pd(p[1]);
+                    B = _mm_set_pd (y[k+1], y[1]);
+                    B = _mm_mul_pd (P, B);
+                    S = _mm_add_pd (S, B);
+                    p += 2;
+                    y += 2;
+                    k2 -= 2;
+                }
+            }
+#           endif
+
+            if (k2 >= 1) {
+                __m128d B;
+                B = _mm_mul_pd (_mm_set1_pd(p[0]), _mm_set_pd (y[k], y[0]));
+                S = _mm_add_pd (S, B);
+                y += 1;
+            }
+
+            _mm_storeu_pd (z, S);
+            y += k;
         }
+#       else
+            double s[2] = { 0, 0 };
+            int k2 = k;
 
-        y += k;
-        z[0] = s[0];
-        z[1] = s[1];
+            p = x;
+
+            while (k2 > 1) {
+                s[0] += p[0] * y[0];
+                s[1] += p[0] * y[k];
+                s[0] += p[1] * y[1];
+                s[1] += p[1] * y[k+1];
+                p += 2;
+                y += 2;
+                k2 -= 2;
+            }
+
+            if (k2 >= 1) {
+                s[0] += p[0] * y[0];
+                s[1] += p[0] * y[k];
+                y += 1;
+            }
+
+            z[0] = s[0];
+            z[1] = s[1];
+            y += k;
+#       endif
 
         z += 2;
         m -= 2;
