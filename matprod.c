@@ -51,8 +51,10 @@
 #define ALIGN_FORWARD ((ALIGN - ALIGN_OFFSET) % ALIGN)
 
 #if ALIGN >= 8 && __GNUC__
+#define CAN_ASSUME_ALIGNED 1
 #define ASSUME_ALIGNED(x,a,o) __builtin_assume_aligned(x,a,o);
 #else
+#define CAN_ASSUME_ALIGNED 0
 #define ASSUME_ALIGNED(x,a,o) (x)
 #endif
 
@@ -1331,9 +1333,9 @@ void matprod_outer (double * MATPROD_RESTRICT x,
     if (n > 4) {
 
         const int n2 = (ALIGN_FORWARD & 8) ? n-1 : n;
-        double *e = z + n*m;
+        int j;
 
-        while (z < e) {
+        for (j = 0; j < m; j++) {
 
             double t = y[0];
             double *p;
@@ -1348,13 +1350,26 @@ void matprod_outer (double * MATPROD_RESTRICT x,
 
             double *f = p+(n2-3);
 
-            while (p < f) {
-                z[0] = p[0] * t;
-                z[1] = p[1] * t;
-                z[2] = p[2] * t;
-                z[3] = p[3] * t;
-                z += 4;
-                p += 4;
+            if (CAN_ASSUME_ALIGNED && ALIGN >= 16 && (j & n & 1) == 0) {
+                z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET&~15);
+                while (p < f) {
+                    z[0] = p[0] * t;
+                    z[1] = p[1] * t;
+                    z[2] = p[2] * t;
+                    z[3] = p[3] * t;
+                    z += 4;
+                    p += 4;
+                }
+            }
+            else {
+                while (p < f) {
+                    z[0] = p[0] * t;
+                    z[1] = p[1] * t;
+                    z[2] = p[2] * t;
+                    z[3] = p[3] * t;
+                    z += 4;
+                    p += 4;
+                }
             }
 
             if (n2 & 2) {
