@@ -45,10 +45,10 @@ ALOFF=-DALIGN_OFFSET=8
 all:	$(progs)
 	true
 
-blas-linux:	$(blas-progs) blas3 blas3-off
+blas-linux:	$(blas-progs) blas3-test blas3-off-test
 	true
 
-blas-mac:	$(blas-progs) blas4 blas4-off
+blas-mac:	$(blas-progs) blas4-test blas4-off-test
 	true
 
 # -----------------------------------------------------------------------------
