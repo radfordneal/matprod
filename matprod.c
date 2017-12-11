@@ -1350,12 +1350,23 @@ void matprod_outer (double * MATPROD_RESTRICT x,
 
             double *f = p+(n2-3);
 
-            if (CAN_ASSUME_ALIGNED && ALIGN >= 16 && 
-                  (ALIGN == 16 ? (((j&n) & 1) == 0) 
-                      /* 32 */ : (((j*n) & 3) == 0))) {
-                z = ASSUME_ALIGNED (z, ALIGN, (ALIGN_OFFSET & 8) 
-                                                ? (ALIGN_OFFSET+8)%ALIGN 
-                                                : ALIGN_OFFSET);
+            if (CAN_ASSUME_ALIGNED && ALIGN >= 32 && (((j*n) & 3) == 0)) {
+                z = ASSUME_ALIGNED (z, 32, (ALIGN_OFFSET & 8) 
+                                             ? (ALIGN_OFFSET+8)%32
+                                             : ALIGN_OFFSET%32);
+                while (p < f) {
+                    z[0] = p[0] * t;
+                    z[1] = p[1] * t;
+                    z[2] = p[2] * t;
+                    z[3] = p[3] * t;
+                    z += 4;
+                    p += 4;
+                }
+            }
+            else if (CAN_ASSUME_ALIGNED && ALIGN >= 16 && (((j&n) & 1) == 0)) {
+                z = ASSUME_ALIGNED (z, 16, (ALIGN_OFFSET & 8) 
+                                             ? (ALIGN_OFFSET+8)%16
+                                             : ALIGN_OFFSET%16);
                 while (p < f) {
                     z[0] = p[0] * t;
                     z[1] = p[1] * t;
