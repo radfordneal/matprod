@@ -9,6 +9,6 @@ for i in matprod matprod-off \
          matprod-noalign-nosimd matprod-off-noalign-nosimd \
          piped-matprod piped-matprod-nohelpers; do
   echo RUNNING TESTS FOR $i
-  run-tests$1 $i >& $i.out
-  tim $i
+  ../run-tests $i >& $i.out
+  ../tim $i
 done

@@ -49,22 +49,22 @@ progs=matprod-test matprod-off-test \
       piped-matprod-test piped-matprod-nohelpers-test
       # matprod-norestrict-test and piped-matprod-norestrict-test omitted
 
-blas-progs=blas0-test blas1-test blas2-test blas2-off-test
+blas-progs=blas0-test blas1-test blas1-off-test blas2-test blas2-off-test
 blas-linux-progs=blas3-test blas3-off-test
 blas-mac-progs=blas4-test blas4-off-test
 
-all:	$(progs) commit
+all:	$(progs) Commit
 	true
 
-blas-linux:	$(blas-progs) $(blas-linux-progs) commit
+blas-linux:	$(blas-progs) $(blas-linux-progs) Commit
 	true
 
-blas-mac:	$(blas-progs) $(blas-mac-progs) commit
+blas-mac:	$(blas-progs) $(blas-mac-progs) Commit
 	true
 
-commit:	../../matprod.c ../../piped-matprod.c ../../matprod.h ../../piped-matprod.h \
+Commit:	../../matprod.c ../../piped-matprod.c ../../matprod.h ../../piped-matprod.h \
 	../test.h ../test.c ../matprod-test.c ../blas-test.c
-	git log -1 >commit
+	git log -1 >Commit
 
 # -----------------------------------------------------------------------------
 
@@ -146,41 +146,45 @@ piped-matprod-norestrict-test:	../test.h ../test.c ../piped-matprod-test.c ../..
 
 # -----------------------------------------------------------------------------
 
-blas0-test:		../test.h ../test.c blas-test.c \
-			ddot.f dgemm.f dgemv.f dsyrk.f lsame.f
+blas0-test:		../test.h ../test.c ../blas-test.c \
+			../ddot.f ../dgemm.f ../dgemv.f ../dsyrk.f ../lsame.f
 	$(CC) $(II) $(CFLAGS) $(ALIGN) \
-		../test.c blas-test.c ddot.f dgemm.f dgemv.f dsyrk.f lsame.f \
+		../test.c ../blas-test.c ../ddot.f ../dgemm.f ../dgemv.f ../dsyrk.f ../lsame.f \
 		-o blas0-test
 
-blas1-test:		../test.h ../test.c blas-test.c blas1.f
-	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c blas-test.c blas1.f \
+blas1-test:		../test.h ../test.c ../blas-test.c ../blas1.f
+	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c ../blas-test.c ../blas1.f \
 		-lm -o blas1-test
 
-blas2-test:		../test.h ../test.c blas-test.c blas2.f
-	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c blas-test.c blas2.f \
+blas1-off-test:		../test.h ../test.c ../blas-test.c ../blas1.f
+	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c ../blas-test.c ../blas1.f \
+		-lm -o blas1-off-test
+
+blas2-test:		../test.h ../test.c ../blas-test.c ../blas2.f
+	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c ../blas-test.c ../blas2.f \
 		-lm -o blas2-test
 
-blas2-off-test:		../test.h ../test.c blas-test.c blas2.f
-	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c blas-test.c blas2.f \
+blas2-off-test:		../test.h ../test.c ../blas-test.c ../blas2.f
+	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c ../blas-test.c ../blas2.f \
 		-lm -o blas2-off-test
 
-blas3-test:		../test.h ../test.c blas-test.c
-	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c blas-test.c \
+blas3-test:		../test.h ../test.c ../blas-test.c
+	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c ../blas-test.c \
 		/usr/lib/libblas.so.3 \
 		-lm -o blas3-test
 
-blas3-off-test:		../test.h ../test.c blas-test.c
-	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c blas-test.c \
+blas3-off-test:		../test.h ../test.c ../blas-test.c
+	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c ../blas-test.c \
 		/usr/lib/libblas.so.3 \
 		-lm -o blas3-off-test
 
-blas4-test:		../test.h ../test.c blas-test.c
-	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c blas-test.c \
+blas4-test:		../test.h ../test.c ../blas-test.c
+	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c ../blas-test.c \
 		-framework Accelerate \
 		-lm -o blas4-test
 
-blas4-off-test:		../test.h ../test.c blas-test.c
-	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c blas-test.c \
+blas4-off-test:		../test.h ../test.c ../blas-test.c
+	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c ../blas-test.c \
 		-framework Accelerate \
 		-lm -o blas4-off-test
 

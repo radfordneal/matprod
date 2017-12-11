@@ -25,11 +25,11 @@
 # Uses the given test program (with -test appended) for a variety of
 # tests, displaying timing information, along with some headers.
 
-run-tests-vec-vec $1
-run-tests-vec-mat $1
-run-tests-mat-vec $1
-run-tests-mat-mat $1
-run-tests-outer $1
-run-tests-trans1 $1
-run-tests-trans2 $1
-run-tests-seq $1
+../run-tests-vec-vec $1
+../run-tests-vec-mat $1
+../run-tests-mat-vec $1
+../run-tests-mat-mat $1
+../run-tests-outer $1
+../run-tests-trans1 $1
+../run-tests-trans2 $1
+../run-tests-seq $1

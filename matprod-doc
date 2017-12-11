@@ -389,3 +389,6 @@ slower than just accessing the already-initialized matrix.)
 
 The shell file run-tests runs a series of tests, with the test program
 specified by its first argument (eg, "matprod", for matprod-test).
+For more details on the testing framework, look at the Makefile and
+shell files in the tests directory, and the subdirectories in it that
+record results on various systems used for testing.
