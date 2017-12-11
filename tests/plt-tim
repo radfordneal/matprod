@@ -13,4 +13,4 @@
    | sed "s/m/*60+/g" \
    | sed "s/^./cat(i<-i+1,(&/" | sed "s/.$/&),'\\\\n')/" \
    | sed "s/^$/i<-(i+9)%\\/%5\\*5;cat('\\\\n')/") | R --slave --vanilla \
-) | xgraph -zw 0 -lf 9x15 -tf 10x20 -nl -P -lny =900x450
+) | xgraph -zw 0 -gw 1 -lf 9x15 -tf 10x20 -nl -P -lny =900x450
