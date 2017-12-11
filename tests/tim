@@ -6,6 +6,7 @@
 # plus headers.
 
 for i in $@; do
-  grep "^[a-zA-Z]" $i.out | fgrep -v "user" | fgrep -v "sys"| fgrep -v "Check" \
-    | sed "s/real *//" | sed "s/0m//" | sed "s/s//" >$i.tim
+  j=`echo $i | sed s/\\.out//`
+  grep "^[a-zA-Z]" $j.out | fgrep -v "user" | fgrep -v "sys"| fgrep -v "Check" \
+    | sed "s/real *//" | sed "s/0m//" | sed "s/s//" >$j.tim
 done
