@@ -1,5 +1,5 @@
-commit fb9e3eae1ecded68c59ad5a9f833603aad9d079b
+commit e3a918d78ce52f17d835aee508b596e1b39d9281
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Dec 10 22:21:49 2017 -0500
+Date:   Mon Dec 11 10:31:05 2017 -0500
 
-    results for sandybridge
+    allow *.out with tim
