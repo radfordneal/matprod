@@ -469,7 +469,35 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                 k2 = k;
 #           endif
 
-            while (k2 > 1) {
+            while (k2 >= 4) {
+                __m256d Y0, Y1, Y2, Y3;
+                __m256d T0, T1;
+                Y0 = _mm256_loadu_pd(y);
+                Y1 = _mm256_loadu_pd(y+k);
+                Y2 = _mm256_loadu_pd(y+2*k);
+                Y3 = _mm256_loadu_pd(y+3*k);
+                T0 = _mm256_permute2f128_pd (Y0, Y2, 0x20);
+                T1 = _mm256_permute2f128_pd (Y1, Y3, 0x20);
+                B = _mm256_unpacklo_pd (T0, T1);
+                B = _mm256_mul_pd (_mm256_set1_pd(p[0]), B);
+                S = _mm256_add_pd (B, S);
+                B = _mm256_unpackhi_pd (T0, T1);
+                B = _mm256_mul_pd (_mm256_set1_pd(p[1]), B);
+                S = _mm256_add_pd (B, S);
+                T0 = _mm256_permute2f128_pd (Y0, Y2, 0x31);
+                T1 = _mm256_permute2f128_pd (Y1, Y3, 0x31);
+                B = _mm256_unpacklo_pd (T0, T1);
+                B = _mm256_mul_pd (_mm256_set1_pd(p[2]), B);
+                S = _mm256_add_pd (B, S);
+                B = _mm256_unpackhi_pd (T0, T1);
+                B = _mm256_mul_pd (_mm256_set1_pd(p[3]), B);
+                S = _mm256_add_pd (B, S);
+                p += 4;
+                y += 4;
+                k2 -= 4;
+            }
+
+            if (k2 > 1) {
                 __m128d Y0, Y1, Y2, Y3;
                 __m256d T0, T1;
                 Y0 = _mm_loadA_pd(y);
@@ -1839,6 +1867,8 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
    using two consecutive columns of x and two consecutive columns of y
    (except perhaps for odd columns at the end), thereby reducing the
    number of memory accesses.
+
+   The case of k=2 is handled specially.
 
    When the two operands are the same, the result will be a symmetric
    matrix.  After computation of each column or pair of columns, they
