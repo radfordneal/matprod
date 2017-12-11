@@ -1,5 +1,5 @@
-commit fb9e3eae1ecded68c59ad5a9f833603aad9d079b
+commit a9efe3ddc7c5c595a0f2caf0c27a57fa4c84e124
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Dec 10 22:21:49 2017 -0500
+Date:   Mon Dec 11 12:48:15 2017 -0500
 
-    results for sandybridge
+    change to plt-tim to get to show lines on fedora
