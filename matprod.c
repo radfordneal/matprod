@@ -648,7 +648,216 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
     /* Compute the final few dot products left over from the loop above. */
 
-    if (m > 1) {  /* Do two more dot products */
+    if (m == 3) {  /* Do three more dot products */
+
+        double *p;               /* Pointer that goes along pairs in x */
+#       if CAN_USE_AVX
+        {
+            __m128d S, S2;
+            int k2;
+
+#           if (ALIGN_FORWARD & 8)
+            {
+                __m128d P = _mm_set1_pd(x[0]);
+                S = _mm_mul_pd (P, _mm_set_pd (y[k], y[0]));
+                S2 = _mm_mul_sd (P, _mm_set_sd (y[2*k]));
+                p = x+1;
+                y += 1;
+                k2 = k-1;
+            }
+#           else
+            {
+                S = _mm_setzero_pd ();
+                S2 = _mm_setzero_pd ();
+                p = x;
+                k2 = k;
+            }
+#           endif
+
+            while (k2 >= 4) {
+                __m256d P = _mm256_loadu_pd(p);
+                __m256d T0 = _mm256_mul_pd (_mm256_loadu_pd(y), P);
+                __m256d T1 = _mm256_mul_pd (_mm256_loadu_pd(y+k), P);
+                __m256d T2 = _mm256_mul_pd (_mm256_loadu_pd(y+2*k), P);
+                __m128d L2 = _mm256_castpd256_pd128 (T2);
+                __m128d H2 = _mm256_extractf128_pd (T2, 1);
+                __m256d L = _mm256_unpacklo_pd(T0,T1);
+                __m256d H = _mm256_unpackhi_pd(T0,T1);
+                S = _mm_add_pd (_mm256_castpd256_pd128(L), S);
+                S = _mm_add_pd (_mm256_castpd256_pd128(H), S);
+                S = _mm_add_pd (_mm256_extractf128_pd(L,1), S);
+                S = _mm_add_pd (_mm256_extractf128_pd(H,1), S);
+                S2 = _mm_add_sd (L2, S2);
+                S2 = _mm_add_sd (_mm_unpackhi_pd(L2,L2), S2);
+                S2 = _mm_add_sd (H2, S2);
+                S2 = _mm_add_sd (_mm_unpackhi_pd(H2,H2), S2);
+                p += 4;
+                y += 4;
+                k2 -= 4;
+            }
+
+            if (k2 > 1) {
+                __m128d P = _mm_loadA_pd(p);
+                __m128d T0 = _mm_mul_pd (_mm_loadA_pd(y), P);
+                __m128d T1 = _mm_mul_pd (_mm_loadu_pd(y+k), P);
+                __m128d T2 = _mm_mul_pd (_mm_loadA_pd(y+2*k), P);
+                S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
+                S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
+                S2 = _mm_add_sd (T2, S2);
+                S2 = _mm_add_sd (_mm_unpackhi_pd(T2,T2), S2);
+                p += 2;
+                y += 2;
+                k2 -= 2;
+            }
+
+            if (k2 >= 1) {
+                __m128d P = _mm_set1_pd(p[0]);
+                __m128d B;
+                B = _mm_mul_pd (P, _mm_set_pd(y[k],y[0]));
+                S = _mm_add_pd (B, S);
+                B = _mm_mul_sd (P, _mm_set_sd (y[2*k]));
+                S2 = _mm_add_sd (B, S2);
+                y += 1;
+            }
+
+           _mm_storeu_pd (z, S);
+           _mm_store_sd (z+2, S2);
+        }
+
+#       elif CAN_USE_SSE2 /* && ALIGN >= 16 works, but slower?, when unaligned*/
+        {
+            __m128d S, S2;
+            int k2;
+
+#           if (ALIGN_FORWARD & 8)
+            {
+                __m128d P = _mm_set1_pd(x[0]);
+                S = _mm_mul_pd (P, _mm_set_pd (y[k], y[0]));
+                S2 = _mm_mul_sd (P, _mm_set_sd (y[2*k]));
+                p = x+1;
+                y += 1;
+                k2 = k-1;
+            }
+#           else
+            {
+                S = _mm_setzero_pd ();
+                S2 = _mm_setzero_pd ();
+                p = x;
+                k2 = k;
+            }
+#           endif
+
+            if (k & 1) {  /* second column not aligned if first is */
+                while (k2 >= 4) {
+                    __m128d P, T0, T1, T2;
+                    P = _mm_loadA_pd(p);
+                    T0 = _mm_mul_pd (_mm_loadA_pd(y), P);
+                    T1 = _mm_mul_pd (_mm_loadu_pd(y+k), P);
+                    T2 = _mm_mul_pd (_mm_loadA_pd(y+2*k), P);
+                    S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
+                    S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
+                    S2 = _mm_add_sd (T2, S2);
+                    S2 = _mm_add_sd (_mm_unpackhi_pd(T2,T2), S2);
+                    P = _mm_loadA_pd(p+2);
+                    T0 = _mm_mul_pd (_mm_loadA_pd(y+2), P);
+                    T1 = _mm_mul_pd (_mm_loadu_pd(y+k+2), P);
+                    T2 = _mm_mul_pd (_mm_loadA_pd(y+2*k+2), P);
+                    S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
+                    S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
+                    S2 = _mm_add_sd (T2, S2);
+                    S2 = _mm_add_sd (_mm_unpackhi_pd(T2,T2), S2);
+                    p += 4;
+                    y += 4;
+                    k2 -= 4;
+                }
+           }
+           else {  /* second column has same 16-byte alignment as first */
+                while (k2 >= 4) {
+                    __m128d P, T0, T1, T2;
+                    P = _mm_loadA_pd(p);
+                    T0 = _mm_mul_pd (_mm_loadA_pd(y), P);
+                    T1 = _mm_mul_pd (_mm_loadA_pd(y+k), P);
+                    T2 = _mm_mul_pd (_mm_loadA_pd(y+2*k), P);
+                    S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
+                    S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
+                    S2 = _mm_add_sd (T2, S2);
+                    S2 = _mm_add_sd (_mm_unpackhi_pd(T2,T2), S2);
+                    P = _mm_loadA_pd(p+2);
+                    T0 = _mm_mul_pd (_mm_loadA_pd(y+2), P);
+                    T1 = _mm_mul_pd (_mm_loadA_pd(y+k+2), P);
+                    T2 = _mm_mul_pd (_mm_loadA_pd(y+2*k+2), P);
+                    S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
+                    S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
+                    S2 = _mm_add_sd (T2, S2);
+                    S2 = _mm_add_sd (_mm_unpackhi_pd(T2,T2), S2);
+                    p += 4;
+                    y += 4;
+                    k2 -= 4;
+                }
+           }
+
+           if (k2 > 1) {
+                __m128d P = _mm_loadA_pd(p);
+                __m128d T0 = _mm_mul_pd (_mm_loadA_pd(y), P);
+                __m128d T1 = _mm_mul_pd (_mm_loadu_pd(y+k), P);
+                __m128d T2 = _mm_mul_pd (_mm_loadA_pd(y+2*k), P);
+                S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
+                S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
+                S2 = _mm_add_sd (T2, S2);
+                S2 = _mm_add_sd (_mm_unpackhi_pd(T2,T2), S2);
+                p += 2;
+                y += 2;
+                k2 -= 2;
+            }
+
+            if (k2 >= 1) {
+                __m128d P = _mm_set1_pd(p[0]);
+                __m128d B;
+                B = _mm_mul_pd (P, _mm_set_pd(y[k],y[0]));
+                S = _mm_add_pd (B, S);
+                B = _mm_mul_sd (P, _mm_set_sd (y[2*k]));
+                S2 = _mm_add_sd (B, S2);
+                y += 1;
+            }
+
+           _mm_storeu_pd (z, S);
+           _mm_store_sd (z+2, S2);
+        }
+
+#       else  /* non-SIMD code */
+        {
+            double s[3] = { 0, 0, 0 };
+            int k2 = k;
+
+            p = x;
+
+            while (k2 > 1) {
+                s[0] += p[0] * y[0];
+                s[1] += p[0] * y[k];
+                s[2] += p[0] * y[2*k];
+                s[0] += p[1] * y[1];
+                s[1] += p[1] * y[k+1];
+                s[2] += p[1] * y[2*k+1];
+                p += 2;
+                y += 2;
+                k2 -= 2;
+            }
+
+            if (k2 >= 1) {
+                s[0] += p[0] * y[0];
+                s[1] += p[0] * y[k];
+                s[2] += p[0] * y[2*k];
+                y += 1;
+            }
+
+            z[0] = s[0];
+            z[1] = s[1];
+            z[2] = s[2];
+        }
+#       endif
+    }
+
+    else if (m == 2) {  /* Do two more dot products */
 
         double *p;               /* Pointer that goes along pairs in x */
 
@@ -706,7 +915,6 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             }
 
            _mm_storeu_pd (z, S);
-            y += k;
         }
 
 #       elif CAN_USE_SSE2 && ALIGN >= 16 /* works, but slower, when unaligned */
@@ -785,7 +993,6 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
             }
 
            _mm_storeu_pd (z, S);
-            y += k;
         }
 
 #       else  /* non-SIMD code */
@@ -813,15 +1020,11 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
             z[0] = s[0];
             z[1] = s[1];
-            y += k;
         }
 #       endif
-
-        z += 2;
-        m -= 2;
     }
 
-    if (m >= 1) {  /* Do one final dot product */
+    else if (m == 1) {  /* Do one final dot product */
 
         double s = 0.0;
         double *p = x;
