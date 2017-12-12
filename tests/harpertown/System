@@ -1,1 +1,6 @@
-Mac Pro 3,1
+Mac Pro 3,1 (Early 2008)
+2 x Intel Xeon E5462 @ 2.8 GHz
+16 GBytes RAM (4 x 4GB 800 MHz DDR2-FB-DIMM)
+
+OS X El Capitan 10.11.6
+gcc 7.2.0 (via Homebrew)
