@@ -2074,7 +2074,7 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
    The case of k=2 is handled specially.
 
    When the two operands are the same, the result will be a symmetric
-   matrix.  After computation of each column or pair of columns, they
+   matrix.  During computation of each column or pair of columns, elements
    are copied to the corresponding rows; hence each column need be
    computed only from the diagonal element down. */
 
@@ -2198,7 +2198,6 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 
     while (j < me) {
 
-        double *z2 = z+n;
         double *r = x;
         int nn = n;
         double *rz;
@@ -2216,18 +2215,16 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                 int jj = j;
 #           endif
             z += jj;
-            z2 += jj;
             nn -= jj;
             r += jj*k;
             rz = z;
         }
 
-        /* Compute pairs of elements in the two columns being computed.  Copy
-           them to the corresponding rows too, if the result is symmetric. */
+        /* Compute pairs of elements in the two columns being
+           computed.  Copy them to the corresponding rows too, if the
+           result is symmetric. */
 
-        double *ze = z + (nn-1);
-
-        while (z < ze) {
+        while (nn > 1) {
 #           if CAN_USE_AVX
             {
                 double *q, *qe;
@@ -2276,7 +2273,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                 }
                 __m128d H = _mm256_extractf128_pd(S,1);
                 _mm_storeu_pd (z, _mm256_castpd256_pd128(S));
-                _mm_storeu_pd (z2, H);
+                _mm_storeu_pd (z+n, H);
                 if (sym) {
                     _mm_storeu_pd (rz, 
                        _mm_unpacklo_pd(_mm256_castpd256_pd128(S),H));
@@ -2343,7 +2340,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 #               else
                     _mm_storeu_pd (z, S0);
 #               endif
-                _mm_storeu_pd (z2, S1);
+                _mm_storeu_pd (z+n, S1);
                 if (sym) {
                     _mm_storeu_pd (rz, _mm_unpacklo_pd(S0,S1));
                     rz += n;
@@ -2369,9 +2366,9 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                     q += 1;
                 } while (--i > 0);
                 z[0] = s[0];
-                z2[0] = s[1];
+                z[n] = s[1];
                 z[1] = s[2];
-                z2[1] = s[3];
+                z[n+1] = s[3];
                 if (sym) {
                     rz[0] = s[0];
                     rz[1] = s[1];
@@ -2383,15 +2380,15 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 #           endif
 
             z += 2;
-            z2 += 2;
             r += k;
+            nn -= 2;
         }
 
         /* If an odd number of elements are to be computed in the two columns,
            compute the remaining elements here.  If result is symmetric, store
            in the symmetric places as well. */
 
-        if (nn & 1) {
+        if (nn >= 1) {
             double s0 = 0;
             double s1 = 0;
             double *q = y;
@@ -2402,18 +2399,18 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                 s1 += t * *(q+k);
                 q += 1;
             } while (--i > 0);
-            *z = s0;
-            *z2 = s1;
-            z2 += 1;
+            z[0] = s0;
+            z[n] = s1;
             if (sym) {
                 rz[0] = s0;
                 rz[1] = s1;
             }
+            z += 1;
         }
 
         /* Go on to next two columns of y. */
 
-        z = z2;
+        z += n;
         y += 2*k;
         j += 2;
     }
