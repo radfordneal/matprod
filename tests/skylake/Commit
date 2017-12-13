@@ -1,5 +1,5 @@
-commit 14f7ea6d6c7b86e159c8eb9afec76b502146624b
+commit 26e05e0ce76a13aba4f578e9755bd3826ae7ebf2
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Dec 11 21:28:24 2017 -0500
+Date:   Wed Dec 13 12:53:25 2017 -0500
 
-    compute 3 remaining columns in one go in matprod_vec_mat, perhaps using AVX/SSE2
+    have matprod_trans1 compute 8 elements at once
