@@ -98,8 +98,8 @@
    The loadA and storeA macros do an aligned load/store if ALIGN is
    suitably large, assuming that any offset has been compensated for.
    The loadAA and storeAA macro do an unalign load/store only if ALIGN
-   is suitably large and ALIGN_OFFSET is zero, as is appropriate for
-   an address that is one of the arguments plus a multiple of of ALIGN. */
+   is suitably large and ALIGN_OFFSET mod ALIGN is zero, as is appropriate 
+   for an address that is one of the arguments plus a multiple of of ALIGN. */
 
 #define _mm_loadA_pd(w) \
    (ALIGN>=16 ? _mm_load_pd(w) : _mm_loadu_pd(w))
@@ -2066,9 +2066,9 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
    with result stored in z.  
 
    Each element of the result is the dot product of a column of x and
-   a column of y.  Four elements of this result are computed at once,
-   using two consecutive columns of x and two consecutive columns of y
-   (except perhaps for odd columns at the end), thereby reducing the
+   a column of y.  Eight elements of this result are computed at once,
+   using four consecutive columns of x and two consecutive columns of
+   y (except perhaps for odd columns at the end), thereby reducing the
    number of memory accesses.
 
    The case of k=2 is handled specially.
@@ -2220,148 +2220,221 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
             rz = z;
         }
 
-        /* Compute pairs of elements in the two columns being
+        /* Compute sets of four elements in the two columns being
            computed.  Copy them to the corresponding rows too, if the
            result is symmetric. */
 
-        while (nn > 1) {
+        while (nn >= 4) {
+
 #           if CAN_USE_AVX
             {
                 double *q, *qe;
-                __m256d S;
+                __m256d S0, /* sums for first two cols of x times 2 cols of y */
+                        S1; /* sums for last two cols of x times 2 cols of y */
 #               if ALIGN_FORWARD & 8
-                    __m256d X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
                     __m256d Y = _mm256_set_pd (y[k], y[k], y[0], y[0]);
-                    S = _mm256_mul_pd(X,Y);
-                        /* ie, _mm256_set_pd 
+                    __m256d X;
+                    X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
+                    S0 = _mm256_mul_pd(X,Y);
+                         /* ie, _mm256_set_pd 
                                  (r[k]*y[k], r[0]*y[k], r[k]*y[0], r[0]*y[0]) */
+                    X = _mm256_set_pd (r[3*k], r[2*k], r[3*k], r[2*k]);
+                    S1 = _mm256_mul_pd(X,Y);
                     r += 1;
                     q = y+1;
                     qe = q+((k-1)-3);
 #               else
-                    S = _mm256_setzero_pd();
+                    S0 = _mm256_setzero_pd();
+                    S1 = _mm256_setzero_pd();
                     q = y;
                     qe = q+(k-3);
 #               endif
                 while (q < qe) {
+                    __m256d R0, Rk, M00, M0k, Mk0, Mkk, L0, H0, Lk, Hk;
                     __m256d Q0 = _mm256_loadu_pd(q);
-                    __m256d R0 = _mm256_loadu_pd(r);
-                    __m256d Rk = _mm256_loadu_pd(r+k);
                     __m256d Qk = _mm256_loadu_pd(q+k);
-                    __m256d M00 = _mm256_mul_pd (Q0, R0);
-                    __m256d M0k = _mm256_mul_pd (Q0, Rk);
-                    __m256d Mk0 = _mm256_mul_pd (Qk, R0);
-                    __m256d Mkk = _mm256_mul_pd (Qk, Rk);
-                    __m256d L0 = _mm256_unpacklo_pd (M00, M0k);
-                    __m256d H0 = _mm256_unpackhi_pd (M00, M0k);
-                    __m256d Lk = _mm256_unpacklo_pd (Mk0, Mkk);
-                    __m256d Hk = _mm256_unpackhi_pd (Mk0, Mkk);
-                    S = _mm256_add_pd (S, _mm256_permute2f128_pd(L0, Lk, 0x20));
-                    S = _mm256_add_pd (S, _mm256_permute2f128_pd(H0, Hk, 0x20));
-                    S = _mm256_add_pd (S, _mm256_permute2f128_pd(L0, Lk, 0x31));
-                    S = _mm256_add_pd (S, _mm256_permute2f128_pd(H0, Hk, 0x31));
+                    R0 = _mm256_loadu_pd(r);
+                    Rk = _mm256_loadu_pd(r+k);
+                    M00 = _mm256_mul_pd (Q0, R0);
+                    M0k = _mm256_mul_pd (Q0, Rk);
+                    Mk0 = _mm256_mul_pd (Qk, R0);
+                    Mkk = _mm256_mul_pd (Qk, Rk);
+                    L0 = _mm256_unpacklo_pd (M00, M0k);
+                    H0 = _mm256_unpackhi_pd (M00, M0k);
+                    Lk = _mm256_unpacklo_pd (Mk0, Mkk);
+                    Hk = _mm256_unpackhi_pd (Mk0, Mkk);
+                    S0 = _mm256_add_pd(S0,_mm256_permute2f128_pd(L0, Lk, 0x20));
+                    S0 = _mm256_add_pd(S0,_mm256_permute2f128_pd(H0, Hk, 0x20));
+                    S0 = _mm256_add_pd(S0,_mm256_permute2f128_pd(L0, Lk, 0x31));
+                    S0 = _mm256_add_pd(S0,_mm256_permute2f128_pd(H0, Hk, 0x31));
+                    R0 = _mm256_loadu_pd(r+2*k);
+                    Rk = _mm256_loadu_pd(r+3*k);
+                    M00 = _mm256_mul_pd (Q0, R0);
+                    M0k = _mm256_mul_pd (Q0, Rk);
+                    Mk0 = _mm256_mul_pd (Qk, R0);
+                    Mkk = _mm256_mul_pd (Qk, Rk);
+                    L0 = _mm256_unpacklo_pd (M00, M0k);
+                    H0 = _mm256_unpackhi_pd (M00, M0k);
+                    Lk = _mm256_unpacklo_pd (Mk0, Mkk);
+                    Hk = _mm256_unpackhi_pd (Mk0, Mkk);
+                    S1 = _mm256_add_pd(S1,_mm256_permute2f128_pd(L0, Lk, 0x20));
+                    S1 = _mm256_add_pd(S1,_mm256_permute2f128_pd(H0, Hk, 0x20));
+                    S1 = _mm256_add_pd(S1,_mm256_permute2f128_pd(L0, Lk, 0x31));
+                    S1 = _mm256_add_pd(S1,_mm256_permute2f128_pd(H0, Hk, 0x31));
                     r += 4;
                     q += 4;
                 }
                 qe = y+k;
                 while (q < qe) {
-                    __m256d X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
-                    __m256d Y = _mm256_set_pd (q[k], q[k], q[0], q[0]);
-                    S = _mm256_add_pd (_mm256_mul_pd(X,Y), S);
+                    __m256d Q = _mm256_set_pd (q[k], q[k], q[0], q[0]);
+                    __m256d X;
+                    X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
+                    S0 = _mm256_add_pd (_mm256_mul_pd(X,Q), S0);
+                    X = _mm256_set_pd (r[3*k], r[2*k], r[3*k], r[2*k]);
+                    S1 = _mm256_add_pd (_mm256_mul_pd(X,Q), S1);
                     r += 1;
                     q += 1;
                 }
-                __m128d H = _mm256_extractf128_pd(S,1);
-                _mm_storeu_pd (z, _mm256_castpd256_pd128(S));
-                _mm_storeu_pd (z+n, H);
+                __m128d H0 = _mm256_extractf128_pd(S0,1);
+                _mm_storeu_pd (z, _mm256_castpd256_pd128(S0));
+                _mm_storeu_pd (z+n, H0);
+                __m128d H1 = _mm256_extractf128_pd(S1,1);
+                _mm_storeu_pd (z+2, _mm256_castpd256_pd128(S1));
+                _mm_storeu_pd (z+n+2, H1);
                 if (sym) {
                     _mm_storeu_pd (rz, 
-                       _mm_unpacklo_pd(_mm256_castpd256_pd128(S),H));
+                       _mm_unpacklo_pd(_mm256_castpd256_pd128(S0),H0));
                     rz += n;
                     _mm_storeu_pd (rz, 
-                       _mm_unpackhi_pd(_mm256_castpd256_pd128(S),H));
+                       _mm_unpackhi_pd(_mm256_castpd256_pd128(S0),H0));
+                    rz += n;
+                    _mm_storeu_pd (rz, 
+                       _mm_unpacklo_pd(_mm256_castpd256_pd128(S1),H1));
+                    rz += n;
+                    _mm_storeu_pd (rz, 
+                       _mm_unpackhi_pd(_mm256_castpd256_pd128(S1),H1));
                     rz += n;
                 }
             }
+
 #           elif CAN_USE_SSE2
             {
                 double *q, *qe;
-                __m128d S0, S1;
+                __m128d S0,   /* sums for first two x cols times first y col */
+                        S1,   /* sums for first two x cols times second y col */
+                        S2,   /* sums for last two x cols times first y col */
+                        S3;   /* sums for last two x cols times second y col */
 #               if ALIGN_FORWARD & 8
-                    __m128d X, Y;
+                    __m128d X, Y0, Yk;
                     X = _mm_set_pd (r[k], r[0]);
-                    Y = _mm_set_pd (y[0], y[0]);
-                    S0 = _mm_mul_pd(X,Y);
+                    Y0 = _mm_set_pd (y[0], y[0]);
+                    Yk = _mm_set_pd (y[k], y[k]);
+                    S0 = _mm_mul_pd(X,Y0);
                          /* ie, _mm_set_pd (r[k]*y[0], r[0]*y[0]) */
-                    Y = _mm_set_pd (y[k], y[k]);
-                    S1 = _mm_mul_pd(X,Y);
+                    S1 = _mm_mul_pd(X,Yk);
                          /* ie, _mm_set_pd (r[k]*y[k], r[0]*y[k]) */
+                    X = _mm_set_pd (r[3*k], r[2*k]);
+                    S2 = _mm_mul_pd(X,Y0);
+                         /* ie, _mm_set_pd (r[3*k]*y[0], r[2*k]*y[0]) */
+                    S3 = _mm_mul_pd(X,Yk);
+                         /* ie, _mm_set_pd (r[3*k]*y[k], r[2*k]*y[k]) */
                     r += 1;
                     q = y+1;
                     qe = q+((k-1)-1);
 #               else
                     S0 = _mm_setzero_pd();
                     S1 = _mm_setzero_pd();
+                    S2 = _mm_setzero_pd();
+                    S3 = _mm_setzero_pd();
                     q = y;
                     qe = q+(k-1);
 #               endif
                 while (q < qe) {
+                    __m128d R0, Rk, M00, M0k, Mk0, Mkk, L0, H0, Lk, Hk;
                     __m128d Q0 = _mm_loadA_pd(q);
-                    __m128d R0 = _mm_loadA_pd(r);
-                    __m128d Rk = _mm_loadu_pd(r+k);
                     __m128d Qk = _mm_loadu_pd(q+k);
-                    __m128d M00 = _mm_mul_pd (Q0, R0);
-                    __m128d M0k = _mm_mul_pd (Q0, Rk);
-                    __m128d Mk0 = _mm_mul_pd (Qk, R0);
-                    __m128d Mkk = _mm_mul_pd (Qk, Rk);
-                    __m128d L0 = _mm_unpacklo_pd (M00, M0k);
-                    __m128d H0 = _mm_unpackhi_pd (M00, M0k);
-                    __m128d Lk = _mm_unpacklo_pd (Mk0, Mkk);
-                    __m128d Hk = _mm_unpackhi_pd (Mk0, Mkk);
+                    R0 = _mm_loadA_pd(r);
+                    Rk = _mm_loadu_pd(r+k);
+                    M00 = _mm_mul_pd (Q0, R0);
+                    M0k = _mm_mul_pd (Q0, Rk);
+                    Mk0 = _mm_mul_pd (Qk, R0);
+                    Mkk = _mm_mul_pd (Qk, Rk);
+                    L0 = _mm_unpacklo_pd (M00, M0k);
+                    H0 = _mm_unpackhi_pd (M00, M0k);
+                    Lk = _mm_unpacklo_pd (Mk0, Mkk);
+                    Hk = _mm_unpackhi_pd (Mk0, Mkk);
                     S0 = _mm_add_pd (S0, L0);
                     S0 = _mm_add_pd (S0, H0);
                     S1 = _mm_add_pd (S1, Lk);
                     S1 = _mm_add_pd (S1, Hk);
+                    R0 = _mm_loadA_pd(r+2*k);
+                    Rk = _mm_loadu_pd(r+3*k);
+                    M00 = _mm_mul_pd (Q0, R0);
+                    M0k = _mm_mul_pd (Q0, Rk);
+                    Mk0 = _mm_mul_pd (Qk, R0);
+                    Mkk = _mm_mul_pd (Qk, Rk);
+                    L0 = _mm_unpacklo_pd (M00, M0k);
+                    H0 = _mm_unpackhi_pd (M00, M0k);
+                    Lk = _mm_unpacklo_pd (Mk0, Mkk);
+                    Hk = _mm_unpackhi_pd (Mk0, Mkk);
+                    S2 = _mm_add_pd (S2, L0);
+                    S2 = _mm_add_pd (S2, H0);
+                    S3 = _mm_add_pd (S3, Lk);
+                    S3 = _mm_add_pd (S3, Hk);
                     r += 2;
                     q += 2;
                 }
                 if (q < y+k) {
-                    __m128d X, Y;
+                    __m128d X;
+                    __m128d Q0 = _mm_set_pd (q[0], q[0]);
+                    __m128d Qk = _mm_set_pd (q[k], q[k]);
                     X = _mm_set_pd (r[k], r[0]);
-                    Y = _mm_set_pd (q[0], q[0]);
-                    S0 = _mm_add_pd (_mm_mul_pd(X,Y), S0);
-                    Y = _mm_set_pd (q[k], q[k]);
-                    S1 = _mm_add_pd (_mm_mul_pd(X,Y), S1);
+                    S0 = _mm_add_pd (_mm_mul_pd(X,Q0), S0);
+                    S1 = _mm_add_pd (_mm_mul_pd(X,Qk), S1);
+                    X = _mm_set_pd (r[3*k], r[2*k]);
+                    S2 = _mm_add_pd (_mm_mul_pd(X,Q0), S2);
+                    S3 = _mm_add_pd (_mm_mul_pd(X,Qk), S3);
                     r += 1;
                     q += 1;
                 }
-#               if ALIGN >= 16 && ALIGN_OFFSET%16 == 0
-                    _mm_store_pd (z, S0);
-#               else
-                    _mm_storeu_pd (z, S0);
-#               endif
+                _mm_storeAA_pd (z, S0);
                 _mm_storeu_pd (z+n, S1);
+                _mm_storeAA_pd (z+2, S2);
+                _mm_storeu_pd (z+n+2, S3);
                 if (sym) {
                     _mm_storeu_pd (rz, _mm_unpacklo_pd(S0,S1));
                     rz += n;
                     _mm_storeu_pd (rz, _mm_unpackhi_pd(S0,S1));
                     rz += n;
+                    _mm_storeu_pd (rz, _mm_unpacklo_pd(S2,S3));
+                    rz += n;
+                    _mm_storeu_pd (rz, _mm_unpackhi_pd(S2,S3));
+                    rz += n;
                 }
             }
-#           else
+
+#           else  /* non-SIMD code */
             {
                 double s[4] = { 0, 0, 0, 0 };
+                double s2[4] = { 0, 0, 0, 0 };
                 double *q = y;
                 int i = k;
                 do {
-                    double t = *r;
-                    double t2 = *(r+k);
+                    double t, t2;
                     double u = *q;
                     double u2 = *(q+k);
+                    t = *r;
+                    t2 = *(r+k);
                     s[0] += t * u;
                     s[1] += t * u2;
                     s[2] += t2 * u;
                     s[3] += t2 * u2;
+                    t = *(r+2*k);
+                    t2 = *(r+3*k);
+                    s2[0] += t * u;
+                    s2[1] += t * u2;
+                    s2[2] += t2 * u;
+                    s2[3] += t2 * u2;
                     r += 1;
                     q += 1;
                 } while (--i > 0);
@@ -2369,24 +2442,63 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                 z[n] = s[1];
                 z[1] = s[2];
                 z[n+1] = s[3];
+                z[2] = s2[0];
+                z[n+2] = s2[1];
+                z[3] = s2[2];
+                z[n+3] = s2[3];
                 if (sym) {
                     rz[0] = s[0];
                     rz[1] = s[1];
                     rz[n] = s[2];
                     rz[n+1] = s[3];
-                    rz += 2*n;
+                    rz[2*n] = s2[0];
+                    rz[2*n+1] = s2[1];
+                    rz[3*n] = s2[2];
+                    rz[3*n+1] = s2[3];
+                    rz += 4*n;
                 }
             }
 #           endif
 
+            z += 4;
+            r += 3*k;
+            nn -= 4;
+        }
+
+        /* Compute the remaining elements of the columns here.  If result
+           is symmetric, store in the symmetric places as well. */
+
+        if (nn > 1) {
+            double s[4] = { 0, 0, 0, 0 };
+            double *q = y;
+            int i = k;
+            do {
+                double t = *r;
+                double t2 = *(r+k);
+                double u = *q;
+                double u2 = *(q+k);
+                s[0] += t * u;
+                s[1] += t * u2;
+                s[2] += t2 * u;
+                s[3] += t2 * u2;
+                r += 1;
+                q += 1;
+            } while (--i > 0);
+            z[0] = s[0];
+            z[n] = s[1];
+            z[1] = s[2];
+            z[n+1] = s[3];
+            if (sym) {
+                rz[0] = s[0];
+                rz[1] = s[1];
+                rz[n] = s[2];
+                rz[n+1] = s[3];
+                rz += 2*n;
+            }
             z += 2;
             r += k;
             nn -= 2;
         }
-
-        /* If an odd number of elements are to be computed in the two columns,
-           compute the remaining elements here.  If result is symmetric, store
-           in the symmetric places as well. */
 
         if (nn >= 1) {
             double s0 = 0;
@@ -2404,8 +2516,10 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
             if (sym) {
                 rz[0] = s0;
                 rz[1] = s1;
+                /* rz += n; */
             }
             z += 1;
+            /* nn -= 1; */
         }
 
         /* Go on to next two columns of y. */
