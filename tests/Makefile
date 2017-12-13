@@ -65,6 +65,7 @@ blas-mac:	$(blas-progs) $(blas-mac-progs) Commit
 Commit:	../../matprod.c ../../piped-matprod.c ../../matprod.h ../../piped-matprod.h \
 	../test.h ../test.c ../matprod-test.c ../blas-test.c
 	git log -1 >Commit
+	git diff ../../matprod.c ../../piped-matprod.c >>Commit
 
 # -----------------------------------------------------------------------------
 
