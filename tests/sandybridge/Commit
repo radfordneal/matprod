@@ -1,5 +1,5 @@
-commit 757caf908e89bf9bfeaf9bf3cd550e2c8c145d91
+commit 102ff913a2eeb0ed6fd3d610f10d84d48a80a155
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Wed Dec 13 12:54:20 2017 -0500
+Date:   Wed Dec 13 13:52:19 2017 -0500
 
-    new results for skylake
+    use SIMD code for last few elements in columns in matprod_trans1
