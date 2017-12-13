@@ -1,5 +1,5 @@
-commit c7821f1e6f35866426e1d2386e5b5d99aafc4fe5
+commit 757caf908e89bf9bfeaf9bf3cd550e2c8c145d91
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Dec 10 21:17:42 2017 -0500
+Date:   Wed Dec 13 12:54:20 2017 -0500
 
-    Makefile and system description for a sandybridge processor
+    new results for skylake
