@@ -42,5 +42,9 @@ echo " "; time $prog 10000000$Z v 4 4
 echo " "; time $prog 10000000$Z v 12 13
 echo " "; time $prog 4000000$Z v 21 30
 echo " "; time $prog 20000$Z v 400 400
+
 echo " "; time $prog 4000$Z v 2222 301
 echo " "; time $prog 400$Z v 12345 280
+
+echo " "; time $prog 4000$Z v 301 2222
+echo " "; time $prog 400$Z v 280 12345

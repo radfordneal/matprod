@@ -20,12 +20,6 @@
 #   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 
-# run-tests program
-#
-# Uses the given test program for a variety of tests, displaying timing
-# information, along with some headers.
-
-
 prog=$1-test
 
 echo " "; echo MAT_MAT
