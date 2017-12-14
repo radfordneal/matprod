@@ -1,5 +1,5 @@
-commit 26e05e0ce76a13aba4f578e9755bd3826ae7ebf2
+commit f658bafa3bedabff490ed02856a18d3aa421812b
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Wed Dec 13 12:53:25 2017 -0500
+Date:   Thu Dec 14 09:37:37 2017 -0500
 
-    have matprod_trans1 compute 8 elements at once
+    move ASSUME_ALIGNED for arguments to very beginning of procedures
