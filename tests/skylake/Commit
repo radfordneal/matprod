@@ -1,5 +1,5 @@
-commit f658bafa3bedabff490ed02856a18d3aa421812b
+commit 06c3e2a80a60744ef2b37fda7ec028bd8a7b7b05
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Dec 14 09:37:37 2017 -0500
+Date:   Thu Dec 14 15:13:59 2017 -0500
 
-    move ASSUME_ALIGNED for arguments to very beginning of procedures
+    changes to what tests are run
