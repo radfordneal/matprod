@@ -1,5 +1,6 @@
-commit 06c3e2a80a60744ef2b37fda7ec028bd8a7b7b05
+commit c94cb8d9da96bd55c894ebe7e2c55f1e1472b6dc
+Merge: f223fda 35dd878
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Dec 14 15:13:59 2017 -0500
+Date:   Thu Dec 14 17:06:48 2017 -0500
 
-    changes to what tests are run
+    Merge branch 'master' of https://github.com/radfordneal/matprod
