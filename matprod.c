@@ -154,6 +154,11 @@ static inline void scalar_multiply (double s,
 double matprod_vec_vec (double * MATPROD_RESTRICT x, 
                         double * MATPROD_RESTRICT y, int k)
 {
+    CHK_ALIGN(x); CHK_ALIGN(y);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+
     /* Handle k = 0, 1, or 2 specially. */
 
     if (k <= 2) {
@@ -164,11 +169,6 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
         else  /* k <= 0 */
             return 0.0;
     }
-
-    CHK_ALIGN(x); CHK_ALIGN(y);
-
-    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
-    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
 
     double s;
     int i;
@@ -315,13 +315,13 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
                       double * MATPROD_RESTRICT y, 
                       double * MATPROD_RESTRICT z, int k, int m)
 {
-    if (m <= 0) return;
-
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    if (m <= 0) return;
 
     /* Specially handle cases where y has two or fewer rows. */
 
@@ -1071,13 +1071,13 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
                       double * MATPROD_RESTRICT y, 
                       double * MATPROD_RESTRICT z, int n, int k)
 {
-    if (n <= 0) return;
-
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    if (n <= 0) return;
 
     /* Specially handle scalar times row vector and zero-length matrix. */
 
@@ -1544,6 +1544,12 @@ void matprod_outer (double * MATPROD_RESTRICT x,
                     double * MATPROD_RESTRICT y, 
                     double * MATPROD_RESTRICT z, int n, int m)
 {
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
     if (n <= 1) {
         if (n == 1)
             scalar_multiply (x[0], y, z, m);
@@ -1554,12 +1560,6 @@ void matprod_outer (double * MATPROD_RESTRICT x,
             scalar_multiply (y[0], x, z, n);
         return;
     }
-
-    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
-
-    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
-    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
-    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     if (n > 4) {
 
@@ -1819,18 +1819,18 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                       double * MATPROD_RESTRICT y, 
                       double * MATPROD_RESTRICT z, int n, int k, int m)
 {
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
     if (n <= 0 || m <= 0) return;
 
     if (k == 1) {
         matprod_outer (x, y, z, n, m);
         return;
     }
-
-    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
-
-    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
-    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
-    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     /* Handle n=2 specially. */
 
@@ -2082,6 +2082,12 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                      double * MATPROD_RESTRICT y, 
                      double * MATPROD_RESTRICT z, int n, int k, int m)
 {
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
     if (n <= 0 || m <= 0) return;
 
     if (k <= 1) {
@@ -2091,12 +2097,6 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
             set_to_zeros (z, n*m);
         return;
     }
-
-    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
-
-    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
-    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
-    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     /* Handle the case where k is two specially. */
 
@@ -2605,6 +2605,12 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                      double * MATPROD_RESTRICT y, 
                      double * MATPROD_RESTRICT z, int n, int k, int m)
 {
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
     if (n <= 0 || m <= 0) return;
 
     if (k <= 1) {
@@ -2614,12 +2620,6 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
             set_to_zeros (z, n*m);
         return;
     }
-
-    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
-
-    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
-    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
-    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     int sym = x==y && n==m;  /* same operands, so symmetric result? */
     double *ex = x + n*k;    /* point past end of x */
