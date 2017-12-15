@@ -1,5 +1,5 @@
-commit 28f28e932012fdb149d8a2d9759bb355322c4b81
+commit 6493c90355abbdff3b01fb4f4301a08a168a8293
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 15 08:06:50 2017 -0500
+Date:   Fri Dec 15 12:47:41 2017 -0500
 
-    new results for harpertown
+    revise n=2 case of matprod_mat_mat, other cleanup
