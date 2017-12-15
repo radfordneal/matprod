@@ -1,4 +1,3 @@
-#include <stdio.h>
 /* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
              C Procedures for Matrix Multiplication Without Pipelining
 
@@ -2032,36 +2031,31 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
 
     while (m > 1) {
 
-        double *e = y + k; /* where y should stop */
         double *r = x;  /* r set to x, then modified as columns of x summed */
+        int k2;
 
-        /* Initialize sums in next two columns of z to zero, if k is even, 
-           or to the products of the first elements of the next two columns
-           of y with the first column of x, if k is odd (in which case adjust 
-           r and y accordingly). */
+        /* Initialize sums in next two columns of z to the sum of the
+           first one or two products, according to what helps
+           alignment.  Note that k will be at least two here, and that
+           when k equals two, we always initialize to the sum of two
+           products, since that will finish the task. */
 
-        if (k & 1) {
+        if ((ALIGN_OFFSET & 8) && k > 2) {
             double b1 = y[0];
             double b2 = y[k];
             double *q = z;
-            double *f = x+n;
-            do { *q++ = *r++ * b1; } while (r < f);
-            r = x;
-            do { *q++ = *r++ * b2; } while (r < f);
+            double *f = z+n;
+            do { 
+                double s = r[0];
+                q[0] = s * b1; 
+                q[n] = s * b2;
+                r += 1;
+                q += 1;
+            } while (q < f);
             y += 1;
+            k2 = k-1;
         }
         else {
-            double *q = z;
-            double *f = z+2*n;
-            do { *q++ = 0.0; } while (q < f);
-        }
-
-        /* Each time around this loop, add the products of two columns of x 
-           with two elements of the next two columns of y to the next two
-           columns of the result vector, z.  Adjust r and y to account 
-           for this.  Note that e-y will be even. */
-
-        while (y < e) {
             double *q = z;
             double *f = z+n;
             double b11 = y[0];
@@ -2069,15 +2063,56 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
             double b21 = y[k];
             double b22 = y[k+1];
             do {
-                double s1 = *r;
-                double s2 = *(r+n);
-                *q = (*q + (s1 * b11)) + (s2 * b12);
-                *(q+n) = (*(q+n) + (s1 * b21)) + (s2 * b22);
+                double s1 = r[0];
+                double s2 = r[n];
+                q[0] = (s1 * b11) + (s2 * b12);
+                q[n] = (s1 * b21) + (s2 * b22);
                 r += 1;
                 q += 1;
             } while (q < f);
             r += n;
             y += 2;
+            k2 = k-2;
+        }
+
+        /* Each time around this loop, add the products of two columns of x 
+           with two elements of the next two columns of y to the next two
+           columns of the result vector, z.  Adjust r and y to account 
+           for this. */
+
+        while (k2 > 1) {
+            double *q = z;
+            double *f = z+n;
+            double b11 = y[0];
+            double b12 = y[1];
+            double b21 = y[k];
+            double b22 = y[k+1];
+            do {
+                double s1 = r[0];
+                double s2 = r[n];
+                q[0] = (q[0] + (s1 * b11)) + (s2 * b12);
+                q[n] = (q[n] + (s1 * b21)) + (s2 * b22);
+                r += 1;
+                q += 1;
+            } while (q < f);
+            r += n;
+            y += 2;
+            k2 -= 2;
+        }
+
+        if (k2 >= 1) {
+            double *q = z;
+            double *f = z+n;
+            double b1 = y[0];
+            double b2 = y[k];
+            do {
+                double s = r[0];
+                q[0] += s * b1;
+                q[n] += s * b2;
+                r += 1;
+                q += 1;
+            } while (q < f);
+            y += 1;
         }
 
         /* Move to the next two columns. */
