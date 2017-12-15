@@ -1,3 +1,4 @@
+#include <stdio.h>
 /* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
              C Procedures for Matrix Multiplication Without Pipelining
 
@@ -1065,7 +1066,17 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
    to produce sequential accesses.  This loop is unrolled to accumulate from
    two columns of x at once.
 
+   If x has more than MAT_VEC_ROWS (defined below) rows, the operation
+   is done on successive parts of the matrix, each consisting of at
+   most MAT_VEC_ROWS of the rows.  The matprod_sub_mat_vec procedure
+   below does one such part.
+
    Cases where k is 0 or 1 and cases where n is 2 are handled specially. */
+
+static void matprod_sub_mat_vec (double * MATPROD_RESTRICT x, 
+                                 double * MATPROD_RESTRICT y, 
+                                 double * MATPROD_RESTRICT z, 
+                                 int n, int k, int rows);
 
 void matprod_mat_vec (double * MATPROD_RESTRICT x, 
                       double * MATPROD_RESTRICT y, 
@@ -1192,19 +1203,69 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         return;
     }
 
-    /* To start, set the result, z, to the sum from the first two
-       columns.  Note that k is at least 2 here, and that n is at
-       least 4, since lower values are handled above. 
+    /* The general case with n > 3.  Calls matprod_sub_mat_vec to do parts
+       (only one part for a matrix with fewer than MAT_VEC_ROWS rows). */
 
-       A few initial products may be done to help alignment.  This is
-       also done, in the same way, later, allowing reuse of n2. */
+#   define MAT_VEC_ROWS 2048 /* make multiple of 64 to preserve any alignment */
+
+    if (n <= MAT_VEC_ROWS)
+        matprod_sub_mat_vec (x, y, z, n, k, n);
+    else {
+        int rows = n;
+        while (rows >= 2*MAT_VEC_ROWS) {
+            matprod_sub_mat_vec (x, y, z, n, k, MAT_VEC_ROWS);
+            x += MAT_VEC_ROWS;
+            z += MAT_VEC_ROWS;
+            rows -= MAT_VEC_ROWS;
+        }
+        if (rows > MAT_VEC_ROWS) {
+            int nr = (rows/2) & ~7; /* ensure any alignment of x, z preserved */
+            matprod_sub_mat_vec (x, y, z, n, k, nr);
+            x += nr;
+            z += nr;
+            rows -= nr;
+        }
+        matprod_sub_mat_vec (x, y, z, n, k, rows);
+    }
+}
+
+
+/* Multiply the first 'rows' of x with the elements of y, storing the
+   result in z.  Note that x and z may not be the start of the
+   original matrix/vector.  The k argument is the number of columns in
+   x and elements in y.  The n argument is the number of rows in the
+   original matrix x, which is the amount to step to go right to an
+   element in the same row and the next column. 
+
+   The same alignment assumptions hold for x, y, and z as with the
+   visible procedures.
+
+   Note that k will be at least 2, and 'rows' will be at least 4. */
+
+static void matprod_sub_mat_vec (double * MATPROD_RESTRICT x, 
+                                 double * MATPROD_RESTRICT y, 
+                                 double * MATPROD_RESTRICT z,
+                                 int n, int k, int rows)
+{
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    /* To start, set the result, z, to the sum from the first two
+       columns.  A few initial products may be done to help alignment.
+       This is also done later, in the same way, allowing reuse of
+       n2. */
 
     int n2;     /* number of elements in z after those done to help alignment */
     int n3;
     double *q;  /* pointer going along z */
+    double *xs; /* starting x pointer */
 
     q = z;
-    n2 = n;
+    n2 = rows;
+    xs = x;
 
 #   if ALIGN_FORWARD & 8
         q[0] = x[0] * y[0] + x[n] * y[1];
@@ -1304,7 +1365,8 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         x += 1;
     }
 
-    x += n;
+    xs += 2*n;
+    x = xs;
     y += 2;
     k -= 2;
 
@@ -1315,6 +1377,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     while (k > 1) {
 
         q = z;
+        xs = x;
 
 #       if ALIGN_FORWARD & 8
             q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
@@ -1424,7 +1487,8 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
             x += 1;
         }
 
-        x += n;
+        xs += 2*n;
+        x = xs;
         y += 2;
         k -= 2;
     }
