@@ -1,5 +1,5 @@
-commit a9efe3ddc7c5c595a0f2caf0c27a57fa4c84e124
+commit 46ac8fabb0420d789c988dae36c235bf8b01fa5a
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Dec 11 12:48:15 2017 -0500
+Date:   Fri Dec 15 04:22:32 2017 -0500
 
-    change to plt-tim to get to show lines on fedora
+    change MAT_VEC_ROWS so fits in L1 cache
