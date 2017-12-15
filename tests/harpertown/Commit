@@ -1,5 +1,5 @@
-commit 46ac8fabb0420d789c988dae36c235bf8b01fa5a
+commit 2ff8298a431bdcb065c5ee293ff9ca00c1f6cead
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 15 04:22:32 2017 -0500
+Date:   Fri Dec 15 12:47:59 2017 -0500
 
-    change MAT_VEC_ROWS so fits in L1 cache
+    new results for skylake
