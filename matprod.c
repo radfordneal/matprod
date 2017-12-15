@@ -1900,45 +1900,86 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
 
         while (m > 1) {
 
-            double s[4] = { 0, 0, 0, 0 };
-            double *r = x;
-            int k2 = k;
+#           if CAN_USE_SSE2
 
-            /* Each time around this loop, add the products of two columns
-               of x with elements of the next two columns of y to the sums.
-               Adjust r and y to account for this. Note that e-y will
-               be even.*/
+                double *r = x;
+                int k2 = k;
 
-            while (k2 > 1) {
-                double b11 = y[0];
-                double b12 = y[1];
-                double b21 = y[k];
-                double b22 = y[k+1];
-                s[0] = (s[0] + (r[0] * b11)) + (r[2] * b12);
-                s[1] = (s[1] + (r[1] * b11)) + (r[3] * b12);
-                s[2] = (s[2] + (r[0] * b21)) + (r[2] * b22);
-                s[3] = (s[3] + (r[1] * b21)) + (r[3] * b22);
-                r += 4;
-                y += 2;
-                k2 -= 2;
-            }
+                __m128d S0 = _mm_setzero_pd();
+                __m128d S1 = _mm_setzero_pd();
 
-            if (k2 >= 1) {
-                double b1 = y[0];
-                double b2 = y[k];
-                s[0] += r[0] * b1;
-                s[1] += r[1] * b1;
-                s[2] += r[0] * b2;
-                s[3] += r[1] * b2;
-                y += 1;
-            }
+                /* Each time around this loop, add the products of two columns
+                   of x with elements of the next two columns of y to the sums.
+                   Adjust r and y to account for this. */
 
-            /* Store sums in the next two result columns. */
+                while (k2 > 1) {
+                    __m128d R;
+                    R = _mm_loadAA_pd(r);
+                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[0])), S0);
+                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k])), S1);
+                    R = _mm_loadAA_pd(r+2);
+                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[1])), S0);
+                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k+1])), S1);
+                    r += 4;
+                    y += 2;
+                    k2 -= 2;
+                }
 
-            z[0] = s[0];
-            z[1] = s[1];
-            z[2] = s[2];
-            z[3] = s[3];
+                if (k2 >= 1) {
+                    __m128d R;
+                    R = _mm_loadAA_pd(r);
+                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[0])), S0);
+                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k])), S1);
+                    y += 1;
+                }
+
+                /* Store sums in the next two result columns. */
+
+                _mm_storeAA_pd (z, S0);
+                _mm_storeAA_pd (z+2, S1);
+
+#           else  /* non-SIMD code */
+
+                double s[4] = { 0, 0, 0, 0 };
+                double *r = x;
+                int k2 = k;
+
+                /* Each time around this loop, add the products of two columns
+                   of x with elements of the next two columns of y to the sums.
+                   Adjust r and y to account for this. */
+
+                while (k2 > 1) {
+                    double b11 = y[0];
+                    double b12 = y[1];
+                    double b21 = y[k];
+                    double b22 = y[k+1];
+                    s[0] = (s[0] + (r[0] * b11)) + (r[2] * b12);
+                    s[1] = (s[1] + (r[1] * b11)) + (r[3] * b12);
+                    s[2] = (s[2] + (r[0] * b21)) + (r[2] * b22);
+                    s[3] = (s[3] + (r[1] * b21)) + (r[3] * b22);
+                    r += 4;
+                    y += 2;
+                    k2 -= 2;
+                }
+
+                if (k2 >= 1) {
+                    double b1 = y[0];
+                    double b2 = y[k];
+                    s[0] += r[0] * b1;
+                    s[1] += r[1] * b1;
+                    s[2] += r[0] * b2;
+                    s[3] += r[1] * b2;
+                    y += 1;
+                }
+
+                /* Store sums in the next two result columns. */
+
+                z[0] = s[0];
+                z[1] = s[1];
+                z[2] = s[2];
+                z[3] = s[3];
+
+#           endif
 
             /* Move forward two to next column of the result and the next
                column of y. */
