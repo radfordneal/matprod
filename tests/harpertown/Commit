@@ -1,5 +1,6 @@
-commit 2ff8298a431bdcb065c5ee293ff9ca00c1f6cead
+commit ad3b7942073ff1e649418c1a77e7d858adb584d3
+Merge: 6fa9867 dbd11b6
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 15 12:47:59 2017 -0500
+Date:   Fri Dec 15 16:51:34 2017 -0500
 
-    new results for skylake
+    Merge branch 'master' of https://github.com/radfordneal/matprod
