@@ -230,11 +230,14 @@ int main (int argc, char **argv)
       matrix[i] = matrix[i-1];
     }
     else
-    { matrix[i] = ALLOC(matlen[i]);
+    { matrix[i] = ALLOC(matlen[i]+3);
       if (matrix[i]==0)
       { fprintf(stderr,"Couldn't allocate space for matrix\n");
         exit(2);
       }
+      matrix[i][matlen[i]] = 1.23e10;  /* in hopes of causing a wrong result  */
+      matrix[i][matlen[i]+1] = -4.56;  /*   if these are mistakenly looked at */
+      matrix[i][matlen[i]+2] = 65432;
     }
   }
 
