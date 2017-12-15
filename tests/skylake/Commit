@@ -1,5 +1,5 @@
-commit 08d438555d54f8b4313a44604897467df015e419
+commit 28f28e932012fdb149d8a2d9759bb355322c4b81
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Dec 14 23:10:59 2017 -0500
+Date:   Fri Dec 15 08:06:50 2017 -0500
 
-    do matprod_mat_vec in parts when many rows
+    new results for harpertown
