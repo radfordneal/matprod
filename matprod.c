@@ -1206,7 +1206,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     /* The general case with n > 3.  Calls matprod_sub_mat_vec to do parts
        (only one part for a matrix with fewer than MAT_VEC_ROWS rows). */
 
-#   define MAT_VEC_ROWS 2048 /* make multiple of 64 to preserve any alignment */
+#   define MAT_VEC_ROWS (1024+256) /* be multiple of 64 to keep any alignment */
 
     if (n <= MAT_VEC_ROWS)
         matprod_sub_mat_vec (x, y, z, n, k, n);
