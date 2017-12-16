@@ -2036,9 +2036,9 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
 
         /* Initialize sums in next two columns of z to the sum of the
            first one or two products, according to what helps
-           alignment.  Note that k will be at least two here, and that
-           when k equals two, we always initialize to the sum of two
-           products, since that will finish the task. */
+           alignment for y.  Note that k will be at least two here,
+           and that when k equals two, we always initialize to the sum
+           of two products, since that will finish the task. */
 
         if ((ALIGN_OFFSET & 8) && k > 2) {
             double b1 = y[0];
@@ -2087,17 +2087,29 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
             double b12 = y[1];
             double b21 = y[k];
             double b22 = y[k+1];
+            double s1, s2;
             double *q = z;
             int n2 = n;
-            do {
-                double s1 = r[0];
-                double s2 = r[n];
+            while (n2 > 1) {
+                s1 = r[0];
+                s2 = r[n];
+                q[0] = (q[0] + (s1 * b11)) + (s2 * b12);
+                q[n] = (q[n] + (s1 * b21)) + (s2 * b22);
+                s1 = r[1];
+                s2 = r[n+1];
+                q[1] = (q[1] + (s1 * b11)) + (s2 * b12);
+                q[n+1] = (q[n+1] + (s1 * b21)) + (s2 * b22);
+                r += 2;
+                q += 2;
+                n2 -= 2;
+            }
+            if (n2 >= 1) {
+                s1 = r[0];
+                s2 = r[n];
                 q[0] = (q[0] + (s1 * b11)) + (s2 * b12);
                 q[n] = (q[n] + (s1 * b21)) + (s2 * b22);
                 r += 1;
-                q += 1;
-                n2 -= 1;
-            } while (n2 > 0);
+            }
             r += n;  /* already advanced by n, so total advance is 2*n */
             y += 2;
             k2 -= 2;
