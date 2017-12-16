@@ -2044,24 +2044,25 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
             double b1 = y[0];
             double b2 = y[k];
             double *q = z;
-            double *f = z+n;
+            int n2 = n;
             do { 
                 double s = r[0];
                 q[0] = s * b1; 
                 q[n] = s * b2;
                 r += 1;
                 q += 1;
-            } while (q < f);
+                n2 -= 1;
+            } while (n2 > 0);
             y += 1;
             k2 = k-1;
         }
         else {
-            double *q = z;
-            double *f = z+n;
             double b11 = y[0];
             double b12 = y[1];
             double b21 = y[k];
             double b22 = y[k+1];
+            double *q = z;
+            int n2 = n;
             do {
                 double s1 = r[0];
                 double s2 = r[n];
@@ -2069,8 +2070,9 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                 q[n] = (s1 * b21) + (s2 * b22);
                 r += 1;
                 q += 1;
-            } while (q < f);
-            r += n;
+                n2 -= 1;
+            } while (n2 > 0);
+            r += n;  /* already advanced by n, so total advance is 2*n */
             y += 2;
             k2 = k-2;
         }
@@ -2081,12 +2083,12 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
            for this. */
 
         while (k2 > 1) {
-            double *q = z;
-            double *f = z+n;
             double b11 = y[0];
             double b12 = y[1];
             double b21 = y[k];
             double b22 = y[k+1];
+            double *q = z;
+            int n2 = n;
             do {
                 double s1 = r[0];
                 double s2 = r[n];
@@ -2094,24 +2096,26 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                 q[n] = (q[n] + (s1 * b21)) + (s2 * b22);
                 r += 1;
                 q += 1;
-            } while (q < f);
-            r += n;
+                n2 -= 1;
+            } while (n2 > 0);
+            r += n;  /* already advanced by n, so total advance is 2*n */
             y += 2;
             k2 -= 2;
         }
 
         if (k2 >= 1) {
-            double *q = z;
-            double *f = z+n;
             double b1 = y[0];
             double b2 = y[k];
+            double *q = z;
+            int n2 = n;
             do {
                 double s = r[0];
                 q[0] += s * b1;
                 q[n] += s * b2;
                 r += 1;
                 q += 1;
-            } while (q < f);
+                n2 -= 1;
+            } while (n2 > 0);
             y += 1;
         }
 
@@ -2136,14 +2140,20 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
         if (k & 1) {
             double b = y[0];
             double *q = z;
-            double *f = z+n;
-            do { *q++ = *r++ * b; } while (q < f);
+            int n2 = n;
+            do { 
+                *q++ = *r++ * b; 
+                n2 -= 1;
+            } while (n2 > 0);
             y += 1;
         }
         else {
             double *q = z;
-            double *f = z+n;
-            do { *q++ = 0.0; } while (q < f);
+            int n2 = n;
+            do {
+                *q++ = 0.0;
+                n2 -= 1;
+            } while (n2 > 0);
         }
 
         /* Each time around this loop, add the products of two columns of x 
@@ -2152,15 +2162,16 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
            when we start. */
 
         while (y < e) {
-            double *q = z;
-            double *f = z+n;
             double b1 = y[0];
             double b2 = y[1];
+            double *q = z;
+            int n2 = n;
             do {
                 *q = (*q + (*r * b1)) + (*(r+n) * b2);
                 r += 1;
                 q += 1;
-            } while (q < f);
+                n2 -= 1;
+            } while (n2 > 0);
             r += n;
             y += 2;
         }
