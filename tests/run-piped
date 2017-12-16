@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Run all piped-matprod tests, except piped-matprod-norestrict.
+
+for i in piped-matprod piped-matprod-nohelpers; do
+  echo RUNNING TESTS FOR $i
+  ../run-tests $i >& $i.out
+  ../tim $i
+done
