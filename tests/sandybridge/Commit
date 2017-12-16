@@ -1,5 +1,5 @@
-commit 7af1bbe76d0607ebce1ed179fd4da46f3a982e49
+commit 6e1e874030a6e4d92f7fc10da03a4a3ea5c32972
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 15 20:21:12 2017 -0500
+Date:   Fri Dec 15 21:16:41 2017 -0500
 
-    tweaks to run scripts
+    change to always initialize to sum of two products in matprod_mat_mat
