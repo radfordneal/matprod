@@ -2053,23 +2053,55 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
 
         /* Initialize sums in next two columns of z to the sum of the
            first two products, which will exist, since k is at least
-           two here. */
+           two here.  Note also that n is at least two. */
 
-        double b11 = y[0];
-        double b12 = y[1];
-        double b21 = y[k];
-        double b22 = y[k+1];
-        double *q = z;
         int n2 = n;
-        do {
-            double s1 = r[0];
-            double s2 = r[n];
-            q[0] = (s1 * b11) + (s2 * b12);
-            q[n] = (s1 * b21) + (s2 * b22);
-            r += 1;
-            q += 1;
-            n2 -= 1;
-        } while (n2 > 0);
+
+#       if CAN_USE_SSE2 && 0
+        {
+            __m128d B11 = _mm_set1_pd(y[0]);
+            __m128d B12 = _mm_set1_pd(y[1]);
+            __m128d B21 = _mm_set1_pd(y[k]);
+            __m128d B22 = _mm_set1_pd(y[k+1]);
+            double *q = z;
+            do {
+                __m128d S1 = _mm_loadAA_pd(r);
+                __m128d S2 = _mm_loadu_pd(r+n);
+                _mm_storeAA_pd (q, _mm_add_pd (_mm_mul_pd(S1,B11),
+                                               _mm_mul_pd(S2,B12)));
+                _mm_storeu_pd (q+n, _mm_add_pd (_mm_mul_pd(S1,B21),
+                                                _mm_mul_pd(S2,B22)));
+                r += 2;
+                q += 2;
+                n2 -= 2;
+            } while (n2 > 1);
+            if (n2 >= 1) {
+                double s1 = r[0];
+                double s2 = r[n];
+                q[0] = (s1 * b11) + (s2 * b12);
+                q[n] = (s1 * b21) + (s2 * b22);
+                r += 1;
+            }
+        }
+#       else
+        {
+            double b11 = y[0];
+            double b12 = y[1];
+            double b21 = y[k];
+            double b22 = y[k+1];
+            double *q = z;
+            do {
+                double s1 = r[0];
+                double s2 = r[n];
+                q[0] = (s1 * b11) + (s2 * b12);
+                q[n] = (s1 * b21) + (s2 * b22);
+                r += 1;
+                q += 1;
+                n2 -= 1;
+            } while (n2 > 0);
+        }
+#       endif
+
         r += n;  /* already advanced by n, so total advance is 2*n */
         y += 2;
         k2 = k-2;
@@ -2221,7 +2253,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
     }
     if (m <= 1) {
         if (m == 1)
-            matprod_mat_vec (x, y, z, n, k);
+            matprod_vec_mat (y, x, z, k, n);
         return;
     }
 
@@ -2876,7 +2908,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
 
     if (n <= 1) {
         if (n == 1)
-            matprod_vec_mat (x, y, z, k, m);
+            matprod_mat_vec (y, x, z, m, k);
         return;
     }
     if (m <= 1) {
