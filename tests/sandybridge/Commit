@@ -1,5 +1,5 @@
-commit d00c192be01f7b9b26427840ee0006ea7b20835f
+commit 7af1bbe76d0607ebce1ed179fd4da46f3a982e49
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Dec 14 23:11:49 2017 -0500
+Date:   Fri Dec 15 20:21:12 2017 -0500
 
-    new results for skylake
+    tweaks to run scripts
