@@ -2057,7 +2057,50 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
 
         int n2 = n;
 
-#       if CAN_USE_SSE2 && 0
+#       if CAN_USE_AVX
+        {
+            __m256d B11 = _mm256_set1_pd(y[0]);
+            __m256d B12 = _mm256_set1_pd(y[1]);
+            __m256d B21 = _mm256_set1_pd(y[k]);
+            __m256d B22 = _mm256_set1_pd(y[k+1]);
+            double *q = z;
+            while (n2 >= 4) {
+                __m256d S1 = _mm256_loadu_pd(r);
+                __m256d S2 = _mm256_loadu_pd(r+n);
+                _mm256_storeu_pd (q, _mm256_add_pd (_mm256_mul_pd(S1,B11),
+                                                    _mm256_mul_pd(S2,B12)));
+                _mm256_storeu_pd (q+n, _mm256_add_pd (_mm256_mul_pd(S1,B21),
+                                                      _mm256_mul_pd(S2,B22)));
+                r += 4;
+                q += 4;
+                n2 -= 4;
+            }
+            if (n2 > 1) {
+                __m128d S1 = _mm_loadAA_pd(r);
+                __m128d S2 = _mm_loadu_pd(r+n);
+                _mm_storeAA_pd (q, _mm_add_pd (
+                    _mm_mul_pd(S1,_mm256_castpd256_pd128(B11)),
+                    _mm_mul_pd(S2,_mm256_castpd256_pd128(B12))));
+                _mm_storeu_pd (q+n, _mm_add_pd (
+                    _mm_mul_pd(S1,_mm256_castpd256_pd128(B21)),
+                    _mm_mul_pd(S2,_mm256_castpd256_pd128(B22))));
+                r += 2;
+                q += 2;
+                n2 -= 2;
+            }
+            if (n2 >= 1) {
+                __m128d S1 = _mm_set_sd(r[0]);
+                __m128d S2 = _mm_set_sd(r[n]);
+                _mm_store_sd (q, _mm_add_sd (
+                    _mm_mul_sd(S1,_mm256_castpd256_pd128(B11)),
+                    _mm_mul_sd(S2,_mm256_castpd256_pd128(B12))));
+                _mm_store_sd (q+n, _mm_add_sd (
+                    _mm_mul_sd(S1,_mm256_castpd256_pd128(B21)),
+                    _mm_mul_sd(S2,_mm256_castpd256_pd128(B22))));
+                r += 1;
+            }
+        }
+#       elif CAN_USE_SSE2
         {
             __m128d B11 = _mm_set1_pd(y[0]);
             __m128d B12 = _mm_set1_pd(y[1]);
@@ -2076,10 +2119,12 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                 n2 -= 2;
             } while (n2 > 1);
             if (n2 >= 1) {
-                double s1 = r[0];
-                double s2 = r[n];
-                q[0] = (s1 * b11) + (s2 * b12);
-                q[n] = (s1 * b21) + (s2 * b22);
+                __m128d S1 = _mm_set_sd(r[0]);
+                __m128d S2 = _mm_set_sd(r[n]);
+                _mm_store_sd (q, _mm_add_sd (_mm_mul_sd(S1,B11),
+                                             _mm_mul_sd(S2,B12)));
+                _mm_store_sd (q+n, _mm_add_sd (_mm_mul_sd(S1,B21),
+                                               _mm_mul_sd(S2,B22)));
                 r += 1;
             }
         }
