@@ -1,6 +1,5 @@
-commit ad3b7942073ff1e649418c1a77e7d858adb584d3
-Merge: 6fa9867 dbd11b6
+commit a6df39ef0efd39a398aa3fd3ca5fb60bec8df232
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 15 16:51:34 2017 -0500
+Date:   Fri Dec 15 21:34:29 2017 -0500
 
-    Merge branch 'master' of https://github.com/radfordneal/matprod
+    new results for sandybridge
