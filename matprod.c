@@ -321,7 +321,11 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    if (m <= 0) return;
+    if (m <= 1) {
+        if (m == 1)
+            z[0] = matprod_vec_vec (x, y, k);
+        return;
+    }
 
     /* Specially handle cases where y has two or fewer rows. */
 
@@ -1087,7 +1091,11 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    if (n <= 0) return;
+    if (n <= 1) {
+        if (n == 1)
+            z[0] = matprod_vec_vec (x, y, k);
+        return;
+    }
 
     /* Specially handle scalar times row vector and zero-length matrix. */
 
@@ -1880,7 +1888,16 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    if (n <= 0 || m <= 0) return;
+    if (n <= 1) {
+        if (n == 1)
+            matprod_vec_mat (x, y, z, k, m);
+        return;
+    }
+    if (m <= 1) {
+        if (m == 1)
+            matprod_mat_vec (x, y, z, n, k);
+        return;
+    }
 
     if (k <= 1) {
         if (k == 1)
@@ -2197,7 +2214,16 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    if (n <= 0 || m <= 0) return;
+    if (n <= 1) {
+        if (n == 1)
+            matprod_vec_mat (x, y, z, k, m);
+        return;
+    }
+    if (m <= 1) {
+        if (m == 1)
+            matprod_mat_vec (x, y, z, n, k);
+        return;
+    }
 
     if (k <= 1) {
         if (k == 1)
@@ -2848,7 +2874,16 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    if (n <= 0 || m <= 0) return;
+    if (n <= 1) {
+        if (n == 1)
+            matprod_vec_mat (x, y, z, k, m);
+        return;
+    }
+    if (m <= 1) {
+        if (m == 1)
+            matprod_mat_vec (x, y, z, n, k);
+        return;
+    }
 
     if (k <= 1) {
         if (k == 1)

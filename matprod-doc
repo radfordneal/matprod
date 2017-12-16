@@ -151,15 +151,20 @@ with the operands, x and y.  However, the operands may be the same or
 may overlap.
 
 Some attention has been paid to making special cases of these routines
-be fast - such as matprod_vec_mat when the vector is of length one,
-which reduces to simply multiplying the elements of the matrix (with
-one row) by a scalar.  The matprod_outer procedure will be called from
-matprod_mat_mat, matprod_trans1, or matprod_trans2 when the value of k
-passed is one (though calling it directly will of course be slightly
-faster).  However, the cases of matprod_mat_mat, matprod_trans1, and
-matprod_trans2 that reduce to matprod_vec_vec, matprod_vec_mat, or
-matprod_mat_vec have not been optimized, on the assumption that the
-caller will use the specialized procedure when appropriate.
+be fast.  For example, matprod_vec_mat when the vector is of length
+one reduces to simply multiplying the elements of the matrix (which
+has one row) by a scalar.  Some cases where n, k, or m is 2 or 3 are
+also handled with special code, when the general procedure would be
+significantly slower.
+
+The matprod_outer procedure will be called from matprod_mat_mat,
+matprod_trans1, or matprod_trans2 when the value of k passed is one.
+Also, cases of matprod_mat_mat, matprod_trans1, and matprod_trans2
+that reduce to matprod_vec_mat, or matprod_mat_vec will call the
+specialized routine, and similarly cases of matprod_mat_vec and
+matprod_vec_mat that reduce to matprod_vec_vec will call that routine.
+Calling a specialized routine directly will of course be slightly
+faster when it is known that it is appropriate.
 
 See the comments in matprod.c for details on the algorithms used.
 
