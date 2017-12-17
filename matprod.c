@@ -2181,33 +2181,82 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
            for this. */
 
         while (k2 > 1) {
-            double b11 = y[0];
-            double b12 = y[1];
-            double b21 = y[k];
-            double b22 = y[k+1];
-            double s1, s2;
-            double *q = z;
             int n2 = n;
-            while (n2 > 1) {
-                s1 = r[0];
-                s2 = r[n];
-                q[0] = (q[0] + (s1 * b11)) + (s2 * b12);
-                q[n] = (q[n] + (s1 * b21)) + (s2 * b22);
-                s1 = r[1];
-                s2 = r[n+1];
-                q[1] = (q[1] + (s1 * b11)) + (s2 * b12);
-                q[n+1] = (q[n+1] + (s1 * b21)) + (s2 * b22);
-                r += 2;
-                q += 2;
-                n2 -= 2;
+#           if CAN_USE_SSE2
+            {
+                __m128d B11 = _mm_set1_pd(y[0]);
+                __m128d B12 = _mm_set1_pd(y[1]);
+                __m128d B21 = _mm_set1_pd(y[k]);
+                __m128d B22 = _mm_set1_pd(y[k+1]);
+                double *q = z;
+#               if ALIGN_OFFSET & 8
+                    __m128d S1 = _mm_set_sd(r[0]);
+                    __m128d S2 = _mm_set_sd(r[n]);
+                    _mm_store_sd (q, _mm_add_sd (_mm_add_sd (_mm_load_sd(q),
+                                                   _mm_mul_sd(S1,B11)),
+                                                   _mm_mul_sd(S2,B12)));
+                    _mm_store_sd (q+n, _mm_add_sd (_mm_add_sd (_mm_load_sd(q+n),
+                                                   _mm_mul_sd(S1,B21)),
+                                                   _mm_mul_sd(S2,B22)));
+                    r += 1;
+                    q += 1;
+                    n2 -= 1;
+#               endif
+                while (n2 > 1) {
+                    __m128d S1 = _mm_loadA_pd(r);
+                    __m128d S2 = _mm_loadu_pd(r+n);
+                    _mm_storeA_pd (q, _mm_add_pd (_mm_add_pd (_mm_loadA_pd(q),
+                                                   _mm_mul_pd(S1,B11)),
+                                                   _mm_mul_pd(S2,B12)));
+                    _mm_storeu_pd(q+n,_mm_add_pd (_mm_add_pd (_mm_loadu_pd(q+n),
+                                                    _mm_mul_pd(S1,B21)),
+                                                    _mm_mul_pd(S2,B22)));
+                    r += 2;
+                    q += 2;
+                    n2 -= 2;
+                }
+                if (n2 >= 1) {
+                    __m128d S1 = _mm_set_sd(r[0]);
+                    __m128d S2 = _mm_set_sd(r[n]);
+                    _mm_store_sd (q, _mm_add_sd (_mm_add_sd (_mm_load_sd(q),
+                                                   _mm_mul_sd(S1,B11)),
+                                                   _mm_mul_sd(S2,B12)));
+                    _mm_store_sd (q+n, _mm_add_sd (_mm_add_sd (_mm_load_sd(q+n),
+                                                   _mm_mul_sd(S1,B21)),
+                                                   _mm_mul_sd(S2,B22)));
+                    r += 1;
+                }
             }
-            if (n2 >= 1) {
-                s1 = r[0];
-                s2 = r[n];
-                q[0] = (q[0] + (s1 * b11)) + (s2 * b12);
-                q[n] = (q[n] + (s1 * b21)) + (s2 * b22);
-                r += 1;
+#           else
+            {
+                double b11 = y[0];
+                double b12 = y[1];
+                double b21 = y[k];
+                double b22 = y[k+1];
+                double s1, s2;
+                double *q = z;
+                while (n2 > 1) {
+                    s1 = r[0];
+                    s2 = r[n];
+                    q[0] = (q[0] + (s1 * b11)) + (s2 * b12);
+                    q[n] = (q[n] + (s1 * b21)) + (s2 * b22);
+                    s1 = r[1];
+                    s2 = r[n+1];
+                    q[1] = (q[1] + (s1 * b11)) + (s2 * b12);
+                    q[n+1] = (q[n+1] + (s1 * b21)) + (s2 * b22);
+                    r += 2;
+                    q += 2;
+                    n2 -= 2;
+                }
+                if (n2 >= 1) {
+                    s1 = r[0];
+                    s2 = r[n];
+                    q[0] = (q[0] + (s1 * b11)) + (s2 * b12);
+                    q[n] = (q[n] + (s1 * b21)) + (s2 * b22);
+                    r += 1;
+                }
             }
+#           endif
             r += n;  /* already advanced by n, so total advance is 2*n */
             y += 2;
             k2 -= 2;
