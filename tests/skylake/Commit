@@ -1,5 +1,5 @@
-commit 03d4083e49b290a8b60b265b40affe12389db615
+commit 7e7f0c277f424e0f20bb10b921949dca7513904e
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Dec 16 22:22:35 2017 -0500
+Date:   Sun Dec 17 16:07:21 2017 -0500
 
-    new results for sandybridge
+    revisions in matprod_sub_vec_mat
