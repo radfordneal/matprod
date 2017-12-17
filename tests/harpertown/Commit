@@ -1,5 +1,5 @@
-commit a6df39ef0efd39a398aa3fd3ca5fb60bec8df232
+commit 1ceb03e72c6c7d81b0b3c353a2064e053e40dba3
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 15 21:34:29 2017 -0500
+Date:   Sat Dec 16 19:57:41 2017 -0500
 
-    new results for sandybridge
+    more SSE2 code in matprod_mat_mat
