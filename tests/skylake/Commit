@@ -1,5 +1,5 @@
-commit 6493c90355abbdff3b01fb4f4301a08a168a8293
+commit d68be8cebc48a806ca0870f85cb11b4666e01ee8
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 15 12:47:41 2017 -0500
+Date:   Sat Dec 16 21:57:31 2017 -0500
 
-    revise n=2 case of matprod_mat_mat, other cleanup
+    refinement of SIMD in matprod_mat_mat, with new AVX code
