@@ -1,5 +1,6 @@
-commit 6e1e874030a6e4d92f7fc10da03a4a3ea5c32972
+commit ef27747d37370551ded4210628d95bcc99cd1812
+Merge: d48c740 cff8f2e
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 15 21:16:41 2017 -0500
+Date:   Sat Dec 16 21:58:30 2017 -0500
 
-    change to always initialize to sum of two products in matprod_mat_mat
+    Merge branch 'master' of https://github.com/radfordneal/matprod
