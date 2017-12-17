@@ -455,7 +455,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     /* The general case with k > 2.  Calls matprod_sub_vec_mat to do parts
        (only one part if y has matrix with fewer than VEC_MAT_ROWS). */
 
-#   define VEC_MAT_ROWS (512+256) /* be multiple of 64 to keep any alignment */
+#   define VEC_MAT_ROWS (4096+2048) /* be multiple of 64 to keep any alignment*/
 
     if (k <= VEC_MAT_ROWS || m <= 4)
         matprod_sub_vec_mat (x, y, z, k, m, k, 0);
@@ -514,34 +514,35 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
 
     while (m >= 4) {
 
-        /* The various versions of the loop below all add two products
-           to the sums for each of the four dot products, adjusting p
-           and y as they go.  A possible final set of four products is
-           then added afterwards.  The sums may be initialized to zero
-           or to the result of one product, if that helps alignment. */
-
         double *p;               /* Pointer that goes along pairs in x */
 
 #       if CAN_USE_AVX
         {
+            /* This loop adds four products to the sums for each of
+               the four dot products, adjusting p and y as it goes.
+               More products are ossibly are added afterwards.  The
+               sums may be initialized to one product or two producs,
+               as helps alignment. */
+
             __m256d S, B;
             int rows2;
 
-#           if (ALIGN_FORWARD & 8)
-                S = _mm256_set_pd (y[3*k], y[2*k], y[k], y[0]);
-                S = _mm256_mul_pd (_mm256_set1_pd(x[0]), S);
-                if (add)
-                    S = _mm256_add_pd (_mm256_loadu_pd(z), S);
-                p = x+1;
+            B = _mm256_set_pd (y[3*k], y[2*k], y[k], y[0]);
+            S = _mm256_mul_pd (_mm256_set1_pd(x[0]), B);
+            y += 1;
+            if (add)
+                S = _mm256_add_pd (_mm256_loadu_pd(z), S);
+
+#           if (ALIGN_FORWARD & 8) == 0
+                B = _mm256_set_pd (y[3*k], y[2*k], y[k], y[0]);
+                B = _mm256_mul_pd (_mm256_set1_pd(x[1]), B);
+                S = _mm256_add_pd (B, S);
                 y += 1;
-                rows2 = rows-1;
+                p = x+2;
+                rows2 = rows-2;
 #           else
-                if (add)
-                    S = _mm256_loadu_pd(z);
-                else 
-                    S = _mm256_setzero_pd ();
-                p = x;
-                rows2 = rows;
+                p = x+1;
+                rows2 = rows-1;
 #           endif
 
             while (rows2 >= 4) {
@@ -606,35 +607,34 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
 
 #       elif CAN_USE_SSE2 && ALIGN >= 16 /* works, but slower, when unaligned */
         {
+            /* This loop adds two products to the sums for each of the
+               four dot products, adjusting p and y as it goes.
+               Another product may be added afterwards.  The sums may
+               be initialized to one product or two producs, as helps
+               alignment. */
+
             __m128d S0, S1, B, P;
             int rows2;
 
-#           if (ALIGN_FORWARD & 8)
-            {
-                P = _mm_set1_pd(x[0]);
-                S0 = _mm_mul_pd (P, _mm_set_pd (y[k], y[0]));
-                S1 = _mm_mul_pd (P, _mm_set_pd (y[3*k], y[2*k]));
-                if (add) {
-                    S0 = _mm_add_pd (_mm_loadu_pd(z), S0);
-                    S1 = _mm_add_pd (_mm_loadu_pd(z+2), S1);
-                }
-                p = x+1;
+            P = _mm_set1_pd(x[0]);
+            S0 = _mm_mul_pd (P, _mm_set_pd (y[k], y[0]));
+            S1 = _mm_mul_pd (P, _mm_set_pd (y[3*k], y[2*k]));
+            y += 1;
+            if (add) {
+                S0 = _mm_add_pd (_mm_loadu_pd(z), S0);
+                S1 = _mm_add_pd (_mm_loadu_pd(z+2), S1);
+            }
+
+#           if (ALIGN_FORWARD & 8) == 0
+                P = _mm_set1_pd(x[1]);
+                S0 = _mm_add_pd(S0, _mm_mul_pd(P, _mm_set_pd (y[k], y[0])));
+                S1 = _mm_add_pd(S1, _mm_mul_pd(P, _mm_set_pd (y[3*k], y[2*k])));
                 y += 1;
-                rows2 = rows-1;
-            }
+                p = x+2;
+                rows2 = rows-2;
 #           else
-            {
-                if (add) {
-                    S0 = _mm_loadu_pd(z);
-                    S1 = _mm_loadu_pd(z+2);
-                }
-                else {
-                    S0 = _mm_setzero_pd ();
-                    S1 = _mm_setzero_pd ();
-                }
-                p = x;
-                rows2 = rows;
-            }
+                p = x+1;
+                rows2 = rows-1;
 #           endif
 
             if (k & 1) {  /* second column not aligned if first is */
@@ -688,7 +688,12 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
 
 #       else  /* non-SIMD code */
         {
+            /* This loop adds two products to the sums for each of the
+               four dot products, adjusting p and y as it goes.
+               Another product may be added afterwards. */
+
             int rows2 = rows;
+
             double s[4];
             if (add) {
                 s[0] = z[0];
@@ -698,6 +703,7 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
             }
             else
                 s[0] = s[1] = s[2] = s[3] = 0.0;
+
             p = x;
             while (rows2 > 1) {
                 s[0] += p[0] * y[0];
