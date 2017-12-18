@@ -1,5 +1,5 @@
-commit 1ceb03e72c6c7d81b0b3c353a2064e053e40dba3
+commit fb677ae12555ba0d12060095b352322d3dfe3355
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Dec 16 19:57:41 2017 -0500
+Date:   Sun Dec 17 20:59:30 2017 -0500
 
-    more SSE2 code in matprod_mat_mat
+    results for haswell
