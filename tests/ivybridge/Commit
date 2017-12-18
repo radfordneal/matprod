@@ -1,5 +1,5 @@
-commit 45d81da5227d356ecac740e6de331afb1779684e
+commit 57298a3726e16f18f51cd80aa93b4ee414a073d3
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Dec 16 13:52:55 2017 -0500
+Date:   Sun Dec 17 19:15:03 2017 -0500
 
-    more SIMD code in matprod_mat_mat
+    new set of tests, and results for skylake
