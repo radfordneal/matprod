@@ -1,5 +1,5 @@
-commit 934936f8cdcdd4597c38760ca8b0dd4a3b7b979e
+commit 57298a3726e16f18f51cd80aa93b4ee414a073d3
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Wed Dec 13 13:57:46 2017 -0500
+Date:   Sun Dec 17 19:15:03 2017 -0500
 
-    new sandybridge results
+    new set of tests, and results for skylake
