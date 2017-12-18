@@ -1,6 +1,5 @@
-commit ef27747d37370551ded4210628d95bcc99cd1812
-Merge: d48c740 cff8f2e
+commit fb677ae12555ba0d12060095b352322d3dfe3355
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Dec 16 21:58:30 2017 -0500
+Date:   Sun Dec 17 20:59:30 2017 -0500
 
-    Merge branch 'master' of https://github.com/radfordneal/matprod
+    results for haswell
