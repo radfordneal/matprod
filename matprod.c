@@ -942,6 +942,7 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
 #           endif
 
 #           if CAN_USE_AVX
+            {
                 while (rows2 >= 4) {
                     __m256d P = _mm256_loadAA_pd(p);
                     __m256d T0 = _mm256_mul_pd (_mm256_loadAA_pd(y), P);
@@ -956,7 +957,9 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
                     y += 4;
                     rows2 -= 4;
                 }
+            }
 #           else  /* CAN_USE_SSE2 */
+            {
                 if (k & 1) {  /* second column not aligned if first is */
                     while (rows2 >= 4) {
                         __m128d P, T0, T1;
@@ -993,6 +996,7 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
                         rows2 -= 4;
                     }
                 }
+            }
 #           endif
 
             if (rows2 > 1) {
@@ -1285,9 +1289,9 @@ static void matprod_sub_mat_vec (double * MATPROD_RESTRICT x,
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     /* To start, set the result, z, to the sum from the first two
-       columns.  A few initial products may be done to help alignment.
-       This is also done later, in the same way, allowing reuse of
-       n2. */
+       columns of x times elements of y.  A few initial products may
+       be done to help alignment.  This is also done later, in the
+       same way, allowing reuse of n2. */
 
     int n2;     /* number of elements in z after those done to help alignment */
     int n3;
@@ -1419,26 +1423,47 @@ static void matprod_sub_mat_vec (double * MATPROD_RESTRICT x,
 
         n3 = n2;
 
-#       if CAN_USE_AVX
+#       if CAN_USE_AVX || CAN_USE_SSE2
         {
-            __m256d Y0b = _mm256_set1_pd(y[0]);
-            __m256d Y1b = _mm256_set1_pd(y[1]);
+#           if CAN_USE_AVX
+                __m256d Y0 = _mm256_set1_pd(y[0]);
+                __m256d Y1 = _mm256_set1_pd(y[1]);
+#           else  /* CAN_USE_SSE2 */
+                __m128d Y0 = _mm_load1_pd(y);
+                __m128d Y1 = _mm_load1_pd(y+1);
+#           endif
             while (n3 >= 4) { 
-                __m256d Q = _mm256_loadA_pd(q);
-                __m256d X = _mm256_mul_pd (_mm256_loadA_pd(x), Y0b);
-                __m256d P = _mm256_mul_pd (_mm256_loadu_pd(x+n), Y1b);
-                Q = _mm256_add_pd (_mm256_add_pd (Q, X), P);
-                _mm256_storeA_pd (q, Q);
+#               if CAN_USE_AVX
+                {
+                    __m256d Q = _mm256_loadA_pd(q);
+                    __m256d X = _mm256_mul_pd (_mm256_loadA_pd(x), Y0);
+                    __m256d P = _mm256_mul_pd (_mm256_loadu_pd(x+n), Y1);
+                    Q = _mm256_add_pd (_mm256_add_pd (Q, X), P);
+                    _mm256_storeA_pd (q, Q);
+                }
+#               else  /* CAN_USE_SSE2 */
+                {
+                    __m128d Q, X, P;
+                    Q = _mm_loadA_pd(q);
+                    X = _mm_mul_pd (_mm_loadA_pd(x), Y0);
+                    P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
+                    Q = _mm_add_pd (_mm_add_pd (Q, X), P);
+                    _mm_storeA_pd (q, Q);
+                    Q = _mm_loadA_pd(q+2);
+                    X = _mm_mul_pd (_mm_loadA_pd(x+2), Y0);
+                    P = _mm_mul_pd (_mm_loadu_pd(x+n+2), Y1);
+                    Q = _mm_add_pd (_mm_add_pd (Q, X), P);
+                    _mm_storeA_pd (q+2, Q);
+                }
+#               endif
                 x += 4;
                 q += 4;
                 n3 -= 4;
             }
             if (n3 > 1) {
-                __m128d Y0 = cast128(Y0b);
-                __m128d Y1 = cast128(Y1b);
                 __m128d Q = _mm_loadA_pd(q);
-                __m128d X = _mm_mul_pd (_mm_loadA_pd(x), Y0);
-                __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
+                __m128d X = _mm_mul_pd (_mm_loadA_pd(x), cast128(Y0));
+                __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), cast128(Y1));
                 Q = _mm_add_pd (_mm_add_pd (Q, X), P);
                 _mm_storeA_pd (q, Q);
                 x += 2;
@@ -1446,39 +1471,6 @@ static void matprod_sub_mat_vec (double * MATPROD_RESTRICT x,
                 n3 -= 2;
             }
         }
-
-#       elif CAN_USE_SSE2
-        {
-            __m128d Y0 = _mm_load1_pd(y);
-            __m128d Y1 = _mm_load1_pd(y+1);
-            while (n3 >= 4) { 
-                __m128d Q, X, P;
-                Q = _mm_loadA_pd(q);
-                X = _mm_mul_pd (_mm_loadA_pd(x), Y0);
-                P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
-                Q = _mm_add_pd (_mm_add_pd (Q, X), P);
-                _mm_storeA_pd (q, Q);
-                Q = _mm_loadA_pd(q+2);
-                X = _mm_mul_pd (_mm_loadA_pd(x+2), Y0);
-                P = _mm_mul_pd (_mm_loadu_pd(x+n+2), Y1);
-                Q = _mm_add_pd (_mm_add_pd (Q, X), P);
-                _mm_storeA_pd (q+2, Q);
-                x += 4;
-                q += 4;
-                n3 -= 4;
-            }
-            if (n3 > 1) {
-                __m128d Q = _mm_loadA_pd(q);
-                __m128d X = _mm_mul_pd (_mm_loadA_pd(x), Y0);
-                __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
-                Q = _mm_add_pd (_mm_add_pd (Q, X), P);
-                _mm_storeA_pd (q, Q);
-                x += 2;
-                q += 2;
-                n3 -= 2;
-            }
-        }
-
 #       else  /* non-SIMD code */
         {
             while (n3 >= 4) { 
@@ -1518,12 +1510,15 @@ static void matprod_sub_mat_vec (double * MATPROD_RESTRICT x,
         q = z;
 
 #       if ALIGN_FORWARD & 8
+        {
             q[0] += x[0] * y[0];
             x += 1;
             q += 1;
+        }
 #       endif
 
 #       if CAN_USE_AVX && (ALIGN_FORWARD & 16)
+        {
             __m128d Y0 = _mm_set1_pd(y[0]);
             __m128d Q = _mm_loadA_pd(q);
             __m128d X = _mm_mul_pd (_mm_loadA_pd(x), Y0);
@@ -1531,26 +1526,46 @@ static void matprod_sub_mat_vec (double * MATPROD_RESTRICT x,
             _mm_storeA_pd (q, Q);
             x += 2;
             q += 2;
+        }
 #       endif
 
         n3 = n2;
 
-#       if CAN_USE_AVX
+#       if CAN_USE_AVX || CAN_USE_SSE2
         {
-            __m256d Yb = _mm256_set1_pd(y[0]);
+#           if CAN_USE_AVX
+                __m256d Y = _mm256_set1_pd(y[0]);
+#           else
+                __m128d Y = _mm_set1_pd(y[0]);
+#           endif
             while (n3 >= 4) { 
-                __m256d Q = _mm256_loadA_pd(q);
-                __m256d X = _mm256_mul_pd (_mm256_loadA_pd(x), Yb);
-                Q = _mm256_add_pd (Q, X);
-                _mm256_storeA_pd (q, Q);
+#               if CAN_USE_AVX
+                {
+                    __m256d Q = _mm256_loadA_pd(q);
+                    __m256d X = _mm256_mul_pd (_mm256_loadA_pd(x), Y);
+                    Q = _mm256_add_pd (Q, X);
+                    _mm256_storeA_pd (q, Q);
+                }
+#               else  /* CAN_USE_SSE2 */
+                {
+                    __m128d Q, X;
+                    Q = _mm_loadA_pd(q);
+                    X = _mm_mul_pd (_mm_loadA_pd(x), Y);
+                    Q = _mm_add_pd (Q, X);
+                    _mm_storeA_pd (q, Q);
+                    Q = _mm_loadA_pd(q+2);
+                    X = _mm_mul_pd (_mm_loadA_pd(x+2), Y);
+                    Q = _mm_add_pd (Q, X);
+                    _mm_storeA_pd (q+2, Q);
+                }
+#               endif
                 x += 4;
                 q += 4;
                 n3 -= 4;
             }
-            if (n3 > 1) { 
-                __m128d Y = cast128(Yb);
+            if (n3 > 1) {
                 __m128d Q = _mm_loadA_pd(q);
-                __m128d X = _mm_mul_pd (_mm_loadA_pd(x), Y);
+                __m128d X = _mm_mul_pd (_mm_loadA_pd(x), cast128(Y));
                 Q = _mm_add_pd (Q, X);
                 _mm_storeA_pd (q, Q);
                 x += 2;
@@ -1558,35 +1573,7 @@ static void matprod_sub_mat_vec (double * MATPROD_RESTRICT x,
                 n3 -= 2;
             }
         }
-
-#       elif CAN_USE_SSE2
-        {
-            __m128d Y = _mm_load1_pd(y);
-            while (n3 >= 4) { 
-                __m128d Q, X;
-                Q = _mm_loadA_pd(q);
-                X = _mm_mul_pd (_mm_loadA_pd(x), Y);
-                Q = _mm_add_pd (Q, X);
-                _mm_storeA_pd (q, Q);
-                Q = _mm_loadA_pd(q+2);
-                X = _mm_mul_pd (_mm_loadA_pd(x+2), Y);
-                Q = _mm_add_pd (Q, X);
-                _mm_storeA_pd (q+2, Q);
-                x += 4;
-                q += 4;
-                n3 -= 4;
-            }
-            if (n3 > 1) { 
-                __m128d Q = _mm_loadA_pd(q);
-                __m128d X = _mm_mul_pd (_mm_loadA_pd(x), Y);
-                Q = _mm_add_pd (Q, X);
-                _mm_storeA_pd (q, Q);
-                x += 2;
-                q += 2;
-                n3 -= 2;
-            }
-        }
-#       else
+#       else  /* non-SIMD code */
         {
             while (n3 >= 4) { 
                 q[0] += x[0] * y[0];
