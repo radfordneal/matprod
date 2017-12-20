@@ -1,0 +1,5 @@
+commit 66d13a9718e0f94c398ba29ad2f1f5b171b92dc4
+Author: Radford Neal <radfordneal@gmail.com>
+Date:   Wed Dec 20 09:40:10 2017 -0500
+
+    AVX/SSE sharing in matprod_trans1
