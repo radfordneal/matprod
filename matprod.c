@@ -2105,33 +2105,40 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                     q += 4;
                     n2 -= 4;
                 }
-                if (n2 > 1) {
-                    __m128d S1 = _mm_loadA_pd(r);
-                    __m128d S2 = _mm_loadu_pd(r+n);
-                    _mm_storeA_pd (q, _mm_add_pd (_mm_mul_pd(S1,cast128(B11)),
-                                                  _mm_mul_pd(S2,cast128(B12))));
-                    _mm_storeu_pd (q+n,_mm_add_pd(_mm_mul_pd(S1,cast128(B21)),
-                                                  _mm_mul_pd(S2,cast128(B22))));
-                    r += 2;
-                    q += 2;
-                    n2 -= 2;
-                }
             }
 #           else  /* CAN_USE_SSE2 */
             {
-                while (n2 > 1) {
-                    __m128d S1 = _mm_loadA_pd(r);
-                    __m128d S2 = _mm_loadu_pd(r+n);
+                while (n2 >= 4) {
+                    __m128d S1, S2;
+                    S1 = _mm_loadA_pd(r);
+                    S2 = _mm_loadu_pd(r+n);
                     _mm_storeA_pd (q, _mm_add_pd (_mm_mul_pd(S1,B11),
                                                    _mm_mul_pd(S2,B12)));
                     _mm_storeu_pd (q+n, _mm_add_pd (_mm_mul_pd(S1,B21),
                                                     _mm_mul_pd(S2,B22)));
-                    r += 2;
-                    q += 2;
-                    n2 -= 2;
+                    S1 = _mm_loadA_pd(r+2);
+                    S2 = _mm_loadu_pd(r+n+2);
+                    _mm_storeA_pd (q+2, _mm_add_pd (_mm_mul_pd(S1,B11),
+                                                     _mm_mul_pd(S2,B12)));
+                    _mm_storeu_pd (q+n+2, _mm_add_pd (_mm_mul_pd(S1,B21),
+                                                      _mm_mul_pd(S2,B22)));
+                    r += 4;
+                    q += 4;
+                    n2 -= 4;
                 }
             }
 #           endif
+            if (n2 > 1) {
+                __m128d S1 = _mm_loadA_pd(r);
+                __m128d S2 = _mm_loadu_pd(r+n);
+                _mm_storeA_pd (q, _mm_add_pd (_mm_mul_pd(S1,cast128(B11)),
+                                              _mm_mul_pd(S2,cast128(B12))));
+                _mm_storeu_pd (q+n,_mm_add_pd(_mm_mul_pd(S1,cast128(B21)),
+                                              _mm_mul_pd(S2,cast128(B22))));
+                r += 2;
+                q += 2;
+                n2 -= 2;
+            }
             if (n2 >= 1) {
                 __m128d S1 = _mm_set_sd(r[0]);
                 __m128d S2 = _mm_set_sd(r[n]);
