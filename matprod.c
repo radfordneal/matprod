@@ -2438,20 +2438,34 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
     /* Handle the case where k is two specially. */
 
     if (k == 2) {
-#       if CAN_USE_AVX
+#       if CAN_USE_AVX || CAN_USE_SSE3
         {
             double *e = y + 2*m;
             double *f = x + 2*(n-3);
             while (y < e) {
-                __m256d Y = _mm256_set_pd (y[1], y[0], y[1], y[0]);
+#               if CAN_USE_AVX
+                    __m256d Y = _mm256_set_pd (y[1], y[0], y[1], y[0]);
+#               else  /* CAN_USE_SSE3 */
+                    __m128d Y = _mm_set_pd (y[1], y[0]);
+#               endif
                 double *p = x;
                 while (p < f) {
-                    __m256d M0 = _mm256_mul_pd (Y, _mm256_loadu_pd(p));
-                    __m256d M1 = _mm256_mul_pd (Y, _mm256_loadu_pd(p+4));
-                    __m256d Z = _mm256_hadd_pd 
-                                  (_mm256_permute2f128_pd (M0, M1, 0x20),
-                                   _mm256_permute2f128_pd (M0, M1, 0x31));
-                    _mm256_storeu_pd (z, Z);
+#                   if CAN_USE_AVX
+                        __m256d M0 = _mm256_mul_pd (Y, _mm256_loadu_pd(p));
+                        __m256d M1 = _mm256_mul_pd (Y, _mm256_loadu_pd(p+4));
+                        __m256d Z = _mm256_hadd_pd 
+                                      (_mm256_permute2f128_pd (M0, M1, 0x20),
+                                       _mm256_permute2f128_pd (M0, M1, 0x31));
+                        _mm256_storeu_pd (z, Z);
+#                   else  /* CAN_USE_SSE3 */
+                        __m128d M0, M1;
+                        M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p));
+                        M1 = _mm_mul_pd (Y, _mm_loadAA_pd(p+2));
+                        _mm_storeu_pd (z, _mm_hadd_pd (M0, M1));
+                        M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p+4));
+                        M1 = _mm_mul_pd (Y, _mm_loadAA_pd(p+6));
+                        _mm_storeu_pd (z+2, _mm_hadd_pd (M0, M1));
+#                   endif
                     p += 8;
                     z += 4;
                 }
@@ -2471,41 +2485,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
                 y += 2;
             }
         }
-#       elif CAN_USE_SSE3
-        {
-            double *e = y + 2*m;
-            double *f = x + 2*(n-3);
-            while (y < e) {
-                __m128d Y = _mm_set_pd (y[1], y[0]);
-                __m128d M0, M1;
-                double *p = x;
-                while (p < f) {
-                    M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p));
-                    M1 = _mm_mul_pd (Y, _mm_loadAA_pd(p+2));
-                    _mm_storeu_pd (z, _mm_hadd_pd (M0, M1));
-                    M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p+4));
-                    M1 = _mm_mul_pd (Y, _mm_loadAA_pd(p+6));
-                    _mm_storeu_pd (z+2, _mm_hadd_pd (M0, M1));
-                    p += 8;
-                    z += 4;
-                }
-                if (n & 2) {
-                    M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p));
-                    M1 = _mm_mul_pd (Y, _mm_loadAA_pd(p+2));
-                    _mm_storeu_pd (z, _mm_hadd_pd (M0, M1));
-                    p += 4;
-                    z += 2;
-                }
-                if (n & 1) {
-                    M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p));
-                    _mm_store_sd (z, _mm_hadd_pd (M0, M0));
-                    p += 2;
-                    z += 1;
-                }
-                y += 2;
-            }
-        }
-#       else
+#       else  /* non-SIMD code */
         {
             double *e = y + 2*m;
             double *f = x + 2*n;
