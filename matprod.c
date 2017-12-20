@@ -2092,23 +2092,15 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                 n2 -= 2;
             }
 #           endif
-#           if CAN_USE_AVX
-            {
-                while (n2 >= 4) {
+            while (n2 >= 4) {
+#               if CAN_USE_AVX
                     __m256d S1 = _mm256_loadA_pd(r);
                     __m256d S2 = _mm256_loadu_pd(r+n);
                     _mm256_storeu_pd (q, _mm256_add_pd (_mm256_mul_pd(S1,B11),
                                                         _mm256_mul_pd(S2,B12)));
                     _mm256_storeu_pd (q+n,_mm256_add_pd(_mm256_mul_pd(S1,B21),
                                                         _mm256_mul_pd(S2,B22)));
-                    r += 4;
-                    q += 4;
-                    n2 -= 4;
-                }
-            }
-#           else  /* CAN_USE_SSE2 */
-            {
-                while (n2 >= 4) {
+#               else  /* CAN_USE_SSE2 */
                     __m128d S1, S2;
                     S1 = _mm_loadA_pd(r);
                     S2 = _mm_loadu_pd(r+n);
@@ -2122,12 +2114,11 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                                                      _mm_mul_pd(S2,B12)));
                     _mm_storeu_pd (q+n+2, _mm_add_pd (_mm_mul_pd(S1,B21),
                                                       _mm_mul_pd(S2,B22)));
-                    r += 4;
-                    q += 4;
-                    n2 -= 4;
-                }
+#               endif
+                r += 4;
+                q += 4;
+                n2 -= 4;
             }
-#           endif
             if (n2 > 1) {
                 __m128d S1 = _mm_loadA_pd(r);
                 __m128d S2 = _mm_loadu_pd(r+n);
@@ -2179,13 +2170,22 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
 
         while (k2 > 1) {
             int n2 = n;
-#           if CAN_USE_AVX
+#           if CAN_USE_AVX || CAN_USE_SSE2
             {
-                __m256d B11 = _mm256_set1_pd(y[0]);
-                __m256d B12 = _mm256_set1_pd(y[1]);
-                __m256d B21 = _mm256_set1_pd(y[k]);
-                __m256d B22 = _mm256_set1_pd(y[k+1]);
+#               if CAN_USE_AVX
+                    __m256d B11 = _mm256_set1_pd(y[0]);
+                    __m256d B12 = _mm256_set1_pd(y[1]);
+                    __m256d B21 = _mm256_set1_pd(y[k]);
+                    __m256d B22 = _mm256_set1_pd(y[k+1]);
+#               else
+                    __m128d B11 = _mm_set1_pd(y[0]);
+                    __m128d B12 = _mm_set1_pd(y[1]);
+                    __m128d B21 = _mm_set1_pd(y[k]);
+                    __m128d B22 = _mm_set1_pd(y[k+1]);
+#               endif
+
                 double *q = z;
+
 #               if ALIGN_FORWARD & 8
                 {
                     __m128d S1 = _mm_set_sd(r[0]);
@@ -2201,7 +2201,7 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                     n2 -= 1;
                 }
 #               endif
-#               if ALIGN_FORWARD & 16
+#               if CAN_USE_AVX && (ALIGN_FORWARD & 16)
                 {
                     __m128d S1 = _mm_loadA_pd(r);
                     __m128d S2 = _mm_loadu_pd(r+n);
@@ -2217,14 +2217,38 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                 }
 #               endif
                 while (n2 >= 4) {
-                    __m256d S1 = _mm256_loadu_pd(r);
-                    __m256d S2 = _mm256_loadu_pd(r+n);
-                    _mm256_storeu_pd (q, _mm256_add_pd (_mm256_add_pd (
-                                     _mm256_loadA_pd(q),_mm256_mul_pd(S1,B11)),
-                                                        _mm256_mul_pd(S2,B12)));
-                    _mm256_storeu_pd(q+n,_mm256_add_pd (_mm256_add_pd (
-                                   _mm256_loadA_pd(q+n),_mm256_mul_pd(S1,B21)),
-                                                        _mm256_mul_pd(S2,B22)));
+#                   if CAN_USE_AVX
+                        __m256d S1 = _mm256_loadu_pd(r);
+                        __m256d S2 = _mm256_loadu_pd(r+n);
+                        _mm256_storeu_pd (q, _mm256_add_pd (_mm256_add_pd (
+                                    _mm256_loadA_pd(q),_mm256_mul_pd(S1,B11)),
+                                                       _mm256_mul_pd(S2,B12)));
+                        _mm256_storeu_pd(q+n,_mm256_add_pd (_mm256_add_pd (
+                                  _mm256_loadA_pd(q+n),_mm256_mul_pd(S1,B21)),
+                                                       _mm256_mul_pd(S2,B22)));
+#                   else  /* CAN_USE_SSE2 */
+                        __m128d S1, S2;
+                        S1 = _mm_loadA_pd(r);
+                        S2 = _mm_loadu_pd(r+n);
+                        _mm_storeA_pd (q, _mm_add_pd (
+                                                 _mm_add_pd(_mm_loadA_pd(q),
+                                                 _mm_mul_pd(S1,B11)),
+                                                 _mm_mul_pd(S2,B12)));
+                        _mm_storeu_pd (q+n, _mm_add_pd (
+                                                 _mm_add_pd(_mm_loadu_pd(q+n),
+                                                 _mm_mul_pd(S1,B21)),
+                                                 _mm_mul_pd(S2,B22)));
+                        S1 = _mm_loadA_pd(r+2);
+                        S2 = _mm_loadu_pd(r+n+2);
+                        _mm_storeA_pd (q+2, _mm_add_pd (
+                                                 _mm_add_pd(_mm_loadA_pd(q+2),
+                                                 _mm_mul_pd(S1,B11)),
+                                                 _mm_mul_pd(S2,B12)));
+                        _mm_storeu_pd (q+n+2, _mm_add_pd (
+                                                 _mm_add_pd(_mm_loadu_pd(q+n+2),
+                                                 _mm_mul_pd(S1,B21)),
+                                                 _mm_mul_pd(S2,B22)));
+#                   endif
                     r += 4;
                     q += 4;
                     n2 -= 4;
@@ -2254,54 +2278,7 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                     r += 1;
                 }
             }
-#           elif CAN_USE_SSE2
-            {
-                __m128d B11 = _mm_set1_pd(y[0]);
-                __m128d B12 = _mm_set1_pd(y[1]);
-                __m128d B21 = _mm_set1_pd(y[k]);
-                __m128d B22 = _mm_set1_pd(y[k+1]);
-                double *q = z;
-#               if ALIGN_FORWARD & 8
-                {
-                    __m128d S1 = _mm_set_sd(r[0]);
-                    __m128d S2 = _mm_set_sd(r[n]);
-                    _mm_store_sd (q, _mm_add_sd (_mm_add_sd (_mm_load_sd(q),
-                                                   _mm_mul_sd(S1,B11)),
-                                                   _mm_mul_sd(S2,B12)));
-                    _mm_store_sd (q+n, _mm_add_sd (_mm_add_sd (_mm_load_sd(q+n),
-                                                   _mm_mul_sd(S1,B21)),
-                                                   _mm_mul_sd(S2,B22)));
-                    r += 1;
-                    q += 1;
-                    n2 -= 1;
-                }
-#               endif
-                while (n2 > 1) {
-                    __m128d S1 = _mm_loadA_pd(r);
-                    __m128d S2 = _mm_loadu_pd(r+n);
-                    _mm_storeA_pd (q, _mm_add_pd (_mm_add_pd (_mm_loadA_pd(q),
-                                                   _mm_mul_pd(S1,B11)),
-                                                   _mm_mul_pd(S2,B12)));
-                    _mm_storeu_pd(q+n,_mm_add_pd (_mm_add_pd (_mm_loadu_pd(q+n),
-                                                    _mm_mul_pd(S1,B21)),
-                                                    _mm_mul_pd(S2,B22)));
-                    r += 2;
-                    q += 2;
-                    n2 -= 2;
-                }
-                if (n2 >= 1) {
-                    __m128d S1 = _mm_set_sd(r[0]);
-                    __m128d S2 = _mm_set_sd(r[n]);
-                    _mm_store_sd (q, _mm_add_sd (_mm_add_sd (_mm_load_sd(q),
-                                                   _mm_mul_sd(S1,B11)),
-                                                   _mm_mul_sd(S2,B12)));
-                    _mm_store_sd (q+n, _mm_add_sd (_mm_add_sd (_mm_load_sd(q+n),
-                                                   _mm_mul_sd(S1,B21)),
-                                                   _mm_mul_sd(S2,B22)));
-                    r += 1;
-                }
-            }
-#           else
+#           else  /* non-SIMD code */
             {
                 double b11 = y[0];
                 double b12 = y[1];
@@ -2331,6 +2308,7 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                 }
             }
 #           endif
+
             r += n;  /* already advanced by n, so total advance is 2*n */
             y += 2;
             k2 -= 2;
