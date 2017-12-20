@@ -3068,66 +3068,17 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
 
     int sym = x==y && n==m;  /* same operands, so symmetric result? */
     double *ex = x + n*k;    /* point past end of x */
-    int j = 0;               /* number of columns of result produced so far */
+    int m2 = m;
 
     if (n == 2) {
 
-        /* If m is odd, compute the first column of the result, and
-           update y, z, and mt accordingly. */
-
-        if (m & 1) {
-
-            double s1, s2;
-            double *q = y;
-            double *r = x;
-            double *e = x+2*k;
-
-            /* Initialize s1 and s2 to zero, if k is even, or to the 
-               products of the first element of the first row of y with
-               the first column of x.  Adjust r and q accordingly. */
-
-            if (k & 1) {
-                double b = *q;
-                s1 = *r++ * b;
-                s2 = *r++ * b;
-                q += m;
-            }
-            else
-                s1 = s2 = 0.0;
-
-            /* Each time around this loop, add the products of two columns
-               of x and two elements of the first row of y to s1 and s2.
-               Adjust r and q to account for this. */
-
-            while (r < e) {
-                double b1, b2;
-                b1 = *q;
-                q += m;
-                b2 = *q;
-                q += m;
-                s1 = (s1 + (r[0] * b1)) + (r[2] * b2);
-                s2 = (s2 + (r[1] * b1)) + (r[3] * b2);
-                r += 4;
-            }
-
-            /* Store s1 and s2 in the result column. */
-
-            z[0] = s1;
-            z[1] = s2;
-
-            /* Move to next column of the result, and next row of y. */
-
-            z += 2;
-            y += 1;
-            j += 1;
-        }
-
         /* Compute two columns of the result each time around this loop, 
-           updating y, z, and j accordingly.  Note that m-j is now even. */
+           updating y, z, and j accordingly.  Note that k is at least two. */
 
-        while (j < m) {
+        while (m2 > 1) {
 
-            double s[4];
+            double s[4];  /* sums for the two elements in each of two columns */
+
             double *q = y;
             double *r = x;
 
@@ -3136,13 +3087,13 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                the first column of x.  Adjust r and q accordingly. */
 
             if (k & 1) {
-                double b = *q;
-                double b2 = *(q+1);
+                double b0 = q[0];
+                double b1 = q[1];
+                s[0] = r[0] * b0;
+                s[1] = r[1] * b0;
+                s[2] = r[0] * b1;
+                s[3] = r[1] * b1;
                 q += m;
-                s[0] = r[0] * b;
-                s[1] = r[1] * b;
-                s[2] = r[0] * b2;
-                s[3] = r[1] * b2;
                 r += 2;
             }
             else
@@ -3153,17 +3104,16 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                Adjust r and q to account for this. */
 
             while (r < ex) {
-                double b11, b12, b21, b22;
-                b11 = *q;
-                b21 = *(q+1);
-                q += m;
-                b12 = *q;
-                b22 = *(q+1);
-                q += m;
-                s[0] = (s[0] + (r[0] * b11)) + (r[2] * b12);
-                s[1] = (s[1] + (r[1] * b11)) + (r[3] * b12);
-                s[2] = (s[2] + (r[0] * b21)) + (r[2] * b22);
-                s[3] = (s[3] + (r[1] * b21)) + (r[3] * b22);
+                double b00, b01, b10, b11;
+                b00 = q[0];
+                b10 = q[1];
+                b01 = q[m];
+                b11 = q[m+1];
+                s[0] = (s[0] + (r[0] * b00)) + (r[2] * b01);
+                s[1] = (s[1] + (r[1] * b00)) + (r[3] * b01);
+                s[2] = (s[2] + (r[0] * b10)) + (r[2] * b11);
+                s[3] = (s[3] + (r[1] * b10)) + (r[3] * b11);
+                q += 2*m;
                 r += 4;
             }
 
@@ -3179,75 +3129,54 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
 
             z += 4;
             y += 2;
-            j += 2;
+            m2 -= 2;
+        }
+
+        /* If m is odd, compute the last column of the result. */
+
+        if (m2 >= 1) {
+
+            double s[2];
+            double *q = y;
+            double *r = x;
+            double *e = x+2*k;
+
+            /* Initialize s1 and s2 to zero, if k is even, or to the 
+               products of the first element of the last row of y with
+               the first column of x.  Adjust r and q accordingly. */
+
+            if (k & 1) {
+                double b = q[0];
+                s[0] = r[0] * b;
+                s[1] = r[1] * b;
+                q += m;
+                r += 2;
+            }
+            else
+                s[0] = s[1] = 0.0;
+
+            /* Each time around this loop, add the products of two columns
+               of x and two elements of the last row of y to s1 and s2.
+               Adjust r and q to account for this. */
+
+            while (r < e) {
+                double b1, b2;
+                b1 = *q;
+                q += m;
+                b2 = *q;
+                q += m;
+                s[0] = (s[0] + (r[0] * b1)) + (r[2] * b2);
+                s[1] = (s[1] + (r[1] * b1)) + (r[3] * b2);
+                r += 4;
+            }
+
+            /* Store s in the last result column. */
+
+            z[0] = s[0];
+            z[1] = s[1];
         }
 
         return;
-    }
-
-    /* If m is odd, compute the first column of the result, updating y, z, and 
-       j to account for this column having been computed.  Also, if result
-       is symmetric, copy this column to the first row. */
-
-    if (m & 1) {
-
-        double *q = y;
-        double *r = x;
-        double *ez = z+n;
-
-        /* Initialize sums in z to zero, if k is even, or to the product of
-           the first element of the first row of y with the first column 
-           of x (in which case adjust r and q accordingly). */
-
-        if (k & 1) {
-            double *t = z;
-            double *f = z+n;
-            double b = *q;
-            do { *t++ = *r++ * b; } while (t < f);
-            q += m;
-        }
-        else {
-            double *t = z;
-            double *f = z+n;
-            do { *t++ = 0.0; } while (t < f);
-        }
-
-        /* Each time around this loop, add the products of two columns of x 
-           with two elements of the first row of y to the result vector, z.
-           Adjust r and y to account for this. */
-
-        while (r < ex) {
-            double *t = z;
-            double b1, b2;
-            b1 = *q;
-            q += m;
-            b2 = *q;
-            q += m;
-            do {
-                *t = (*t + (*r * b1)) + (*(r+n) * b2);
-                r += 1;
-                t += 1;
-            } while (t < ez);
-            r += n;
-        }
-
-        /* Copy first column to first row, if result is symmetric. */
-
-        if (sym) {
-            double *t = z+1;
-            double *q = z+n;
-            while (t < ez) {
-                *q = *t;
-                t += 1;
-                q += n;
-            }
-        }
-
-        /* Move to next column of the result and the next row of y. */
-
-        z += n;
-        y += 1;
-        j += 1;
     }
 
     /* Compute two columns of the result each time around this loop, updating
@@ -3257,10 +3186,10 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
        the second column), and these parts are then copied to the corresponding 
        rows. */
 
-    while (j < m) {
+    while (m2 > 1) {
 
-        double *zs = sym ? z+j : z;   /* Where to start storing sums */
-        double *ez = z+n;             /* Where we stop storing sums */
+        double *zs = sym ? z+m-m2 : z;   /* Where to start storing sums */
+        double *ez = z+n;                /* Where we stop storing sums */
         double *xs = x;
         double *t1 = zs;
         double *t2 = t1 + n;
@@ -3274,7 +3203,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
         if (k & 1) {
             double b1 = *q;
             double b2 = *(q+1);
-            double *r = sym ? xs+j : xs;
+            double *r = sym ? xs+m-m2 : xs;
             do {
                 double s = *r++;
                 *t1++ = s * b1;
@@ -3298,7 +3227,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
             double b11, b12, b21, b22;
             double *t1 = zs;
             double *t2 = t1 + n;
-            double *r = sym ? xs+j : xs;
+            double *r = sym ? xs+m-m2 : xs;
             b11 = *q;
             b21 = *(q+1);
             q += m;
@@ -3338,6 +3267,70 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
 
         z += 2*n;
         y += 2;
-        j += 2;
+        m2 -= 2;
+    }
+
+    /* If m is odd, compute the last column of the result.  If the result
+       is symmetric, only the final element of this column needs to be
+       computed. */
+
+    if (m2 >= 1) {
+
+        if (sym) {
+            double *q = y;
+            double *r = x+n-1;
+            double s = 0;
+            int k2 = k;
+            while (k2 > 0) {
+                s += r[0] * q[0]; 
+                r += n;
+                q += m;
+                k2 -= 1;
+            }
+            z[n-1] = s;
+            return;
+        }
+
+        else {
+
+            /* Initialize sums in z to zero, if k is even, or to the
+               product of the first element of the last row of y with
+               the first column of x (in which case adjust r and q
+               accordingly). */
+
+            double *q = y;
+            double *r = x;
+            double *t = z;
+            double *f = z+n;
+            double *ez = z+n;
+
+            if (k & 1) {
+                double b = *q;
+                do { *t++ = *r++ * b; } while (t < f);
+                q += m;
+            }
+            else {
+                do { *t++ = 0.0; } while (t < f);
+            }
+
+            /* Each time around this loop, add the products of two
+               columns of x with two elements of the first row of y to
+               the result vector, z.  Adjust r and y to account for this. */
+
+            while (r < ex) {
+                double *t = z;
+                double b1, b2;
+                b1 = *q;
+                q += m;
+                b2 = *q;
+                q += m;
+                do {
+                    *t = (*t + (*r * b1)) + (*(r+n) * b2);
+                    r += 1;
+                    t += 1;
+                } while (t < ez);
+                r += n;
+            }
+        }
     }
 }
