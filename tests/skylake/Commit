@@ -1,5 +1,5 @@
-commit 7e7f0c277f424e0f20bb10b921949dca7513904e
+commit 6ed105efa031738c45cec4e225649423032f0f35
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Dec 17 16:07:21 2017 -0500
+Date:   Thu Dec 21 21:51:49 2017 -0500
 
-    revisions in matprod_sub_vec_mat
+    more revisions to matprod_trans2
