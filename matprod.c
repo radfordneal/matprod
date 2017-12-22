@@ -3079,7 +3079,42 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
             double *q = y;
             int k2 = k;
 
-#           if CAN_USE_SSE2
+#           if CAN_USE_AVX && 0
+
+                __m256d S = _mm256_setzero_pd();
+
+                /* Each time around this loop, add the products of two columns
+                   of x with elements of the next two rows of y to the sums.
+                   Adjust r and y to account for this. */
+
+                while (k2 > 1) {
+                    __m256d Q, R;
+                    __m128d X;
+                    Q = _mm256_set_pd (q[1], q[1], q[0], q[0]);
+                    X = _mm_loadAA_pd(r);
+                    R = _mm256_insertf128_pd (_mm256_castpd128_pd256(X), X, 1);
+                    S = _mm256_add_pd (_mm256_mul_pd(R,Q), S);
+                    Q = _mm256_set_pd (q[m+1], q[m+1], q[m], q[m]);
+                    X = _mm_loadAA_pd(r+2);
+                    R = _mm256_insertf128_pd (_mm256_castpd128_pd256(X), X, 1);
+                    S = _mm256_add_pd (_mm256_mul_pd(R,Q), S);
+                    q += 2*m;
+                    r += 4;
+                    k2 -= 2;
+                }
+
+                if (k2 >= 1) {
+                    __m256d Q, R;
+                    Q = _mm256_set_pd (q[1], q[1], q[0], q[0]);
+                    R = _mm256_set_pd (r[1], r[0], r[1], r[0]);
+                    S = _mm256_add_pd (_mm256_mul_pd(R,Q), S);
+                }
+
+                /* Store sums in the next two result columns. */
+
+                _mm256_storeAA_pd (z, S);
+
+#           elif CAN_USE_SSE2
 
                 __m128d S0 = _mm_setzero_pd();
                 __m128d S1 = _mm_setzero_pd();
@@ -3167,35 +3202,67 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
 
         if (m2 >= 1) {
 
-            double s[2] = { 0, 0 };  /* sums for the two values in the result */
             double *r = x;
             int k2 = k;
 
-            /* Each time around this loop, add the products of two
-               columns of x with two elements of the last row of y
-               to s[0] and s[1]. */
+#           if CAN_USE_SSE2
+            {
+                __m128d S = _mm_setzero_pd();
 
-            while (k2 > 1) {
-                double b1 = y[0];
-                double b2 = y[m];
-                s[0] = (s[0] + (r[0] * b1)) + (r[2] * b2);
-                s[1] = (s[1] + (r[1] * b1)) + (r[3] * b2);
-                y += 2*m;
-                r += 4;
-                k2 -= 2;
+                /* Each time around this loop, add the products of two
+                   columns of x with two elements of the last row of y
+                   to S. */
+
+                while (k2 > 1) {
+                    S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (y[0]),
+                                                   _mm_loadAA_pd(r)));
+                    S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (y[m]),
+                                                   _mm_loadAA_pd(r+2)));
+                    y += 2*m;
+                    r += 4;
+                    k2 -= 2;
+                }
+
+                if (k2 >= 1) {
+                    S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (y[0]),
+                                                   _mm_loadAA_pd(r)));
+                }
+
+                /* Store the two sums in S in the result vector. */
+
+                _mm_storeAA_pd (z, S);
             }
+#           else  /* non-SIMD code */
+            {
+                double s[2] = { 0, 0 }; /* sums for the 2 values in the result*/
 
-            if (k2 >= 1) {
-                double b = y[0];
-                s[0] += r[0] * b;
-                s[1] += r[1] * b;
-                /* y += 1; */
+                /* Each time around this loop, add the products of two
+                   columns of x with two elements of the last row of y
+                   to s[0] and s[1]. */
+
+                while (k2 > 1) {
+                    double b1 = y[0];
+                    double b2 = y[m];
+                    s[0] = (s[0] + (r[0] * b1)) + (r[2] * b2);
+                    s[1] = (s[1] + (r[1] * b1)) + (r[3] * b2);
+                    y += 2*m;
+                    r += 4;
+                    k2 -= 2;
+                }
+
+                if (k2 >= 1) {
+                    double b = y[0];
+                    s[0] += r[0] * b;
+                    s[1] += r[1] * b;
+                    /* y += 1; */
+                }
+
+                /* Store the two sums in s[0] and s[1] in the result vector. */
+
+                z[0] = s[0];
+                z[1] = s[1];
             }
-
-            /* Store the two sums in s[0] and s[1] in the result vector. */
-
-            z[0] = s[0];
-            z[1] = s[1];
+#           endif
         }
 
         return;
@@ -3218,8 +3285,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
         double *xs, *q;
 
         /* Initialize sums in next two columns of z to the sum of the
-           first one or two products, according to whether k is odd or
-           even.  Note that k and m are at least two here. */
+           first two products.  Note that k and m are at least two here. */
 
 #       if 1  /* non-SIMD code */
         {
@@ -3250,7 +3316,90 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
         while (xs < ex-n) {
             double *t = z+j;
             double *r = xs+j;
-#           if 1  /* non-SIMD code */
+#           if CAN_USE_AVX || CAN_USE_SSE2
+            {
+#               if CAN_USE_AVX
+                    __m256d B11 = _mm256_set1_pd(q[0]);
+                    __m256d B12 = _mm256_set1_pd(q[m]);
+                    __m256d B21 = _mm256_set1_pd(q[1]);
+                    __m256d B22 = _mm256_set1_pd(q[m+1]);
+#               else
+                    __m128d B11 = _mm_set1_pd(q[0]);
+                    __m128d B12 = _mm_set1_pd(q[m]);
+                    __m128d B21 = _mm_set1_pd(q[1]);
+                    __m128d B22 = _mm_set1_pd(q[m+1]);
+#               endif
+
+                while (t < ez-2) {
+#                   if CAN_USE_AVX
+                        __m256d S1, S2, T1, T2;
+                        S1 = _mm256_loadu_pd(r);
+                        S2 = _mm256_loadu_pd(r+n);
+                        T1 = _mm256_loadu_pd(t);
+                        T2 = _mm256_loadu_pd(t+n);
+                        T1 = _mm256_add_pd (_mm256_mul_pd (S2, B12),
+                               _mm256_add_pd (_mm256_mul_pd (S1, B11), T1));
+                        T2 = _mm256_add_pd (_mm256_mul_pd (S2, B22),
+                               _mm256_add_pd (_mm256_mul_pd (S1, B21), T2));
+                        _mm256_storeu_pd (t, T1);
+                        _mm256_storeu_pd (t+n, T2);
+#                   else  /* CAN_USE_SSE2 */
+                        __m128d S1, S2, T1, T2;
+                        S1 = _mm_loadu_pd(r);
+                        S2 = _mm_loadu_pd(r+n);
+                        T1 = _mm_loadu_pd(t);
+                        T2 = _mm_loadu_pd(t+n);
+                        T1 = _mm_add_pd (_mm_mul_pd (S2, cast128(B12)),
+                               _mm_add_pd (_mm_mul_pd (S1, cast128(B11)), T1));
+                        T2 = _mm_add_pd (_mm_mul_pd (S2, cast128(B22)),
+                               _mm_add_pd (_mm_mul_pd (S1, cast128(B21)), T2));
+                        _mm_storeu_pd (t, T1);
+                        _mm_storeu_pd (t+n, T2);
+                        S1 = _mm_loadu_pd(r+2);
+                        S2 = _mm_loadu_pd(r+n+2);
+                        T1 = _mm_loadu_pd(t+2);
+                        T2 = _mm_loadu_pd(t+n+2);
+                        T1 = _mm_add_pd (_mm_mul_pd (S2, cast128(B12)),
+                               _mm_add_pd (_mm_mul_pd (S1, cast128(B11)), T1));
+                        T2 = _mm_add_pd (_mm_mul_pd (S2, cast128(B22)),
+                               _mm_add_pd (_mm_mul_pd (S1, cast128(B21)), T2));
+                        _mm_storeu_pd (t+2, T1);
+                        _mm_storeu_pd (t+n+2, T2);
+#                   endif
+                    t += 4;
+                    r += 4;
+                }
+
+                if (t < ez) {
+                    __m128d S1 = _mm_loadu_pd(r);
+                    __m128d S2 = _mm_loadu_pd(r+n);
+                    __m128d T1 = _mm_loadu_pd(t);
+                    __m128d T2 = _mm_loadu_pd(t+n);
+                    T1 = _mm_add_pd (_mm_mul_pd (S2, cast128(B12)),
+                           _mm_add_pd (_mm_mul_pd (S1, cast128(B11)), T1));
+                    T2 = _mm_add_pd (_mm_mul_pd (S2, cast128(B22)),
+                           _mm_add_pd (_mm_mul_pd (S1, cast128(B21)), T2));
+                    _mm_storeu_pd (t, T1);
+                    _mm_storeu_pd (t+n, T2);
+                    t += 2;
+                    r += 2;
+                }
+
+                if (t <= ez) {
+                    __m128d S1 = _mm_load_sd(r);
+                    __m128d S2 = _mm_load_sd(r+n);
+                    __m128d T1 = _mm_load_sd(t);
+                    __m128d T2 = _mm_load_sd(t+n);
+                    T1 = _mm_add_sd (_mm_mul_sd (S2, cast128(B12)),
+                           _mm_add_sd (_mm_mul_sd (S1, cast128(B11)), T1));
+                    T2 = _mm_add_sd (_mm_mul_sd (S2, cast128(B22)),
+                           _mm_add_sd (_mm_mul_sd (S1, cast128(B21)), T2));
+                    _mm_store_sd (t, T1);
+                    _mm_store_sd (t+n, T2);
+                }
+            }
+#           else  /* non-SIMD code */
+            {
                 double b11 = q[0];
                 double b12 = q[m];
                 double b21 = q[1];
@@ -3273,6 +3422,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                     t[0] = (t[0] + (s1 * b11)) + (s2 * b12);
                     t[n] = (t[n] + (s1 * b21)) + (s2 * b22);
                 }
+            }
 #           endif
             xs += 2*n;
             q += 2*m;
