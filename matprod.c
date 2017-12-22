@@ -3213,7 +3213,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
 
     while (m2 > 1) {
 
-        double *ez = z+n;   /* Where we stop storing sums */
+        double *ez = z+n-1;    /* Last location to store a sum */
         int j = sym ? m-m2 : 0;
         double *xs, *q;
 
@@ -3225,35 +3225,20 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
         {
             double *r = x+j;
             double *t = z+j;
-            if (k & 1) {
-                double b1 = y[0];
-                double b2 = y[1];
-                do {
-                    double s = r[0];
-                    t[0] = s * b1;
-                    t[n] = s * b2;
-                    r += 1;
-                    t += 1;
-                } while (t < ez);
-                xs = x + n;
-                q = y + m;
-            }
-            else {
-                double b11 = y[0];
-                double b12 = y[m];
-                double b21 = y[1];
-                double b22 = y[m+1];
-                do {
-                    double s1 = r[0];
-                    double s2 = r[n];
-                    t[0] = (s1 * b11) + (s2 * b12);
-                    t[n] = (s1 * b21) + (s2 * b22);
-                    r += 1;
-                    t += 1;
-                } while (t < ez);
-                xs = x + 2*n;
-                q = y + 2*m;
-            }
+            double b11 = y[0];
+            double b12 = y[m];
+            double b21 = y[1];
+            double b22 = y[m+1];
+            do {
+                double s1 = r[0];
+                double s2 = r[n];
+                t[0] = (s1 * b11) + (s2 * b12);
+                t[n] = (s1 * b21) + (s2 * b22);
+                r += 1;
+                t += 1;
+            } while (t <= ez);
+            xs = x + 2*n;
+            q = y + 2*m;
         }
 #       endif
 
@@ -3262,7 +3247,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
            two columns the result vector, z (except parts that aren't
            needed when symetric). */
 
-        while (xs < ex) {
+        while (xs < ex-n) {
             double *t = z+j;
             double *r = xs+j;
 #           if 1  /* non-SIMD code */
@@ -3270,17 +3255,41 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                 double b12 = q[m];
                 double b21 = q[1];
                 double b22 = q[m+1];
-                do {
+                while (t < ez) {
+                    double s11 = r[0];
+                    double s12 = r[n];
+                    double s21 = r[1];
+                    double s22 = r[n+1];
+                    t[0] = (t[0] + (s11 * b11)) + (s12 * b12);
+                    t[1] = (t[1] + (s21 * b11)) + (s22 * b12);
+                    t[n] = (t[n] + (s11 * b21)) + (s12 * b22);
+                    t[n+1] = (t[n+1] + (s21 * b21)) + (s22 * b22);
+                    t += 2;
+                    r += 2;
+                }
+                if (t <= ez) {
                     double s1 = r[0];
                     double s2 = r[n];
                     t[0] = (t[0] + (s1 * b11)) + (s2 * b12);
                     t[n] = (t[n] + (s1 * b21)) + (s2 * b22);
-                    t += 1;
-                    r += 1;
-                } while (t < ez);
+                }
 #           endif
             xs += 2*n;
             q += 2*m;
+        }
+
+        if (xs < ex) {
+            double *t = z+j;
+            double *r = xs+j;
+            double b1 = q[0];
+            double b2 = q[1];
+            do {
+                double s = r[0];
+                t[0] += s * b1;
+                t[n] += s * b2;
+                r += 1;
+                t += 1;
+            } while (t <= ez);
         }
 
         /* If the result is symmetric, copy the columns just computed
@@ -3292,8 +3301,14 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
             while (t < ez) {
                 q[0] = t[0];
                 q[1] = t[n];
-                t += 1;
-                q += n;
+                q[n] = t[1];
+                q[n+1] = t[n+1];
+                t += 2;
+                q += 2*n;
+            }
+            if (t <= ez) {
+                q[0] = t[0];
+                q[1] = t[n];
             }
         }
 
@@ -3337,7 +3352,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
             double *r = x;
             double *t = z;
             double *f = z+n;
-            double *ez = z+n;
+            double *ez = z+n-1;
 
             if (k & 1) {
                 double b = *q;
@@ -3359,11 +3374,16 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                 q += m;
                 b2 = *q;
                 q += m;
-                do {
-                    *t = (*t + (*r * b1)) + (*(r+n) * b2);
+                while (t < ez) {
+                    t[0] = (t[0] + (r[0] * b1)) + (r[n] * b2);
+                    t[1] = (t[1] + (r[1] * b1)) + (r[n+1] * b2);
+                    r += 2;
+                    t += 2;
+                }
+                if (t <= ez) {
+                    t[0] = (t[0] + (r[0] * b1)) + (r[n] * b2);
                     r += 1;
-                    t += 1;
-                } while (t < ez);
+                }
                 r += n;
             }
         }
