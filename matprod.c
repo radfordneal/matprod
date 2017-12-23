@@ -3281,7 +3281,8 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
     while (m2 > 1) {
 
         double *ez = z+n-1;    /* Last location to store a sum */
-        double *xs, *q;
+        double *xs = x;
+        double *q = y;
         int j;
 
 #       if ALIGN >= 16
@@ -3295,8 +3296,11 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
 
 #       if 1  /* non-SIMD code */
         {
-            double *r = x+j;
-            double *t = z+j;
+            double *t = 
+              __builtin_assume_aligned (z+j, ALIGN%16, ALIGN_OFFSET%16);
+            double *r = 
+              __builtin_assume_aligned (xs+j, ALIGN%16, ALIGN_OFFSET%16);
+
             double b11 = y[0];
             double b12 = y[m];
             double b21 = y[1];
@@ -3309,8 +3313,8 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                 r += 1;
                 t += 1;
             } while (t <= ez);
-            xs = x + 2*n;
-            q = y + 2*m;
+            xs += 2*n;
+            q += 2*m;
         }
 #       endif
 
@@ -3320,10 +3324,14 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
            needed when symetric). */
 
         while (xs < ex-n) {
+
             double *t = 
               __builtin_assume_aligned (z+j, ALIGN%16, ALIGN_OFFSET%16);
             double *r = 
               __builtin_assume_aligned (xs+j, ALIGN%16, ALIGN_OFFSET%16);
+
+            q = __builtin_assume_aligned (q, ALIGN%16, ALIGN_OFFSET%16);
+
 #           if CAN_USE_AVX || CAN_USE_SSE2
             {
 #               if CAN_USE_AVX
