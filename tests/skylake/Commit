@@ -1,5 +1,5 @@
-commit 012f70637abb86832c6272ae14cccb579d63e276
+commit a78ba23b1da8fbf0e71f8c37d5ada27651588578
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 22 14:51:48 2017 -0500
+Date:   Fri Dec 22 22:56:22 2017 -0500
 
-    more work on SIMD in matprod_trans2
+    results for harpertown
