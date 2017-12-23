@@ -1,5 +1,59 @@
-commit 1e7059412e01aa6562659e3e189882021237c144
+commit a42d3a84bd0562eb8595a8795e02e38b9484fb01
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Dec 21 21:52:14 2017 -0500
+Date:   Fri Dec 22 20:18:31 2017 -0500
 
-    results for skylake
+    improve alignment assumptions in matprod_trans2
+diff --git a/matprod.c b/matprod.c
+index c4d23ce..411189d 100644
+--- a/matprod.c
++++ b/matprod.c
+@@ -3281,7 +3281,8 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
+     while (m2 > 1) {
+ 
+         double *ez = z+n-1;    /* Last location to store a sum */
+-        double *xs, *q;
++        double *xs = x;
++        double *q = y;
+         int j;
+ 
+ #       if ALIGN >= 16
+@@ -3295,8 +3296,11 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
+ 
+ #       if 1  /* non-SIMD code */
+         {
+-            double *r = x+j;
+-            double *t = z+j;
++            double *t = 
++              __builtin_assume_aligned (z+j, ALIGN%16, ALIGN_OFFSET%16);
++            double *r = 
++              __builtin_assume_aligned (xs+j, ALIGN%16, ALIGN_OFFSET%16);
++
+             double b11 = y[0];
+             double b12 = y[m];
+             double b21 = y[1];
+@@ -3309,8 +3313,8 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
+                 r += 1;
+                 t += 1;
+             } while (t <= ez);
+-            xs = x + 2*n;
+-            q = y + 2*m;
++            xs += 2*n;
++            q += 2*m;
+         }
+ #       endif
+ 
+@@ -3320,10 +3324,14 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
+            needed when symetric). */
+ 
+         while (xs < ex-n) {
++
+             double *t = 
+               __builtin_assume_aligned (z+j, ALIGN%16, ALIGN_OFFSET%16);
+             double *r = 
+               __builtin_assume_aligned (xs+j, ALIGN%16, ALIGN_OFFSET%16);
++
++            q = __builtin_assume_aligned (q, ALIGN%16, ALIGN_OFFSET%16);
++
+ #           if CAN_USE_AVX || CAN_USE_SSE2
+             {
+ #               if CAN_USE_AVX
