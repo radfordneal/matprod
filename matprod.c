@@ -324,7 +324,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 
    If y has more than VEC_MAT_ROWS (defined below) rows, the operation
    is done on successive parts of the matrix, each consisting of at
-   most MAT_VEC_ROWS of the rows.  The second and later parts add to
+   most VEC_MAT_ROWS of the rows.  The second and later parts add to
    the result found by earlier parts.  The matprod_sub_mat_vec
    procedure below does one such part. */
 
