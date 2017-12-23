@@ -3281,8 +3281,14 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
     while (m2 > 1) {
 
         double *ez = z+n-1;    /* Last location to store a sum */
-        int j = sym ? m-m2 : 0;
         double *xs, *q;
+        int j;
+
+#       if ALIGN >= 16
+            j = sym ? (m-m2) & ~1 : 0;
+#       else
+            j = sym ? (m-m2) : 0;
+#       endif
 
         /* Initialize sums in next two columns of z to the sum of the
            first two products.  Note that k and m are at least two here. */
@@ -3314,8 +3320,10 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
            needed when symetric). */
 
         while (xs < ex-n) {
-            double *t = z+j;
-            double *r = xs+j;
+            double *t = 
+              __builtin_assume_aligned (z+j, ALIGN%16, ALIGN_OFFSET%16);
+            double *r = 
+              __builtin_assume_aligned (xs+j, ALIGN%16, ALIGN_OFFSET%16);
 #           if CAN_USE_AVX || CAN_USE_SSE2
             {
 #               if CAN_USE_AVX
