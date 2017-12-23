@@ -1,5 +1,5 @@
-commit 57298a3726e16f18f51cd80aa93b4ee414a073d3
+commit 0261f0bcb7ae8f320bd20ceaabe4d5818cc780a4
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Dec 17 19:15:03 2017 -0500
+Date:   Sat Dec 23 15:22:59 2017 -0500
 
-    new set of tests, and results for skylake
+    results for skylake
