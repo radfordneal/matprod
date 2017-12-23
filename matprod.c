@@ -3346,6 +3346,23 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                     __m128d B22 = _mm_set1_pd(q[m+1]);
 #               endif
 
+#               if ALIGN_OFFSET & 8
+                {
+                    __m128d S1 = _mm_load_sd(r);
+                    __m128d S2 = _mm_load_sd(r+n);
+                    __m128d T1 = _mm_load_sd(t);
+                    __m128d T2 = _mm_load_sd(t+n);
+                    T1 = _mm_add_sd (_mm_mul_sd (S2, cast128(B12)),
+                           _mm_add_sd (_mm_mul_sd (S1, cast128(B11)), T1));
+                    T2 = _mm_add_sd (_mm_mul_sd (S2, cast128(B22)),
+                           _mm_add_sd (_mm_mul_sd (S1, cast128(B21)), T2));
+                    _mm_store_sd (t, T1);
+                    _mm_store_sd (t+n, T2);
+                    t += 1;
+                    r += 1;
+                }
+#               endif
+
                 while (t < ez-2) {
 #                   if CAN_USE_AVX
                         __m256d S1, S2, T1, T2;
