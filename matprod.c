@@ -322,11 +322,12 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
    do a set of four vector dot products, and these dot products are also
    done with loop unrolling, perhaps using SSE2 or AVX instructions. 
 
-   If y has more than VEC_MAT_ROWS (defined below) rows, the operation
-   is done on successive parts of the matrix, each consisting of at
-   most VEC_MAT_ROWS of the rows.  The second and later parts add to
-   the result found by earlier parts.  The matprod_sub_mat_vec
-   procedure below does one such part. */
+   To improve cache performance, if y has more than VEC_MAT_ROWS
+   (defined below) rows, the operation is done on successive parts of
+   the matrix, each consisting of at most VEC_MAT_ROWS of the rows.
+   The second and later parts add to the result found by earlier
+   parts.  The matprod_sub_vec_mat procedure below does one such
+   part. */
 
 static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
                                  double * MATPROD_RESTRICT y,
@@ -1101,10 +1102,10 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
    to produce sequential accesses.  This loop is unrolled to accumulate from
    two columns of x at once.
 
-   If x has more than MAT_VEC_ROWS (defined below) rows, the operation
-   is done on successive parts of the matrix, each consisting of at
-   most MAT_VEC_ROWS of the rows.  The matprod_sub_mat_vec procedure
-   below does one such part.
+   To improve cache performance, if x has more than MAT_VEC_ROWS
+   (defined below) rows, the operation is done on successive parts of
+   the matrix, each consisting of at most MAT_VEC_ROWS of the rows.
+   The matprod_sub_mat_vec procedure below does one such part.
 
    Cases where k is 0 or 1 and cases where n is 2 are handled specially. */
 
@@ -1866,10 +1867,25 @@ void matprod_outer (double * MATPROD_RESTRICT x,
    gives a reasonably efficient implementation of an outer product (where
    k is one).
 
+   To improve cache performance, if x has more than MAT_MAT_ROWS
+   (defined below) rows, the operation is done on successive parts of
+   the matrix, each consisting of at most MAT_MAT_ROWS of the rows.
+   The matprod_sub_mat_vec procedure below does one such part.
+   Furthermore, if x has more than MAT_MAT_COLS, operations on each
+   set of up to MAT_MAT_ROWS are split into operations on at most
+   MAT_MAT_COLS, with all except for the first adding to the sum from
+   the previous columns.  The matprod_sub_mat_mat procedure below does
+   one such part.
+
    Cases where n is two are handled specially, accumulating sums in two
    local variables rather than in a column of the result, and then storing
    them in the result column at the end.  Outer products (where k is one)
    are also handled specially, with the matprod_outer procedure. */
+
+static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x, 
+                                 double * MATPROD_RESTRICT y, 
+                                 double * MATPROD_RESTRICT z,
+                                 int n, int k, int m, int rows, int add);
 
 void matprod_mat_mat (double * MATPROD_RESTRICT x, 
                       double * MATPROD_RESTRICT y, 
@@ -2036,9 +2052,38 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
         return;
     }
 
-    /* The general case.  Computes two columns of the result each time
-       around this loop, updating y, z, and m accordingly. */
+    /* The general case. */
 
+    matprod_sub_mat_mat (x, y, z, n, k, m, n, 0);  /* to start */
+}
+
+
+/* Multiply the first 'rows' rows of x with the first m columns of y,
+   storing the result in z.  Note that x, y, and z may not be the
+   start of the original matrices, and m may not be the number of
+   columns in the original y.  The k argument is the number of columns
+   in the original matrix x and rows in the original matrix y, which
+   is the amount to step to go right to an element of y in the same
+   row and the next column.  The n argument is the number of rows in
+   the original matrix x and in the full result matrix z, which is the
+   amount to step to go right to an element of x or z in the same row
+   and the next column.
+
+   If 'add' is non-zero, the results are added to the existing values
+   in z, rather than replacing existing values.
+
+   The same alignment assumptions hold for x, y, and z as with the
+   visible procedures.
+
+   Note that n, k, and m will be at least 2, and 'rows' will be at
+   least 3. */
+
+
+static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x, 
+                                 double * MATPROD_RESTRICT y, 
+                                 double * MATPROD_RESTRICT z,
+                                 int n, int k, int m, int rows, int add)
+{
     while (m > 1) {
 
         double *r = x;  /* r set to x, then modified as columns of x summed */
