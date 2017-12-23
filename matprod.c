@@ -445,7 +445,12 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     }
 
     /* The general case with k > 2.  Calls matprod_sub_vec_mat to do parts
-       (only one part if y has matrix with fewer than VEC_MAT_ROWS). */
+       (only one part if y has matrix with fewer than VEC_MAT_ROWS).
+
+       The definition of VEC_MAT_ROWS is designed to keep the vector x
+       in an L2 cache of 256K bytes or more, given that x and four
+       columns of y (all of length VEC_MAT_ROWS) are accessed within
+       the main loop. */
 
 #   define VEC_MAT_ROWS (4096+2048) /* be multiple of 64 to keep any alignment*/
 
@@ -1240,11 +1245,16 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     }
 
     /* The general case with n > 3.  Calls matprod_sub_mat_vec to do parts
-       (only one part for a matrix with fewer than MAT_VEC_ROWS rows). */
+       (only one part for a matrix with fewer than MAT_VEC_ROWS rows). 
+
+       The definition of MAT_VEC_ROWS is designed to keep the vector z
+       in an L1 cache of 32K bytes or more, given that z and two
+       columns of x (all of length MAT_VEC_ROWS) are accessed within
+       the main loop. */
 
 #   define MAT_VEC_ROWS (1024+256) /* be multiple of 64 to keep any alignment */
 
-    if (n <= MAT_VEC_ROWS)
+    if (n <= MAT_VEC_ROWS || k <= 2)
         matprod_sub_mat_vec (x, y, z, n, k, n);
     else {
         int rows = n;
@@ -2052,9 +2062,36 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
         return;
     }
 
-    /* The general case. */
+    /* The general case with n > 2.  Calls matprod_sub_mat_mat to do parts
+       (only one part for a matrix with fewer than MAT_MAT_ROWS rows and
+       fewer than MAT_MAT_COLS columns).
 
-    matprod_sub_mat_mat (x, y, z, n, k, m, n, 0);  /* to start */
+       The definition of MAT_MAT_ROWS is designed to keep two columns
+       of z in an L1 cache of 32K bytes or more, given that two
+       columns of z and two columns of x (all of length MAT_VEC_ROWS)
+       are accessed within the main loop. */
+
+#   define MAT_MAT_ROWS (1024-64) /* be multiple of 64 to keep any alignment */
+
+    if (n <= MAT_MAT_ROWS || m <= 2)
+        matprod_sub_mat_mat (x, y, z, n, k, m, n, 0);
+    else {
+        int rows = n;
+        while (rows >= 2*MAT_MAT_ROWS) {
+            matprod_sub_mat_mat (x, y, z, n, k, m, MAT_MAT_ROWS, 0);
+            x += MAT_MAT_ROWS;
+            z += MAT_MAT_ROWS;
+            rows -= MAT_MAT_ROWS;
+        }
+        if (rows > MAT_MAT_ROWS) {
+            int nr = (rows/2) & ~7; /* ensure any alignment of x, z preserved */
+            matprod_sub_mat_mat (x, y, z, n, k, m, nr, 0);
+            x += nr;
+            z += nr;
+            rows -= nr;
+        }
+        matprod_sub_mat_mat (x, y, z, n, k, m, rows, 0);
+    }
 }
 
 
@@ -2075,7 +2112,7 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
    The same alignment assumptions hold for x, y, and z as with the
    visible procedures.
 
-   Note that n, k, and m will be at least 2, and 'rows' will be at
+   Note that k and m will be at least 2, and n and 'rows' will be at
    least 3. */
 
 
@@ -2086,17 +2123,18 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
 {
     while (m > 1) {
 
-        double *r = x;  /* r set to x, then modified as columns of x summed */
+        double *xs = x;
+        double *r = xs;
+        int n2 = rows;
         int k2;
 
-        /* Initialize sums in next two columns of z to the sum of the
-           first two products, which will exist, since k is at least
-           two here.  Note also that n is at least three. */
-
-        int n2 = n;
+        /* Unless we're adding, initialize sums in next two columns of
+           z to the sum of the first two products, which will exist,
+           since k is at least two here.  Note also that n is at least
+           three. */
 
 #       if CAN_USE_AVX || CAN_USE_SSE2
-        {
+        if (!add) {
 #           if CAN_USE_AVX
                 __m256d B11 = _mm256_set1_pd(y[0]);
                 __m256d B12 = _mm256_set1_pd(y[1]);
@@ -2186,7 +2224,7 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
             }
         }
 #       else  /* non-SIMD code */
-        {
+        if (!add) {
             double b11 = y[0];
             double b12 = y[1];
             double b21 = y[k];
@@ -2204,7 +2242,7 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
         }
 #       endif
 
-        r += n;  /* already advanced by n, so total advance is 2*n */
+        xs += 2*n;
         y += 2;
         k2 = k-2;
 
@@ -2214,7 +2252,10 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
            for this. */
 
         while (k2 > 1) {
-            int n2 = n;
+
+            int n2 = rows;
+            r = xs;
+
 #           if CAN_USE_AVX || CAN_USE_SSE2
             {
 #               if CAN_USE_AVX
@@ -2261,6 +2302,7 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
                     n2 -= 2;
                 }
 #               endif
+
                 while (n2 >= 4) {
 #                   if CAN_USE_AVX
                         __m256d S1 = _mm256_loadu_pd(r);
@@ -2298,6 +2340,7 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
                     q += 4;
                     n2 -= 4;
                 }
+
                 if (n2 > 1) {
                     __m128d S1 = _mm_loadA_pd(r);
                     __m128d S2 = _mm_loadu_pd(r+n);
@@ -2311,6 +2354,7 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
                     q += 2;
                     n2 -= 2;
                 }
+
                 if (n2 >= 1) {
                     __m128d S1 = _mm_set_sd(r[0]);
                     __m128d S2 = _mm_set_sd(r[n]);
@@ -2354,7 +2398,7 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
             }
 #           endif
 
-            r += n;  /* already advanced by n, so total advance is 2*n */
+            xs += 2*n;
             y += 2;
             k2 -= 2;
         }
@@ -2363,7 +2407,8 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
             double b1 = y[0];
             double b2 = y[k];
             double *q = z;
-            int n2 = n;
+            int n2 = rows;
+            r = xs;
             do {
                 double s = r[0];
                 q[0] += s * b1;
@@ -2386,30 +2431,35 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
 
     if (m >= 1) {
 
-        double *r = x;    /* r set to x, then modified as columns of x summed */
         double *e = y+k;  /* where y should stop */
+        double *xs = x;
 
-        /* Initialize sums in z to zero, if k is even, or to the product of
-           the first element of the next column of y with the first column 
-           of x (in which case adjust r and y accordingly). */
+        /* If we're not adding, initialize sums in z to zero, if k is
+           even, or to the product of the first element of the next
+           column of y with the first column of x (in which case
+           adjust r and y accordingly). */
 
-        if (k & 1) {
-            double b = y[0];
-            double *q = z;
-            int n2 = n;
-            do { 
-                *q++ = *r++ * b; 
-                n2 -= 1;
-            } while (n2 > 0);
-            y += 1;
-        }
-        else {
-            double *q = z;
-            int n2 = n;
-            do {
-                *q++ = 0.0;
-                n2 -= 1;
-            } while (n2 > 0);
+        if (!add) {
+            if (k & 1) {
+                double *r = xs;
+                double b = y[0];
+                double *q = z;
+                int n2 = rows;
+                do { 
+                    *q++ = *r++ * b; 
+                    n2 -= 1;
+                } while (n2 > 0);
+                xs += n;
+                y += 1;
+            }
+            else {
+                double *q = z;
+                int n2 = rows;
+                do {
+                    *q++ = 0.0;
+                    n2 -= 1;
+                } while (n2 > 0);
+            }
         }
 
         /* Each time around this loop, add the products of two columns of x 
@@ -2420,15 +2470,16 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
         while (y < e) {
             double b1 = y[0];
             double b2 = y[1];
+            double *r = xs;
             double *q = z;
-            int n2 = n;
+            int n2 = rows;
             do {
                 *q = (*q + (*r * b1)) + (*(r+n) * b2);
                 r += 1;
                 q += 1;
                 n2 -= 1;
             } while (n2 > 0);
-            r += n;
+            xs += 2*n;
             y += 2;
         }
     }
