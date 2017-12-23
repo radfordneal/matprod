@@ -1,5 +1,5 @@
-commit a78ba23b1da8fbf0e71f8c37d5ada27651588578
+commit fdb302836370c4fb91d0d14425f94f3a9acf7612
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 22 22:56:22 2017 -0500
+Date:   Sat Dec 23 15:22:44 2017 -0500
 
-    results for harpertown
+    implement more of split with matprod_sub_mat_mat
