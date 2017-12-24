@@ -19,22 +19,35 @@ Copyright (C) 2013, 2014, 2017 Radford M. Neal.
 
 
 The matprod library provides double-precision real matrix/vector by
-matrix/vector multiplication routines.  These routines are written
-with some attention to cache performance and other efficiency issues,
-and with optional code to take advantage of SSE2, SSE3, or AVX
-instructions on Intel/AMD processors.  But they may not be as fast as
-the matrix multiplication routines in optimized BLAS libraries.
+matrix/vector multiplication routines.  The motivating application is
+implementation of matrix multiplication operators in a language such
+as R, but the routines could also be used directly in an application
+program.
+
+These routines are written with a fair amount of attention to cache
+performance and other efficiency issues, and with optional code to
+take advantage of SSE2, SSE3, or AVX instructions on Intel/AMD
+processors.  The routines can also optionally be built with
+assumptions about alignment of arguments that may allow improved
+performance.  Nevertheless, these routines may not be as fast as the
+matrix multiplication routines in optimized BLAS libraries (although
+for some operations they are actually faster than the routines in some
+optimized BLAS libraries).
 
 However, these routines have been written to produce the same results
 as the obvious matrix multiplication algorithms, that sequentially sum
-products of elements.  These routines do not bypass multiplications by
-zero, and therefore propagate Inf and NaN values properly.  They do
-not re-group additions assuming associativity holds, so round-off
-errors (and overflows) will be the same as for the obvious algorithms.
-Note that producing the exact same result as the obvious methods
-requires that the routine be built disabling any contraction of
-floating-point operations (eg, fused multiply-add) that might be done
-by the compiler/processor.
+products of elements.  They can hence replace such naive
+implementations without changing the results.  The results will also
+be reproducible on different machines, provided all machines implement
+IEEE standard double-precision floating point operations.  In
+particular, these routines do not bypass multiplications by zero, and
+therefore propagate Inf and NaN values properly.  They do not re-group
+additions assuming associativity holds, so round-off errors (and
+overflows) will be the same as for the obvious algorithms.  Note that
+producing the exact same result as the obvious methods requires that
+the routine be built disabling any contraction of floating-point
+operations (eg, fused multiply-add) that might be done by the
+compiler/processor.
 
 There are also versions of these routines that allow for possible
 parallel operation in the context of a program using the helpers
@@ -85,20 +98,25 @@ These options include the following:
 
 Some special code has been written to take advantage of the SSE2,
 SSE3, or AVX instructions available on some Intel/AMD processors.  It
-will be used only if gcc or a gcc look-alike is used, since this code
-uses the builtin intrinsic functions that gcc provides.  This code can
-be disabled by defining the symbol DISABLE_SIMD_CODE with a compiler
-option; just the AVX code can be disabled by defining DISABLE_AVX_CODE
-(in which case SSE2 or SSE3 code may still be used).  The SIMD code
-sections are automatically disabled when the routines are compiled for
-an architecture without the required instructions.
+is used only if gcc or a gcc look-alike is used, since this code uses
+the builtin intrinsic functions that gcc provides.  This code can be
+disabled by defining the symbol DISABLE_SIMD_CODE.  Just the AVX code
+can be disabled by defining DISABLE_AVX_CODE (in which case SSE2 or
+SSE3 code may still be used).  Some AVX code appears to not be better
+than the corresponding SSE or non-SIMD code; it is disabled unless the
+symbol ENABLE_ALL_AVX_CODE is defined (and DISABLE_AVX_CODE is not
+defined).  The SIMD code sections are automatically disabled when the
+routines are compiled for an architecture without the required
+instructions.
 
-Note that depending on what architecture the compiler is told to
-generate code for, instrinsics designed for SSE2 may actually generate
-AVX instructions (and perhaps similarly for SSE2/SSE3, SSE3/SSE4.1,
-AVX/AVX2, etc.).  However, code enabled for only SSE2, or SSE3, or AVX
-should work on a processor having only the specified level of SIMD
-instructions, if compiled for that processor.
+Note that disabling the explicit SIMD code does not prevent the
+compiler from generating SIMD instructions, if this is allowed by the
+compiler options used.  Also note that depending on what architecture
+the compiler is told to generate code for, instrinsics designed for
+SSE2 may actually generate AVX instructions (and perhaps similarly for
+SSE2/SSE3, SSE3/SSE4.1, AVX/AVX2, etc.).  However, code enabled for
+only SSE2, or SSE3, or AVX should work on a processor having only the
+specified level of SIMD instructions, if compiled for that processor.
 
 
 Procedures in matprod.c:
@@ -166,7 +184,8 @@ matprod_vec_mat that reduce to matprod_vec_vec will call that routine.
 Calling a specialized routine directly will of course be slightly
 faster when it is known that it is appropriate.
 
-See the comments in matprod.c for details on the algorithms used.
+See matprod-imp and the comments in matprod.c for details on the
+algorithms used.
 
 
 Task procedures in piped-matprod.c:
