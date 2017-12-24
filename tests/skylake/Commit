@@ -1,5 +1,5 @@
-commit fdb302836370c4fb91d0d14425f94f3a9acf7612
+commit 25c1c927e1f5fad124df969eec11c9b6ae2a029a
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Dec 23 15:22:44 2017 -0500
+Date:   Sat Dec 23 21:58:57 2017 -0500
 
-    implement more of split with matprod_sub_mat_mat
+    full implementation of splits in matprod_mat_mat, other cleanup
