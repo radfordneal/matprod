@@ -1,5 +1,5 @@
-commit e30b66666cd52cd0240a2b9691203eb6206cd5c7
+commit 32323c824ff40b9c551648ca545f5784341cd0af
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 22 22:56:05 2017 -0500
+Date:   Sat Dec 23 21:59:10 2017 -0500
 
-    adjust alignment in matprod_trans2
+    results for skylake
