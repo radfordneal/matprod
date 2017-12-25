@@ -19,6 +19,8 @@
 */
 
 
+#include <stdlib.h>
+
 #ifdef MATPROD_APP_INCLUDED
 #include "matprod-app.h"
 #endif
@@ -1885,10 +1887,13 @@ void matprod_outer (double * MATPROD_RESTRICT x,
    adding to the sum from the previous columns.  This is done by the
    matprod_sub_mat_mat procedure below.
 
-   Cases where n is two are handled specially, accumulating sums in two
-   local variables rather than in a column of the result, and then storing
-   them in the result column at the end.  Outer products (where k is one)
-   are also handled specially, with the matprod_outer procedure. */
+   Cases where n is two are handled specially, in matprod_smalln_mat_mat, 
+   accumulating sums in two local variables rather than in a column of
+   the result, and then storing them in the result column at the end.
+   Outer products (where k is one) are also handled specially, with
+   the matprod_outer procedure. */
+
+
 
 static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x, 
                                  double * MATPROD_RESTRICT y, 
@@ -1902,6 +1907,11 @@ static void matprod_subcol_mat_mat (double * MATPROD_RESTRICT x,
                                     int n, int k, int m, 
                                     int rows);
 
+static void matprod_smalln_mat_mat (double * MATPROD_RESTRICT x, 
+                                    double * MATPROD_RESTRICT y, 
+                                    double * MATPROD_RESTRICT z, 
+                                    int n, int k, int m);
+
 void matprod_mat_mat (double * MATPROD_RESTRICT x, 
                       double * MATPROD_RESTRICT y, 
                       double * MATPROD_RESTRICT z, int n, int k, int m)
@@ -1912,9 +1922,11 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    if (n <= 1) {
+    if (n <= 2) {
         if (n == 1)
             matprod_vec_mat (x, y, z, k, m);
+        else if (n == 2)
+            matprod_smalln_mat_mat (x, y, z, n, k, m);
         return;
     }
     if (m <= 1) {
@@ -1928,142 +1940,6 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
             matprod_outer (x, y, z, n, m);
         else
             set_to_zeros (z, n*m);
-        return;
-    }
-
-    /* Handle n=2 specially. */
-
-    if (n == 2) {
-
-        /* Compute two columns of the result each time around this loop, 
-           updating y, z, and m accordingly. */
-
-        while (m > 1) {
-
-#           if CAN_USE_SSE2
-
-                double *r = x;
-                int k2 = k;
-
-                __m128d S0 = _mm_setzero_pd();
-                __m128d S1 = _mm_setzero_pd();
-
-                /* Each time around this loop, add the products of two columns
-                   of x with elements of the next two columns of y to the sums.
-                   Adjust r and y to account for this. */
-
-                while (k2 > 1) {
-                    __m128d R;
-                    R = _mm_loadAA_pd(r);
-                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[0])), S0);
-                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k])), S1);
-                    R = _mm_loadAA_pd(r+2);
-                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[1])), S0);
-                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k+1])), S1);
-                    r += 4;
-                    y += 2;
-                    k2 -= 2;
-                }
-
-                if (k2 >= 1) {
-                    __m128d R;
-                    R = _mm_loadAA_pd(r);
-                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[0])), S0);
-                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k])), S1);
-                    y += 1;
-                }
-
-                /* Store sums in the next two result columns. */
-
-                _mm_storeAA_pd (z, S0);
-                _mm_storeAA_pd (z+2, S1);
-
-#           else  /* non-SIMD code */
-
-                double s[4] = { 0, 0, 0, 0 };
-                double *r = x;
-                int k2 = k;
-
-                /* Each time around this loop, add the products of two columns
-                   of x with elements of the next two columns of y to the sums.
-                   Adjust r and y to account for this. */
-
-                while (k2 > 1) {
-                    double b11 = y[0];
-                    double b12 = y[1];
-                    double b21 = y[k];
-                    double b22 = y[k+1];
-                    s[0] = (s[0] + (r[0] * b11)) + (r[2] * b12);
-                    s[1] = (s[1] + (r[1] * b11)) + (r[3] * b12);
-                    s[2] = (s[2] + (r[0] * b21)) + (r[2] * b22);
-                    s[3] = (s[3] + (r[1] * b21)) + (r[3] * b22);
-                    r += 4;
-                    y += 2;
-                    k2 -= 2;
-                }
-
-                if (k2 >= 1) {
-                    double b1 = y[0];
-                    double b2 = y[k];
-                    s[0] += r[0] * b1;
-                    s[1] += r[1] * b1;
-                    s[2] += r[0] * b2;
-                    s[3] += r[1] * b2;
-                    y += 1;
-                }
-
-                /* Store sums in the next two result columns. */
-
-                z[0] = s[0];
-                z[1] = s[1];
-                z[2] = s[2];
-                z[3] = s[3];
-
-#           endif
-
-            /* Move forward by two to next column of the result and
-               the next column of y. */
-
-            y += k;  /* already advanced by k, so total advance is 2*k */
-            z += 4;
-            m -= 2;
-        }
-
-        /* If m is odd, compute the last column of the result. */
-
-        if (m >= 1) {
-
-            double s[2] = { 0, 0 };  /* sums for the two values in the result */
-            double *r = x;
-            int k2 = k;
-
-            /* Each time around this loop, add the products of two
-               columns of x with two elements of the last column of y
-               to s[0] and s[1]. */
-
-            while (k2 > 1) {
-                double b1 = y[0];
-                double b2 = y[1];
-                s[0] = (s[0] + (r[0] * b1)) + (r[2] * b2);
-                s[1] = (s[1] + (r[1] * b1)) + (r[3] * b2);
-                r += 4;
-                y += 2;
-                k2 -= 2;
-            }
-
-            if (k2 >= 1) {
-                double b = y[0];
-                s[0] += r[0] * b;
-                s[1] += r[1] * b;
-                /* y += 1; */
-            }
-
-            /* Store the two sums in s[0] and s[1] in the result vector. */
-
-            z[0] = s[0];
-            z[1] = s[1];
-        }
-
         return;
     }
 
@@ -2109,6 +1985,12 @@ static void matprod_subcol_mat_mat (double * MATPROD_RESTRICT x,
                                     double * MATPROD_RESTRICT z,
                                     int n, int k, int m, int rows)
 {
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
     int chunk;
 
     if (k <= MAT_MAT_COLS 
@@ -2140,7 +2022,6 @@ static void matprod_subcol_mat_mat (double * MATPROD_RESTRICT x,
     matprod_sub_mat_mat (x, y, z, n, k, m, rows, cols, add);    
 }
 
-
 /* Multiply the first 'rows' rows and 'cols' columns of x with the m
    columns of y, storing the result in z.  Note that x and z may not
    be the start of the original matrices.  The k argument is the
@@ -2166,6 +2047,12 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
                                  int n, int k, int m, 
                                  int rows, int cols, int add)
 {
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
     double *ys = y;
 
 /*  printf("- %p %p %p - %d %d %d - %d %d %d\n",x,y,z,n,k,m,rows,cols,add);  */
@@ -2544,6 +2431,154 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
                 n2 -= 1;
             } while (n2 > 0);
         }
+    }
+}
+
+static void matprod_smalln_mat_mat (double * MATPROD_RESTRICT x, 
+                                    double * MATPROD_RESTRICT y, 
+                                    double * MATPROD_RESTRICT z, 
+                                    int n, int k, int m)
+{
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    if (n == 2) {
+
+        /* Compute two columns of the result each time around this loop, 
+           updating y, z, and m accordingly. */
+
+        while (m > 1) {
+
+#           if CAN_USE_SSE2
+
+                double *r = x;
+                int k2 = k;
+
+                __m128d S0 = _mm_setzero_pd();
+                __m128d S1 = _mm_setzero_pd();
+
+                /* Each time around this loop, add the products of two columns
+                   of x with elements of the next two columns of y to the sums.
+                   Adjust r and y to account for this. */
+
+                while (k2 > 1) {
+                    __m128d R;
+                    R = _mm_loadAA_pd(r);
+                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[0])), S0);
+                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k])), S1);
+                    R = _mm_loadAA_pd(r+2);
+                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[1])), S0);
+                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k+1])), S1);
+                    r += 4;
+                    y += 2;
+                    k2 -= 2;
+                }
+
+                if (k2 >= 1) {
+                    __m128d R;
+                    R = _mm_loadAA_pd(r);
+                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[0])), S0);
+                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k])), S1);
+                    y += 1;
+                }
+
+                /* Store sums in the next two result columns. */
+
+                _mm_storeAA_pd (z, S0);
+                _mm_storeAA_pd (z+2, S1);
+
+#           else  /* non-SIMD code */
+
+                double s[4] = { 0, 0, 0, 0 };
+                double *r = x;
+                int k2 = k;
+
+                /* Each time around this loop, add the products of two columns
+                   of x with elements of the next two columns of y to the sums.
+                   Adjust r and y to account for this. */
+
+                while (k2 > 1) {
+                    double b11 = y[0];
+                    double b12 = y[1];
+                    double b21 = y[k];
+                    double b22 = y[k+1];
+                    s[0] = (s[0] + (r[0] * b11)) + (r[2] * b12);
+                    s[1] = (s[1] + (r[1] * b11)) + (r[3] * b12);
+                    s[2] = (s[2] + (r[0] * b21)) + (r[2] * b22);
+                    s[3] = (s[3] + (r[1] * b21)) + (r[3] * b22);
+                    r += 4;
+                    y += 2;
+                    k2 -= 2;
+                }
+
+                if (k2 >= 1) {
+                    double b1 = y[0];
+                    double b2 = y[k];
+                    s[0] += r[0] * b1;
+                    s[1] += r[1] * b1;
+                    s[2] += r[0] * b2;
+                    s[3] += r[1] * b2;
+                    y += 1;
+                }
+
+                /* Store sums in the next two result columns. */
+
+                z[0] = s[0];
+                z[1] = s[1];
+                z[2] = s[2];
+                z[3] = s[3];
+
+#           endif
+
+            /* Move forward by two to next column of the result and
+               the next column of y. */
+
+            y += k;  /* already advanced by k, so total advance is 2*k */
+            z += 4;
+            m -= 2;
+        }
+
+        /* If m is odd, compute the last column of the result. */
+
+        if (m >= 1) {
+
+            double s[2] = { 0, 0 };  /* sums for the two values in the result */
+            double *r = x;
+            int k2 = k;
+
+            /* Each time around this loop, add the products of two
+               columns of x with two elements of the last column of y
+               to s[0] and s[1]. */
+
+            while (k2 > 1) {
+                double b1 = y[0];
+                double b2 = y[1];
+                s[0] = (s[0] + (r[0] * b1)) + (r[2] * b2);
+                s[1] = (s[1] + (r[1] * b1)) + (r[3] * b2);
+                r += 4;
+                y += 2;
+                k2 -= 2;
+            }
+
+            if (k2 >= 1) {
+                double b = y[0];
+                s[0] += r[0] * b;
+                s[1] += r[1] * b;
+                /* y += 1; */
+            }
+
+            /* Store the two sums in s[0] and s[1] in the result vector. */
+
+            z[0] = s[0];
+            z[1] = s[1];
+        }
+    }
+
+    else {
+        abort();  /* called with n that isn't handled here */
     }
 }
 
