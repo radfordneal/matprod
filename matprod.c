@@ -2604,6 +2604,12 @@ static void matprod_smalln_mat_mat (double * MATPROD_RESTRICT x,
    are copied to the corresponding rows; hence each column need be
    computed only from the diagonal element down. */
 
+static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
+                                double * MATPROD_RESTRICT y,
+                                double * MATPROD_RESTRICT z,
+                                int n, int k, int m,
+                                int rows, int cols, int add);
+
 static void matprod_smallk_trans1 (double * MATPROD_RESTRICT x,
                                    double * MATPROD_RESTRICT y,
                                    double * MATPROD_RESTRICT z,
@@ -2639,6 +2645,21 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
             set_to_zeros (z, n*m);
         return;
     }
+
+    matprod_sub_trans1 (x, y, z, n, k, m, n, k, 0);  /* for now */
+}
+
+static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
+                                double * MATPROD_RESTRICT y,
+                                double * MATPROD_RESTRICT z,
+                                int n, int k, int m,
+                                int rows, int cols, int add)
+{
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     int sym = x==y && n==m;  /* same operands, so symmetric result? */
     int j = 0;               /* number of columns of result produced so far */
@@ -3258,6 +3279,12 @@ static void matprod_smallk_trans1 (double * MATPROD_RESTRICT x,
    local variables rather than in a column of the result, and then storing
    them in the result column at the end. */
 
+static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
+                                double * MATPROD_RESTRICT y,
+                                double * MATPROD_RESTRICT z,
+                                int n, int k, int m,
+                                int rows, int cols, int add);
+
 static void matprod_smalln_trans2 (double * MATPROD_RESTRICT x,
                                    double * MATPROD_RESTRICT y,
                                    double * MATPROD_RESTRICT z,
@@ -3293,6 +3320,21 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
             set_to_zeros (z, n*m);
         return;
     }
+
+    matprod_sub_trans2 (x, y, z, n, k, m, n, k, 0);  /* for now */
+}
+
+static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
+                                double * MATPROD_RESTRICT y,
+                                double * MATPROD_RESTRICT z,
+                                int n, int k, int m,
+                                int rows, int cols, int add)
+{
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     int m2 = m;
 
