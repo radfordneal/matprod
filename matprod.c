@@ -2608,7 +2608,13 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y,
                                 double * MATPROD_RESTRICT z,
                                 int n, int k, int m,
-                                int rows, int cols, int add);
+                                int sym, int add, int rows, int cols);
+
+static void matprod_subcol_trans1 (double * MATPROD_RESTRICT x, 
+                                   double * MATPROD_RESTRICT y, 
+                                   double * MATPROD_RESTRICT z,
+                                   int n, int k, int m,
+                                   int sym, int add, int rows);
 
 static void matprod_smallk_trans1 (double * MATPROD_RESTRICT x,
                                    double * MATPROD_RESTRICT y,
@@ -2646,14 +2652,43 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
         return;
     }
 
-    matprod_sub_trans1 (x, y, z, n, k, m, n, k, 0);  /* for now */
+#   define TRANS1_ROWS 16000      /* be multiple of 8 to keep any alignment */
+#   define TRANS1_COLS 16000      /* be multiple of 8 to keep any alignment */
+
+    int sym = x==y && n==m        /* if operands same, result is symmetric, */
+              && (n>8 || k>8);    /*    but faster to ignore if n & k small */
+
+    if (k <= TRANS1_ROWS && n <= TRANS1_COLS) {  /* do small cases quickly */
+        matprod_sub_trans1 (x, y, z, n, k, m, sym, 0, k, n);
+        return;
+    }
+
+    int rows = k;
+    int add = 0;
+
+    if (rows > TRANS1_ROWS && n > 2) {
+        while (rows >= 2*TRANS1_ROWS) {
+            matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, TRANS1_ROWS);
+            x += TRANS1_ROWS;
+            rows -= TRANS1_ROWS;
+            add = 1;
+        }
+        if (rows > TRANS1_ROWS) {
+            int nr = (rows/2) & ~7; /* ensure any alignment of x preserved */
+            matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, nr);
+            x += nr;
+            rows -= nr;
+            add = 1;
+        }
+    }
+    matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, rows);
 }
 
-static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
-                                double * MATPROD_RESTRICT y,
-                                double * MATPROD_RESTRICT z,
-                                int n, int k, int m,
-                                int rows, int cols, int add)
+static void matprod_subcol_trans1 (double * MATPROD_RESTRICT x, 
+                                   double * MATPROD_RESTRICT y, 
+                                   double * MATPROD_RESTRICT z,
+                                   int n, int k, int m,
+                                   int sym, int add, int rows)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -2661,7 +2696,46 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    int sym = x==y && n==m;  /* same operands, so symmetric result? */
+    int chunk;
+
+    if (n <= TRANS1_COLS 
+     || n <= (chunk = (TRANS1_COLS*TRANS1_ROWS/rows) & ~7)) {
+        matprod_sub_trans1 (x, y, z, n, k, m, sym, add, rows, n);
+        return;
+    }
+
+    int cols = n;
+
+    while (cols > 2*chunk) {
+        matprod_sub_trans1 (x, y, z, n, k, m, sym, add, rows, chunk);
+        x += chunk*k;
+        z += chunk;
+        cols -= chunk;
+    }
+
+    if (cols > chunk) {
+        int nc = (cols/2) & ~7;  /* ensure any alignment of x, z preserved */
+        matprod_sub_trans1 (x, y, z, n, k, m, sym, add, rows, nc);
+        x += nc*k;
+        z += nc;
+        cols -= nc;
+    }
+
+    matprod_sub_trans1 (x, y, z, n, k, m, sym, add, rows, cols);    
+}
+
+static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
+                                double * MATPROD_RESTRICT y,
+                                double * MATPROD_RESTRICT z,
+                                int n, int k, int m,
+                                int sym, int add, int rows, int cols)
+{
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
     int j = 0;               /* number of columns of result produced so far */
     int me = m-1;            /* limit for cols that can be computed as pairs */
 
@@ -3338,7 +3412,8 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
 
     int m2 = m;
 
-    int sym = x==y && n==m;  /* same operands, so symmetric result? */
+    int sym = x==y && n==m        /* if operands same, result is symmetric, */
+              && (n>8 || k>8);    /*    but faster to ignore if n & k small */
 
     /* Compute two columns of the result each time around this loop.
        If the result is symmetric, only the parts of the columns at
