@@ -1,5 +1,5 @@
-commit fb677ae12555ba0d12060095b352322d3dfe3355
+commit 28595c1ed2c02272721b383e84e04f88d7326e84
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Dec 17 20:59:30 2017 -0500
+Date:   Sun Dec 24 21:40:23 2017 -0500
 
-    results for haswell
+    lstopo output for sandybridge
