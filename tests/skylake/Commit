@@ -1,5 +1,5 @@
-commit 25c1c927e1f5fad124df969eec11c9b6ae2a029a
+commit 929bc4888596c57fa3f2097562802bd44402ffc6
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Dec 23 21:58:57 2017 -0500
+Date:   Tue Dec 26 15:27:23 2017 -0500
 
-    full implementation of splits in matprod_mat_mat, other cleanup
+    tune TRANS1_ROWS sensibly
