@@ -158,6 +158,42 @@ static inline void scalar_multiply (double s,
     }
 }
 
+/* Fill the lower triangle of an n-by-n matrix from the upper triangle.  Fills
+   two rows at once to improve cache performance. */
+
+static void fill_lower (double * MATPROD_RESTRICT z, int n)
+{
+    CHK_ALIGN(z);
+
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    int i, ii, jj, e;
+
+    /* This loop fills two rows of the lower triangle each iteration.
+       Since there's nothing to fill for the first row, we can either
+       start with it or with the next row, so that the number of rows
+       we fill will be a multiple of two. */
+
+    for (i = (n&1); i < n; i += 2) {
+
+        ii = i;    /* first position to fill in the first row of the pair */
+        jj = i*n;  /* first position to fetch from */
+
+        /* This loop fills in the pair of rows, also filling the diagonal
+           element of the first (which is unnecessary but innocuous). */
+
+        e = jj+i;
+
+        for (;;) {
+            z[ii] = z[jj];
+            z[ii+1] = z[jj+n];
+            if (jj == e) break;
+            ii += n;
+            jj += 1;
+        }
+    }
+}
+
 
 /* Dot product of two vectors of length k. 
 
@@ -2682,6 +2718,9 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
         }
     }
     matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, rows);
+
+    if (sym)
+        fill_lower (z, n);
 }
 
 static void matprod_subcol_trans1 (double * MATPROD_RESTRICT x, 
@@ -3357,7 +3396,7 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y,
                                 double * MATPROD_RESTRICT z,
                                 int n, int k, int m,
-                                int rows, int cols, int add);
+                                int sym, int rows, int cols, int add);
 
 static void matprod_smalln_trans2 (double * MATPROD_RESTRICT x,
                                    double * MATPROD_RESTRICT y,
@@ -3395,14 +3434,20 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
         return;
     }
 
-    matprod_sub_trans2 (x, y, z, n, k, m, n, k, 0);  /* for now */
+    int sym = x==y && n==m        /* if operands same, result is symmetric, */
+              && (n>8 || k>8);    /*    but faster to ignore if n & k small */
+
+    matprod_sub_trans2 (x, y, z, n, k, m, sym, n, k, 0);  /* for now */
+
+    if (sym)
+        fill_lower (z, n);
 }
 
 static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y,
                                 double * MATPROD_RESTRICT z,
                                 int n, int k, int m,
-                                int rows, int cols, int add)
+                                int sym, int rows, int cols, int add)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -3411,9 +3456,6 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     int m2 = m;
-
-    int sym = x==y && n==m        /* if operands same, result is symmetric, */
-              && (n>8 || k>8);    /*    but faster to ignore if n & k small */
 
     /* Compute two columns of the result each time around this loop.
        If the result is symmetric, only the parts of the columns at
