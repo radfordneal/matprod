@@ -156,13 +156,17 @@ source is compiled with -DMATPROD_NO_RESTRICT.
 
       Multiply the transpose of matrix x, of dimension k x n, and
       matrix y, of dimension k x m, storing the result in matrix z, of
-      dimension n x m.
+      dimension n x m.  If x and y are the same matrix, so the result
+      is symetrical, redundant computations of symetric elements are
+      avoided.
 
     void matprod_trans2 (double *x, double *y, double *z, int n, int k, int m)
 
       Multiply matrix x, of dimension n x k, and the transpose of
       matrix y, of dimension m x k, storing the result in matrix z, of
-      dimension n x m.
+      dimension n x m.  If x and y are the same matrix, so the result
+      is symetrical, redundant computations of symetric elements are
+      avoided.
 
 For the above procedures, the result matrix, z, must have no overlap
 with the operands, x and y.  However, the operands may be the same or

@@ -19,12 +19,12 @@ Copyright (C) 2017 Radford M. Neal.
 
 
 The routines in the matprod library have been written to be reasonably
-fast.  Compared to the matrix multiply routines in optimized BLAS
-libraries (DGEMM, DGEMV, and DDOT), the speed of the matprod routines
-is limited by the requirement that they produce the same results as
-the naive algorithms, and by the lesser amount of effort that has been
-expended in trying to make them fast.  The general implementation
-strategy for matprod is described here.
+fast.  However, compared to the matrix multiply routines in optimized
+BLAS libraries (DGEMM, DGEMV, and DDOT), the speed of the matprod
+routines is limited by the requirement that they produce the same
+results as the naive algorithms, and by the lesser amount of effort
+that has been expended in trying to make them fast.  The general
+implementation strategy for matprod is described here.
 
 
 SIMD instructions and alignment.
@@ -50,11 +50,11 @@ do some operations before a loop so that the loop operations are
 aligned at good boundaries.  For gcc and gcc look-alikes, alignment is
 sometimes declared using the __builtin_assume_aligned function
 provided in gcc, which may allow the compiler to generate better code.
-In particular, gcc will some convert some SSE or AVX intrinsics that
+In particular, gcc will convert some SSE or AVX intrinsics that
 specify unaligned accesses to ones specifying aligned acccesses if it
 knows the operand always aligned.  Nevertheless, selection of aligned
-versus unaligned operations often done explicitly in the code (via
-macros like _mm_loadA_pd).
+versus unaligned operations is often done explicitly in the code (via
+some macro definitons, such as for _mm_loadA_pd).
 
 In some places, alignment is checked at run-time - for example, when
 aligment of the start of a matrix column depends on whether the number
@@ -63,3 +63,18 @@ of rows in the matrix is even or odd.
 It is intended that even if no explicit SIMD instructions are used,
 and no alignment information is specified, the matprod routines should
 still be substantially faster than a naive implementation.
+
+
+Special cases.
+
+Special code is used to handle some cases in which n, k, or m is small
+(for multiplication of an n x k matrix by a k x m matrix).  This can
+reduce overhead when what would otherwise be the innermost loop would
+be done only a small number of times.  When columns have only two
+elements, it also allows AVX instuctions to operate on all elements in
+two columns at once.
+
+The vector-vector, matrix-vector, vector-matrix, and outer product
+procedure are particular cases of such special-case optimization that
+are made visible in the API, but other special cases are handled by
+non-visible functions.
