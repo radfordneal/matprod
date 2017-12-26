@@ -2694,30 +2694,31 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
     int sym = x==y && n==m        /* if operands same, result is symmetric, */
               && (n>8 || k>8);    /*    but faster to ignore if n & k small */
 
-    if (k <= TRANS1_ROWS && n <= TRANS1_COLS) {  /* do small cases quickly */
+    if (k <= TRANS1_ROWS && n <= TRANS1_COLS) {   /* do small cases quickly */
         matprod_sub_trans1 (x, y, z, n, k, m, sym, 0, k, n);
-        return;
     }
+    else {
 
-    int rows = k;
-    int add = 0;
+        int rows = k;
+        int add = 0;
 
-    if (rows > TRANS1_ROWS && n > 2) {
-        while (rows >= 2*TRANS1_ROWS) {
-            matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, TRANS1_ROWS);
-            x += TRANS1_ROWS;
-            rows -= TRANS1_ROWS;
-            add = 1;
+        if (rows > TRANS1_ROWS && n > 2) {
+            while (rows >= 2*TRANS1_ROWS) {
+                matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, TRANS1_ROWS);
+                x += TRANS1_ROWS;
+                rows -= TRANS1_ROWS;
+                add = 1;
+            }
+            if (rows > TRANS1_ROWS) {
+                int nr = (rows/2) & ~7; /* ensure any alignment of x preserved*/
+                matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, nr);
+                x += nr;
+                rows -= nr;
+                add = 1;
+            }
         }
-        if (rows > TRANS1_ROWS) {
-            int nr = (rows/2) & ~7; /* ensure any alignment of x preserved */
-            matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, nr);
-            x += nr;
-            rows -= nr;
-            add = 1;
-        }
+        matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, rows);
     }
-    matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, rows);
 
     if (sym)
         fill_lower (z, n);
@@ -2784,26 +2785,9 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
     while (j < me) {
 
         double *r = x;
-        int nn = n;
+        double *zs = z;
+        int nn = sym ? j+2 : n;
         double *rz;
-
-        /* If the result is symmetric, skip down to the diagonal element
-           of the first column.  Also, let nn be the number of elements to 
-           compute for this column, and set r to the start of the column
-           of x to use.  However, skip down one less than this if it
-           helps alignment. */
-           
-        if (sym) {
-#           if CAN_USE_SSE2 && ALIGN >= 16
-                int jj = j & ~1;
-#           else
-                int jj = j;
-#           endif
-            z += jj;
-            nn -= jj;
-            r += jj*k;
-            rz = z;
-        }
 
         /* Compute sets of four elements in the two columns being
            computed.  Copy them to the corresponding rows too, if the
@@ -2886,16 +2870,6 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                 __m128d H1 = _mm256_extractf128_pd(S1,1);
                 _mm_storeu_pd (z+2, cast128(S1));
                 _mm_storeu_pd (z+n+2, H1);
-                if (sym) {
-                    _mm_storeu_pd (rz, _mm_unpacklo_pd(cast128(S0),H0));
-                    rz += n;
-                    _mm_storeu_pd (rz, _mm_unpackhi_pd(cast128(S0),H0));
-                    rz += n;
-                    _mm_storeu_pd (rz, _mm_unpacklo_pd(cast128(S1),H1));
-                    rz += n;
-                    _mm_storeu_pd (rz, _mm_unpackhi_pd(cast128(S1),H1));
-                    rz += n;
-                }
             }
 
 #           elif CAN_USE_SSE2
@@ -2982,16 +2956,6 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                 _mm_storeu_pd (z+n, S1);
                 _mm_storeAA_pd (z+2, S2);
                 _mm_storeu_pd (z+n+2, S3);
-                if (sym) {
-                    _mm_storeu_pd (rz, _mm_unpacklo_pd(S0,S1));
-                    rz += n;
-                    _mm_storeu_pd (rz, _mm_unpackhi_pd(S0,S1));
-                    rz += n;
-                    _mm_storeu_pd (rz, _mm_unpacklo_pd(S2,S3));
-                    rz += n;
-                    _mm_storeu_pd (rz, _mm_unpackhi_pd(S2,S3));
-                    rz += n;
-                }
             }
 
 #           else  /* non-SIMD code */
@@ -3027,17 +2991,6 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                 z[n+2] = s2[1];
                 z[3] = s2[2];
                 z[n+3] = s2[3];
-                if (sym) {
-                    rz[0] = s[0];
-                    rz[1] = s[1];
-                    rz[n] = s[2];
-                    rz[n+1] = s[3];
-                    rz[2*n] = s2[0];
-                    rz[2*n+1] = s2[1];
-                    rz[3*n] = s2[2];
-                    rz[3*n+1] = s2[3];
-                    rz += 4*n;
-                }
             }
 #           endif
 
@@ -3099,12 +3052,6 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                 __m128d H = _mm256_extractf128_pd(S,1);
                 _mm_storeu_pd (z, cast128(S));
                 _mm_storeu_pd (z+n, H);
-                if (sym) {
-                    _mm_storeu_pd (rz, _mm_unpacklo_pd(cast128(S),H));
-                    rz += n;
-                    _mm_storeu_pd (rz, _mm_unpackhi_pd(cast128(S),H));
-                    rz += n;
-                }
             }
 #           elif CAN_USE_SSE2
             {
@@ -3164,12 +3111,6 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                     _mm_storeu_pd (z, S0);
 #               endif
                 _mm_storeu_pd (z+n, S1);
-                if (sym) {
-                    _mm_storeu_pd (rz, _mm_unpacklo_pd(S0,S1));
-                    rz += n;
-                    _mm_storeu_pd (rz, _mm_unpackhi_pd(S0,S1));
-                    rz += n;
-                }
             }
 #           else
             {
@@ -3192,13 +3133,6 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                 z[n] = s[1];
                 z[1] = s[2];
                 z[n+1] = s[3];
-                if (sym) {
-                    rz[0] = s[0];
-                    rz[1] = s[1];
-                    rz[n] = s[2];
-                    rz[n+1] = s[3];
-                    rz += 2*n;
-                }
             }
 #           endif
 
@@ -3220,77 +3154,56 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
             } while (--i > 0);
             z[0] = s0;
             z[n] = s1;
-            if (sym) {
-                rz[0] = s0;
-                rz[1] = s1;
-                /* rz += n; */
-            }
-            z += 1;
+            /* z += 1; */
             /* nn -= 1; */
         }
 
-        /* Go on to next two columns of y. */
+        /* Go on to next two columns of y and z. */
 
-        z += n;
+        z = zs + 2*n;
         y += 2*k;
         j += 2;
     }
 
-    /* If m is odd, compute the final column of the result. If the result is
-       symmetric, only the final element needs to be computed, the others
-       having already been filled in. */
+    /* If m is odd, compute the final column of the result. */
 
     if (m & 1) {
 
-        if (sym) {
-            double *r = x+(n-1)*k;
-            double *q = y;
-            double *f = y+k;
+        double *r = x;
+        double *e = z+n;
+
+        /* If n is odd, compute the first element of the first
+           column of the result here.  Also, move r to point to
+           the second column of x, and increment z. */
+
+        if (n & 1) {
             double s = 0;
-            do {
-                s += *r++ * *q++;
-            } while (q < f);
-            *(z+n-1) = s;
+            double *q = y;
+            double *e = y+k;
+            do { s += *r++ * *q++; } while (q < e);
+            *z++ = s;
         }
 
-        else {
+        /* Compute the remainder of the first column of the result two
+           elements at a time (looking at two columns of x).  Note that 
+           e-z will be even.  If result is symmetric, copy elements to
+           the first row as well. */
 
-            double *r = x;
-            double *e = z+n;
-
-            /* If n is odd, compute the first element of the first
-               column of the result here.  Also, move r to point to
-               the second column of x, and increment z. */
-
-            if (n & 1) {
-                double s = 0;
-                double *q = y;
-                double *e = y+k;
-                do { s += *r++ * *q++; } while (q < e);
-                *z++ = s;
-            }
-
-            /* Compute the remainder of the first column of the result two
-               elements at a time (looking at two columns of x).  Note that 
-               e-z will be even.  If result is symmetric, copy elements to
-               the first row as well. */
-
-            while (z < e) {
-                double s0 = 0;
-                double s1 = 0;
-                double *q = y;
-                double *f = y+k;
-                do {
-                    double t = *q;
-                    s0 += *r * t;
-                    s1 += *(r+k) * t;
-                    r += 1;
-                    q += 1;
-                } while (q < f);
-                r += k;
-                *z++ = s0;
-                *z++ = s1;
-            }
+        while (z < e) {
+            double s0 = 0;
+            double s1 = 0;
+            double *q = y;
+            double *f = y+k;
+            do {
+                double t = *q;
+                s0 += *r * t;
+                s1 += *(r+k) * t;
+                r += 1;
+                q += 1;
+            } while (q < f);
+            r += k;
+            *z++ = s0;
+            *z++ = s1;
         }
     }
 }
