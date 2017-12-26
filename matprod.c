@@ -2694,7 +2694,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
        inner loop. */
 
 #   define TRANS1_ROWS (512+128)  /* be multiple of 8 to keep any alignment */
-#   define TRANS1_COLS 16000      /* be multiple of 8 to keep any alignment */
+#   define TRANS1_COLS 16      /* be multiple of 8 to keep any alignment */
 
     int sym = x==y && n==m        /* if operands same, result is symmetric, */
               && (n>8 || k>8);    /*    but faster to ignore if n & k small */
@@ -2796,7 +2796,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
 
         double *xs = x;
         double *zs = z;
-        int nn = sym ? j+2 : n;
+        int nn = sym ? j+2 : cols;
         double *rz;
 
         /* Compute sets of four elements in the two columns being
@@ -3221,11 +3221,11 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
     if (m & 1) {
 
         double *xs = x;
-        double *e = z+n;
+        double *e = z+cols;
 
-        /* If n is odd, compute the first element of the column here. */
+        /* If cols is odd, compute the first element of the column here. */
 
-        if (n & 1) {
+        if (cols & 1) {
             double *r = xs;
             double s;
             if (add)
@@ -3233,12 +3233,12 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
             else
                 s = 0;
             double *q = y;
-            double *e = y+rows;
+            double *f = y+rows;
             do { 
                 s += r[0] * q[0]; 
                 r += 1;
-                q += 1; }
-            while (q < e);
+                q += 1;
+            } while (q < f);
             z[0] = s;
             xs += k;
             z += 1;
