@@ -1958,6 +1958,14 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
+    if (k <= 1) {
+        if (k == 1)
+            matprod_outer (x, y, z, n, m);
+        else
+            set_to_zeros (z, n*m);
+        return;
+    }
+
     if (n <= 2) {
         if (n == 2)
             matprod_smalln_mat_mat (x, y, z, n, k, m);
@@ -1968,14 +1976,6 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
     if (m <= 1) {
         if (m == 1)
             matprod_mat_vec (x, y, z, n, k);
-        return;
-    }
-
-    if (k <= 1) {
-        if (k == 1)
-            matprod_outer (x, y, z, n, m);
-        else
-            set_to_zeros (z, n*m);
         return;
     }
 
@@ -3326,6 +3326,14 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
+    if (k <= 1) {
+        if (k == 1)
+            matprod_outer (x, y, z, n, m);
+        else
+            set_to_zeros (z, n*m);
+        return;
+    }
+
     if (n <= 2) {
         if (n == 2)
             matprod_smalln_trans2 (x, y, z, n, k, m);
@@ -3336,14 +3344,6 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
     if (m <= 1) {
         if (m == 1)
             matprod_mat_vec (x, y, z, n, k);
-        return;
-    }
-
-    if (k <= 1) {
-        if (k == 1)
-            matprod_outer (x, y, z, n, m);
-        else
-            set_to_zeros (z, n*m);
         return;
     }
 
