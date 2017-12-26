@@ -2689,7 +2689,11 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
         return;
     }
 
-#   define TRANS1_ROWS 16      /* be multiple of 8 to keep any alignment */
+    /* The definiton of TRANS1_ROWS is designed to keep four columns of x
+       and two columns of y in an L1 cache of at least 32K bytes in the
+       inner loop. */
+
+#   define TRANS1_ROWS (512+128)  /* be multiple of 8 to keep any alignment */
 #   define TRANS1_COLS 16000      /* be multiple of 8 to keep any alignment */
 
     int sym = x==y && n==m        /* if operands same, result is symmetric, */
