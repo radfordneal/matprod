@@ -2790,8 +2790,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
         double *rz;
 
         /* Compute sets of four elements in the two columns being
-           computed.  Copy them to the corresponding rows too, if the
-           result is symmetric. */
+           computed. */
 
         while (nn >= 4) {
 
@@ -2999,8 +2998,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
             nn -= 4;
         }
 
-        /* Compute the remaining elements of the columns here.  If result
-           is symmetric, store in the symmetric places as well. */
+        /* Compute the remaining elements of the columns here. */
 
         if (nn > 1) { /* at least two more elements to compute in each column */
 #           if CAN_USE_AVX
@@ -3147,10 +3145,11 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
             double *q = y;
             int i = k;
             do {
-                double t = *r++;
-                s0 += t * *q;
-                s1 += t * *(q+k);
+                double t = r[0];
+                s0 += t * q[0];
+                s1 += t * q[k];
                 q += 1;
+                r += 1;
             } while (--i > 0);
             z[0] = s0;
             z[n] = s1;
@@ -3180,8 +3179,13 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
             double s = 0;
             double *q = y;
             double *e = y+k;
-            do { s += *r++ * *q++; } while (q < e);
-            *z++ = s;
+            do { 
+                s += r[0] * q[0]; 
+                r += 1;
+                q += 1; }
+            while (q < e);
+            z[0] = s;
+            z += 1;
         }
 
         /* Compute the remainder of the first column of the result two
@@ -3202,8 +3206,9 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                 q += 1;
             } while (q < f);
             r += k;
-            *z++ = s0;
-            *z++ = s1;
+            z[0] = s0;
+            z[1] = s1;
+            z += 2;
         }
     }
 }
