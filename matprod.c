@@ -2431,12 +2431,16 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
             double b = y[0];
             double *q = z;
             int n2 = rows;
-            do { 
-                q[0] = r[0] * b; 
-                q += 1;
-                r += 1;
-                n2 -= 1;
-            } while (n2 > 0);
+            while (n2 > 1) {
+                q[0] = r[0] * b;
+                q[1] = r[1] * b;
+                q += 2;
+                r += 2;
+                n2 -= 2;
+            }
+            if (n2 >= 1) {
+                q[0] = r[0] * b;
+            }
             xs += n;
             y += 1;
         }
@@ -3557,32 +3561,35 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
         double *q = y;
         int j = 0;
 
-        /* Initialize sums in next two columns of z to the sum of the
-           first two products.  Note that k and m are at least two here. */
+        /* Unless we're adding, initialize sums in next two columns of
+           z to the sum of the first two products.  Note that k and m
+           are at least two here. */
 
-#       if 1  /* non-SIMD code */
-        {
-            double *t = 
-              __builtin_assume_aligned (z+j, ALIGN%16, ALIGN_OFFSET%16);
-            double *r = 
-              __builtin_assume_aligned (xs+j, ALIGN%16, ALIGN_OFFSET%16);
+        if (!add) {
+#           if 1  /* non-SIMD code */
+            {
+                double *t = 
+                  __builtin_assume_aligned (z+j, ALIGN%16, ALIGN_OFFSET%16);
+                double *r = 
+                  __builtin_assume_aligned (xs+j, ALIGN%16, ALIGN_OFFSET%16);
 
-            double b11 = y[0];
-            double b12 = y[m];
-            double b21 = y[1];
-            double b22 = y[m+1];
-            do {
-                double s1 = r[0];
-                double s2 = r[n];
-                t[0] = (s1 * b11) + (s2 * b12);
-                t[n] = (s1 * b21) + (s2 * b22);
-                r += 1;
-                t += 1;
-            } while (t <= ez);
-            xs += 2*n;
-            q += 2*m;
+                double b11 = y[0];
+                double b12 = y[m];
+                double b21 = y[1];
+                double b22 = y[m+1];
+                do {
+                    double s1 = r[0];
+                    double s2 = r[n];
+                    t[0] = (s1 * b11) + (s2 * b12);
+                    t[n] = (s1 * b21) + (s2 * b22);
+                    r += 1;
+                    t += 1;
+                } while (t <= ez);
+                xs += 2*n;
+                q += 2*m;
+            }
+#           endif
         }
-#       endif
 
         /* Each time around this loop, add the products of two columns
            of x with elements of the next two rows of y to the next
@@ -3753,37 +3760,42 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
 
     if (m2 >= 1) {
 
-        /* Initialize sums in z to zero, if k is even, or to the
-           product of the first element of the last row of y with
-           the first column of x (in which case adjust r and q
-           accordingly). */
-
+        double *ez = z+n-1;
         double *q = y;
         double *r = x;
-        double *t = z;
-        double *f = z+n;
-        double *ez = z+n-1;
 
-        if (k & 1) {
-            double b = *q;
-            do { *t++ = *r++ * b; } while (t < f);
+        /* Unless we're adding, initialize sums in z to the product of
+           the first element of the last row of y with the first
+           column of x. */
+
+        if (!add) {
+            double *t = z;
+            double b = q[0];
+            int n2 = n;
+            while (n2 > 1) {
+                t[0] = r[0] * b;
+                t[1] = r[1] * b;
+                r += 2;
+                t += 2;
+                n2 -= 2;
+            }
+            if (n2 >= 1) {
+                t[0] = r[0] * b;
+                r += 1;
+            }
             q += m;
-        }
-        else {
-            do { *t++ = 0.0; } while (t < f);
         }
 
         /* Each time around this loop, add the products of two
            columns of x with two elements of the first row of y to
            the result vector, z.  Adjust r and y to account for this. */
 
-        while (r < ex) {
+        while (r < ex-n) {
             double *t = z;
             double b1, b2;
-            b1 = *q;
-            q += m;
-            b2 = *q;
-            q += m;
+            b1 = q[0];
+            b2 = q[m];
+            q += 2*m;
             while (t < ez) {
                 t[0] = (t[0] + (r[0] * b1)) + (r[n] * b2);
                 t[1] = (t[1] + (r[1] * b1)) + (r[n+1] * b2);
@@ -3795,6 +3807,20 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
                 r += 1;
             }
             r += n;
+        }
+
+        if (r < ex) {
+            double *t = z;
+            double b = q[0];
+            while (t < ez) {
+                t[0] += r[0] * b;
+                t[1] += r[1] * b;
+                r += 2;
+                t += 2;
+            }
+            if (t <= ez) {
+                t[0] += r[0] * b;
+            }
         }
     }
 }
