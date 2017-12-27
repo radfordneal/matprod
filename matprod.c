@@ -3395,6 +3395,12 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
                                 int n, int k, int m,
                                 int sym, int rows, int cols, int add);
 
+static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
+                                   double * MATPROD_RESTRICT y,
+                                   double * MATPROD_RESTRICT z,
+                                   int n, int k, int m,
+                                   int sym, int rows);
+
 static void matprod_smalln_trans2 (double * MATPROD_RESTRICT x,
                                    double * MATPROD_RESTRICT y,
                                    double * MATPROD_RESTRICT z,
@@ -3431,13 +3437,94 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
         return;
     }
 
+    /* The general case with n > 2.  Calls matprod_sub_trans2 to do
+       parts (only one part for a matrix with fewer than TRANS2_ROWS
+       rows and fewer than TRANS2_COLS columns).
+
+       The definition of TRANS2_ROWS is designed to keep two columns
+       of z in an L1 cache of 32K bytes or more, given that two
+       columns of z and two columns of x (all of length MAT_VEC_ROWS)
+       are accessed within the main loop.
+
+       The definiton of TRANS2_COLS is designed to keep the submatrix
+       of x with TRANS2_ROWS and TRANS2_COLS in an L2 cache of a least
+       256K bytes, while it is multiplied repeatedly by rows of y. */
+
+#   define TRANS2_ROWS (1024-64)  /* be multiple of 8 to keep any alignment */
+#   define TRANS2_COLS 32         /* be multiple of 8 to keep any alignment */
+
     int sym = x==y && n==m        /* if operands same, result is symmetric, */
               && (n>8 || k>8);    /*    but faster to ignore if n & k small */
 
-    matprod_sub_trans2 (x, y, z, n, k, m, sym, n, k, 0);  /* for now */
+    if (1||n <= TRANS2_ROWS && k <= TRANS2_COLS) {  /* do small cases quickly */
+        matprod_sub_trans2 (x, y, z, n, k, m, sym, n, k, 0);
+        return;
+    }
+
+    int rows = n;
+
+    if (rows > TRANS2_ROWS && k > 2) {
+        while (rows >= 2*TRANS2_ROWS) {
+            matprod_subcol_trans2 (x, y, z, n, k, m, sym, TRANS2_ROWS);
+            x += TRANS2_ROWS;
+            z += TRANS2_ROWS;
+            rows -= TRANS2_ROWS;
+        }
+        if (rows > TRANS2_ROWS) {
+            int nr = (rows/2) & ~7; /* ensure any alignment of x, z preserved */
+            matprod_subcol_trans2 (x, y, z, n, k, m, sym, nr);
+            x += nr;
+            z += nr;
+            rows -= nr;
+        }
+    }
+    matprod_subcol_trans2 (x, y, z, n, k, m, sym, rows);
 
     if (sym)
         fill_lower (z, n);
+}
+
+static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
+                                   double * MATPROD_RESTRICT y,
+                                   double * MATPROD_RESTRICT z,
+                                   int n, int k, int m,
+                                   int sym, int rows)
+{
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    int chunk;
+
+    if (k <= TRANS2_COLS
+     || k <= (chunk = (TRANS2_COLS*TRANS2_ROWS/rows) & ~7)) {
+        matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, k, 0);
+        return;
+    }
+
+    int cols = k;
+    int add = 0;
+
+    while (cols > 2*chunk) {
+        matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, chunk, add);
+        x += chunk*n;
+        y += chunk;
+        cols -= chunk;
+        add = 1;
+    }
+
+    if (cols > chunk) {
+        int nc = (cols/2) & ~7;  /* ensure any alignment of x preserved */
+        matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, nc, add);
+        x += nc*n;
+        y += nc;
+        cols -= nc;
+        add = 1;
+    }
+
+    matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, cols, add);
 }
 
 static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
