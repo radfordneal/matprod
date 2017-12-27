@@ -1,6 +1,5 @@
-commit 22d7680cac6ebd21c10580d5f6ac6bed0d062254
-Merge: 619707e d3d1220
+commit b5922a22935ae3044ca3455970d5bbf1c11ffc99
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Dec 23 22:58:18 2017 -0500
+Date:   Tue Dec 26 19:54:08 2017 -0500
 
-    Merge branch 'master' of https://github.com/radfordneal/matprod
+    tune TRANS1_COLS
