@@ -1,5 +1,5 @@
-commit 929bc4888596c57fa3f2097562802bd44402ffc6
+commit b5922a22935ae3044ca3455970d5bbf1c11ffc99
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Tue Dec 26 15:27:23 2017 -0500
+Date:   Tue Dec 26 19:54:08 2017 -0500
 
-    tune TRANS1_ROWS sensibly
+    tune TRANS1_COLS
