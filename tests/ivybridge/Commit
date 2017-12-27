@@ -1,5 +1,5 @@
-commit 32323c824ff40b9c551648ca545f5784341cd0af
+commit b5922a22935ae3044ca3455970d5bbf1c11ffc99
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Dec 23 21:59:10 2017 -0500
+Date:   Tue Dec 26 19:54:08 2017 -0500
 
-    results for skylake
+    tune TRANS1_COLS
