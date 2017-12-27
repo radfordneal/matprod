@@ -2694,7 +2694,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
        inner loop. */
 
 #   define TRANS1_ROWS (512+128)  /* be multiple of 8 to keep any alignment */
-#   define TRANS1_COLS 16      /* be multiple of 8 to keep any alignment */
+#   define TRANS1_COLS 8      /* be multiple of 8 to keep any alignment */
 
     int sym = x==y && n==m        /* if operands same, result is symmetric, */
               && (n>8 || k>8);    /*    but faster to ignore if n & k small */
@@ -2743,21 +2743,25 @@ static void matprod_subcol_trans1 (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
+    int cols = n;
     int chunk;
 
-    if (n <= TRANS1_COLS 
-     || n <= (chunk = (TRANS1_COLS*TRANS1_ROWS/rows) & ~7)) {
-        matprod_sub_trans1 (x, y, z, n, k, m, sym, add, rows, n);
+    if (cols <= TRANS1_COLS 
+     || cols <= (chunk = (TRANS1_COLS*TRANS1_ROWS/rows) & ~7)) {
+        matprod_sub_trans1 (x, y, z, n, k, m, sym, add, rows, cols);
         return;
     }
-
-    int cols = n;
 
     while (cols > 2*chunk) {
         matprod_sub_trans1 (x, y, z, n, k, m, sym, add, rows, chunk);
         x += chunk*k;
         z += chunk;
         cols -= chunk;
+        if (sym) {
+            y += chunk*k;
+            z += chunk*n;
+            m -= chunk;
+        }
     }
 
     if (cols > chunk) {
@@ -2766,9 +2770,14 @@ static void matprod_subcol_trans1 (double * MATPROD_RESTRICT x,
         x += nc*k;
         z += nc;
         cols -= nc;
+        if (sym) {
+            y += nc*k;
+            z += nc*n;
+            m -= nc;
+        }
     }
 
-    matprod_sub_trans1 (x, y, z, n, k, m, sym, add, rows, cols);    
+    matprod_sub_trans1 (x, y, z, n, k, m, sym, add, rows, cols);
 }
 
 static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
@@ -2796,7 +2805,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
 
         double *xs = x;
         double *zs = z;
-        int nn = sym ? j+2 : cols;
+        int nn = sym && sym < cols ? sym+1 : cols;
         double *rz;
 
         /* Compute sets of four elements in the two columns being
@@ -3035,6 +3044,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
         /* Compute the remaining elements of the columns here. */
 
         if (nn > 1) { /* at least two more elements to compute in each column */
+
 #           if CAN_USE_AVX
             {
                 double *r = xs;
@@ -3087,6 +3097,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                 _mm_storeu_pd (z, cast128(S));
                 _mm_storeu_pd (z+n, H);
             }
+
 #           elif CAN_USE_SSE2
             {
                 double *r = xs;
@@ -3147,7 +3158,8 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                 _mm_storeAA_pd (z, S0);
                 _mm_storeu_pd (z+n, S1);
             }
-#           else
+
+#           else  /* non-SIMD code */
             {
                 double *r = xs;
                 double s[4];
@@ -3178,6 +3190,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                 z[1] = s[2];
                 z[n+1] = s[3];
             }
+
 #           endif
 
             z += 2;
@@ -3211,6 +3224,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
 
         /* Go on to next two columns of y and z. */
 
+        if (sym) sym += 2;
         z = zs + 2*n;
         y += 2*k;
         j += 2;
