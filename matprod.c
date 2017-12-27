@@ -2689,12 +2689,17 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
         return;
     }
 
-    /* The definiton of TRANS1_ROWS is designed to keep four columns of x
-       and two columns of y in an L1 cache of at least 32K bytes in the
-       inner loop. */
+    /* The definiton of TRANS1_ROWS is designed to keep two columns of y 
+       in an L1 cache of 32K bytes or more, given that two columns of y 
+       and four columns of x (all of length TRANS1_ROWS) are accessed
+       within the main loop.
+
+       The definiton of TRANS1_COLS is designed to keep the submatrix
+       of x with TRANS1_ROWS and TRANS1_COLS in an L2 cache of a least
+       256K bytes, while it is multiplied repeatedly by columns of y. */
 
 #   define TRANS1_ROWS (512+128)  /* be multiple of 8 to keep any alignment */
-#   define TRANS1_COLS 8      /* be multiple of 8 to keep any alignment */
+#   define TRANS1_COLS 48         /* be multiple of 8 to keep any alignment */
 
     int sym = x==y && n==m        /* if operands same, result is symmetric, */
               && (n>8 || k>8);    /*    but faster to ignore if n & k small */
