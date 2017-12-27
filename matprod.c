@@ -3454,7 +3454,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
        of x with TRANS2_ROWS and TRANS2_COLS in an L2 cache of a least
        256K bytes, while it is multiplied repeatedly by rows of y. */
 
-#   define TRANS2_ROWS 8 /* (1024-64) */  /* be multiple of 8 to keep any alignment */
+#   define TRANS2_ROWS (1024-64)  /* be multiple of 8 to keep any alignment */
 #   define TRANS2_COLS 320000     /* be multiple of 8 to keep any alignment */
 
     int sym = x==y && n==m        /* if operands same, result is symmetric, */
