@@ -2812,9 +2812,9 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
 
     while (j < me) {
 
+        int nn = sym && sym < cols ? sym+1 : cols;
         double *xs = x;
         double *zs = z;
-        int nn = sym && sym < cols ? sym+1 : cols;
         double *rz;
 
         /* Compute sets of four elements in the two columns being
@@ -3560,7 +3560,6 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
         double *ez = z + (nn-1); /* Last place to store a sum */
         double *xs = x;
         double *q = y;
-        int j = 0;
 
         /* Unless we're adding, initialize sums in next two columns of
            z to the sum of the first two products.  Note that k and m
@@ -3569,11 +3568,8 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
         if (!add) {
 #           if 1  /* non-SIMD code */
             {
-                double *t = 
-                  __builtin_assume_aligned (z+j, ALIGN%16, ALIGN_OFFSET%16);
-                double *r = 
-                  __builtin_assume_aligned (xs+j, ALIGN%16, ALIGN_OFFSET%16);
-
+                double *t = z;
+                double *r = xs;
                 double b11 = y[0];
                 double b12 = y[m];
                 double b21 = y[1];
@@ -3599,12 +3595,8 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
 
         while (xs < ex-n) {
 
-            double *t = 
-              __builtin_assume_aligned (z+j, ALIGN%16, ALIGN_OFFSET%16);
-            double *r = 
-              __builtin_assume_aligned (xs+j, ALIGN%16, ALIGN_OFFSET%16);
-
-            q = __builtin_assume_aligned (q, ALIGN%16, ALIGN_OFFSET%16);
+            double *t = z;
+            double *r = xs;
 
 #           if CAN_USE_AVX || CAN_USE_SSE2
             {
@@ -3736,8 +3728,8 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
         }
 
         if (xs < ex) {
-            double *t = z+j;
-            double *r = xs+j;
+            double *t = z;
+            double *r = xs;
             double b1 = q[0];
             double b2 = q[1];
             do {
