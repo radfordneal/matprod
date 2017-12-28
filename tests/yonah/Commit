@@ -1,5 +1,5 @@
-commit a29a3fdbfd3f2c0386e2df28052485cab3d7b9b7
+commit 5cb9cc773482e668a9487d82eea1870e01dc5992
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Wed Dec 27 21:39:13 2017 -0500
+Date:   Thu Dec 28 12:17:28 2017 -0500
 
-    change to gcc-7 for yonah
+    results for westmere
