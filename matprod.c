@@ -486,11 +486,11 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
        (only one part if y has matrix with fewer than VEC_MAT_ROWS).
 
        The definition of VEC_MAT_ROWS is designed to keep the vector x
-       in an L2 cache of 256K bytes or more, given that x and four
+       in an L1 cache of 32K bytes or more, given that x and four
        columns of y (all of length VEC_MAT_ROWS) are accessed within
        the main loop. */
 
-#   define VEC_MAT_ROWS (4096+2048)  /* be multiple of 8 to keep any alignment*/
+#   define VEC_MAT_ROWS 512  /* be multiple of 8 to keep any alignment*/
 
     int rows = k;
     int add = 0;
@@ -1289,7 +1289,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
        columns of x (all of length MAT_VEC_ROWS) are accessed within
        the main loop. */
 
-#   define MAT_VEC_ROWS (1024+256)  /* be multiple of 8 to keep any alignment */
+#   define MAT_VEC_ROWS 1024  /* be multiple of 8 to keep any alignment */
 
     int rows = n;
 
@@ -1985,10 +1985,10 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
 
        The definition of MAT_MAT_ROWS is designed to keep two columns
        of z in an L1 cache of 32K bytes or more, given that two
-       columns of z and two columns of x (all of length MAT_VEC_ROWS)
+       columns of z and two columns of x (all of length MAT_MAT_ROWS)
        are accessed within the main loop. 
 
-       The definiton of MAT_MAT_COLS is designed to keep the submatrix
+       The definition of MAT_MAT_COLS is designed to keep the submatrix
        of x with MAT_MAT_ROWS and MAT_MAT_COLS in an L2 cache of a
        least 256K bytes, while it is multiplied repeatedly by columns
        of y. */
@@ -2702,7 +2702,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
        of x with TRANS1_ROWS and TRANS1_COLS in an L2 cache of a least
        256K bytes, while it is multiplied repeatedly by columns of y. */
 
-#   define TRANS1_ROWS (512+128)  /* be multiple of 8 to keep any alignment */
+#   define TRANS1_ROWS 512        /* be multiple of 8 to keep any alignment */
 #   define TRANS1_COLS 48         /* be multiple of 8 to keep any alignment */
 
     int sym = x==y && n==m        /* if operands same, result is symmetric, */
