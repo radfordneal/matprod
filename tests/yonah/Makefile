@@ -2,7 +2,7 @@
 
 include ../Makefile
 
-CC=gcc
+CC=gcc-7
 
 CFLAGS=$(CFLAGSi32)
 
