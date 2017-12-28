@@ -3456,7 +3456,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
        256K bytes, while it is multiplied repeatedly by rows of y. */
 
 #   define TRANS2_ROWS (1024-64)  /* be multiple of 8 to keep any alignment */
-#   define TRANS2_COLS 320000     /* be multiple of 8 to keep any alignment */
+#   define TRANS2_COLS 32         /* be multiple of 8 to keep any alignment */
 
     int sym = x==y && n==m        /* if operands same, result is symmetric, */
               && (n>8 || k>8);    /*    but faster to ignore if n & k small */
@@ -3531,7 +3531,7 @@ static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
     while (cols > 2*chunk) {
         matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, yrows, chunk, add);
         x += chunk*n;
-        y += chunk;
+        y += chunk*m;
         cols -= chunk;
         add = 1;
     }
@@ -3540,7 +3540,7 @@ static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
         int nc = ((cols+1)/2) & ~7;  /* keep any alignment of x */
         matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, yrows, nc, add);
         x += nc*n;
-        y += nc;
+        y += nc*m;
         cols -= nc;
         add = 1;
     }
@@ -3567,7 +3567,7 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
 
     /* Compute two columns of the result each time around this loop. */
 
-    double *ex = x + n*(k-1) + rows;
+    double *ex = x + n*(cols-1) + rows;
 
     while (m2 > 1) {
 
@@ -3577,7 +3577,7 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
         double *q = y;
 
         /* Unless we're adding, initialize sums in next two columns of
-           z to the sum of the first two products.  Note that k and m
+           z to the sum of the first two products.  Note that cols and m
            are at least two here. */
 
         if (!add) {
