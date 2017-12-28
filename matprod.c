@@ -3393,17 +3393,17 @@ static void matprod_smallk_trans1 (double * MATPROD_RESTRICT x,
    local variables rather than in a column of the result, and then storing
    them in the result column at the end. */
 
-static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
-                                double * MATPROD_RESTRICT y,
-                                double * MATPROD_RESTRICT z,
-                                int n, int k, int m,
-                                int sym, int rows, int cols, int add);
+static void matprod_sub_trans2(double * MATPROD_RESTRICT x,
+                               double * MATPROD_RESTRICT y,
+                               double * MATPROD_RESTRICT z,
+                               int n, int k, int m,
+                               int sym, int rows, int yrows, int cols, int add);
 
 static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
                                    double * MATPROD_RESTRICT y,
                                    double * MATPROD_RESTRICT z,
                                    int n, int k, int m,
-                                   int sym, int rows);
+                                   int sym, int rows, int yrows);
 
 static void matprod_smalln_trans2 (double * MATPROD_RESTRICT x,
                                    double * MATPROD_RESTRICT y,
@@ -3435,6 +3435,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
             matprod_mat_vec (y, x, z, m, k);
         return;
     }
+
     if (m <= 1) {
         if (m == 1)
             matprod_mat_vec (x, y, z, n, k);
@@ -3461,29 +3462,43 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
               && (n>8 || k>8);    /*    but faster to ignore if n & k small */
 
     if (n <= TRANS2_ROWS && k <= TRANS2_COLS) {  /* do small cases quickly */
-        matprod_sub_trans2 (x, y, z, n, k, m, sym, n, k, 0);
+        matprod_sub_trans2 (x, y, z, n, k, m, sym, n, m, k, 0);
     }
 
     else {
 
+        double *zz = z;
         int rows = n;
+        int yrows = m;
 
         if (rows > TRANS2_ROWS && k > 2) {
             while (rows >= 2*TRANS2_ROWS) {
-                matprod_subcol_trans2 (x, y, z, n, k, m, sym, TRANS2_ROWS);
+                matprod_subcol_trans2
+                               (x, y, zz, n, k, m, sym, TRANS2_ROWS, yrows);
                 x += TRANS2_ROWS;
-                z += TRANS2_ROWS;
+                zz += TRANS2_ROWS;
                 rows -= TRANS2_ROWS;
+                if (sym) {
+                    y += TRANS2_ROWS;
+                    zz += TRANS2_ROWS*n;
+                    yrows -= TRANS2_ROWS;
+                }
             }
             if (rows > TRANS2_ROWS) {
                 int nr = ((rows+1)/2) & ~7;  /* keep any alignment of x, z */
-                matprod_subcol_trans2 (x, y, z, n, k, m, sym, nr);
+                matprod_subcol_trans2 
+                               (x, y, zz, n, k, m, sym, nr, yrows);
                 x += nr;
-                z += nr;
+                zz += nr;
                 rows -= nr;
+                if (sym) {
+                    y += nr;
+                    zz += nr*n;
+                    yrows -= nr;
+                }
             }
         }
-        matprod_subcol_trans2 (x, y, z, n, k, m, sym, rows);
+        matprod_subcol_trans2 (x, y, zz, n, k, m, sym, rows, yrows);
     }
 
     if (sym)
@@ -3494,7 +3509,7 @@ static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
                                    double * MATPROD_RESTRICT y,
                                    double * MATPROD_RESTRICT z,
                                    int n, int k, int m,
-                                   int sym, int rows)
+                                   int sym, int rows, int yrows)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -3506,7 +3521,7 @@ static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
 
     if (k <= TRANS2_COLS
      || k <= (chunk = (TRANS2_COLS*TRANS2_ROWS/rows) & ~7)) {
-        matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, k, 0);
+        matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, yrows, k, 0);
         return;
     }
 
@@ -3514,7 +3529,7 @@ static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
     int add = 0;
 
     while (cols > 2*chunk) {
-        matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, chunk, add);
+        matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, yrows, chunk, add);
         x += chunk*n;
         y += chunk;
         cols -= chunk;
@@ -3523,24 +3538,24 @@ static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
 
     if (cols > chunk) {
         int nc = ((cols+1)/2) & ~7;  /* keep any alignment of x */
-        matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, nc, add);
+        matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, yrows, nc, add);
         x += nc*n;
         y += nc;
         cols -= nc;
         add = 1;
     }
 
-    matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, cols, add);
+    matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, yrows, cols, add);
 }
 
 static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y,
                                 double * MATPROD_RESTRICT z,
                                 int n, int k, int m,
-                                int sym, int rows, int cols, int add)
+                                int sym, int rows, int yrows, int cols, int add)
 {
-/*  printf("- %p %p %p - %d %d %d - %d %d %d %d\n",
-               x, y, z,   n, k, m,  sym, rows, cols, add);  */
+/*  printf("- %p %p %p - %d %d %d - %d %d %d %d %d\n",
+               x, y, z,   n, k, m,  sym, rows, yrows, cols, add);  */
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -3548,7 +3563,7 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    int m2 = m;
+    int m2 = yrows;
 
     /* Compute two columns of the result each time around this loop. */
 
@@ -3750,7 +3765,7 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
         m2 -= 2;
     }
 
-    /* If m is odd, compute the last column of the result. */
+    /* If yrows is odd, compute the last column of the result. */
 
     if (m2 >= 1) {
 
