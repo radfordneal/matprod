@@ -1,6 +1,6 @@
 # Makefile for Foster processors running linux
 
-include ../Makefile
+include ../make-common
 
 CC=gcc
 

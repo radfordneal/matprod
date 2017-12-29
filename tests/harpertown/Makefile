@@ -1,6 +1,6 @@
 # Makefile for Harpertown processors running OS X El Capitan.
 
-include ../Makefile
+include ../make-common
 
 CC=gcc-7
 

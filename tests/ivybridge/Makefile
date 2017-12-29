@@ -1,6 +1,6 @@
 # Makefile for Ivybridge processors running macOS Sierra.
 
-include ../Makefile
+include ../make-common
 
 CC=gcc-7
 

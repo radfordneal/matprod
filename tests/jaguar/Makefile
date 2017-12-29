@@ -1,6 +1,6 @@
 # Makefile for Jaguar processors running Linux.
 
-include ../Makefile
+include ../make-common
 
 CC=gcc-7
 

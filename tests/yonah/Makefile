@@ -1,6 +1,6 @@
 # Makefile for Yonah processors running linux
 
-include ../Makefile
+include ../make-common
 
 CC=gcc-7
 

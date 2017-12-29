@@ -1,5 +1,5 @@
 # MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
-#           Template of Makefile for Compiling Test Programs
+#           Common Part of Makefile for Compiling Test Programs
 #
 # Copyright (c) 2013, 2017 Radford M. Neal.
 # 
@@ -19,22 +19,25 @@
 
 # -----------------------------------------------------------------------------
 
-# A Makefile that includes this file must set the following as appropriate:
+# A Makefile that includes this file must set the following as appropriate
+# (with examples shown):
 #
-# CC=gcc-7              # Compiler to be used, must be gcc look-alike for CFLAGS
+# CC=gcc-7                # Compiler to use, must be gcc look-alike for CFLAGS
 #
-# CFLAGS=$(CFLAGSerr)   # Set to one of those below (or custom) as appropriate
+# CFLAGS=$(CFLAGSavx)     # Set to one of those below (or custom) as appropriate
 #
-# ALIGN=-DALIGN=32      # Can also test with other settings
-# ALOFF=-DALIGN_OFFSET=8
+# ALIGN=-DALIGN=32        # Typically 32 for AVX, 16 for SSE2
+# ALOFF=-DALIGN_OFFSET=8  # If ALIGN is 32, could test with 16 and 24 as well
 #
 # The Makefile is assumed to be run in a subdirectory of matprod/tests.
 
-CFLAGSgen=-g -std=gnu99 -O3 -ffp-contract=off # Generic processor
-CFLAGSi32=-g -std=gnu99 -O3 -ffp-contract=off  -msse2 -mfpmath=sse
-CFLAGSi64=-g -std=gnu99 -O3 -ffp-contract=off  -msse3 -mtune=core2
-CFLAGSavx=-g -std=gnu99 -O3 -ffp-contract=off  -mavx  -mtune=ivybridge
-CFLAGSavx2=-g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
+OPT?=-O3   # Default optimization level, can override before including this file
+
+CFLAGSgen=-g -std=gnu99 $(OPT) -ffp-contract=off # Generic processor
+CFLAGSi32=-g -std=gnu99 $(OPT) -ffp-contract=off  -msse2 -mfpmath=sse
+CFLAGSi64=-g -std=gnu99 $(OPT) -ffp-contract=off  -msse3 -mtune=core2
+CFLAGSavx=-g -std=gnu99 $(OPT) -ffp-contract=off  -mavx  -mtune=ivybridge
+CFLAGSavx2=-g -std=gnu99 $(OPT) -ffp-contract=off -mavx2 -mtune=skylake
 
 II=-I.. -I../..         # Directories above with header files
 
@@ -61,9 +64,13 @@ blas-linux:	$(blas-progs) $(blas-linux-progs) Commit
 blas-mac:	$(blas-progs) $(blas-mac-progs) Commit
 	true
 
-Commit:	../../matprod.c ../../piped-matprod.c ../../matprod.h ../../piped-matprod.h \
-	../test.h ../test.c ../matprod-test.c ../blas-test.c
-	git log -1 >Commit
+Commit:	Makefile ../make-common \
+	  ../../matprod.c ../../piped-matprod.c \
+	  ../../matprod.h ../../piped-matprod.h \
+	  ../test.h ../test.c ../matprod-test.c ../blas-test.c
+	echo $(CC) $(CFLAGS) >Commit
+	echo " " >>Commit
+	git log -1 >>Commit
 	git diff ../../matprod.c ../../piped-matprod.c >>Commit
 
 # -----------------------------------------------------------------------------
