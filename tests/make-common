@@ -29,6 +29,11 @@
 # ALIGN=-DALIGN=32        # Typically 32 for AVX, 16 for SSE2
 # ALOFF=-DALIGN_OFFSET=8  # If ALIGN is 32, could test with 16 and 24 as well
 #
+# and optionally may set the following:
+#
+# OPT=...                 # Possibly set to something different than below.
+# matprod-extra-progs=... # Possibly set to a subset of those below.
+#
 # The Makefile is assumed to be run in a subdirectory of matprod/tests.
 
 OPT?=-O3   # Default optimization level, can override before including this file

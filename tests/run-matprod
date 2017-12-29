@@ -5,9 +5,12 @@
 for i in matprod matprod-off \
          matprod-noalign matprod-off-noalign \
          matprod-nosimd matprod-off-nosimd \
+         matprod-noalign-nosimd matprod-off-noalign-nosimd \
          matprod-noavx matprod-off-noavx \
-         matprod-noalign-nosimd matprod-off-noalign-nosimd; do
-  echo RUNNING TESTS FOR $i
-  ../run-tests $i >& $i.out
-  ../tim $i
+         matprod-noalign-noavx matprod-off-noalign-noavx; do
+  if test -f ${i}-test; then
+    echo RUNNING TESTS FOR $i
+    ../run-tests $i >& $i.out
+    ../tim $i
+  fi
 done
