@@ -1,5 +1,7 @@
-commit da3ba637d626826bb6917ffb5ec7cb497d276609
+gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
+ 
+commit a74260b41c04c279c865f3f6366650f50a557a54
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Dec 28 10:56:48 2017 -0500
+Date:   Fri Dec 29 09:20:03 2017 -0500
 
-    finish changes to matprod_trans2, seems to work
+    update Makefile for westmere, tweak comments in make-common
