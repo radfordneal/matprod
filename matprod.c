@@ -260,17 +260,15 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 #   endif
 
     /* Use an unrolled loop to add (most) remaining products to s,
-       perhaps using SSE2 or AVX instructions.  A possible final
-       product is handled after main code below. */
-
-    int k2 = k-i;  /* number of products left to do */
+       perhaps using SSE2 or AVX instructions, then add some possible
+       final products. */
 
 #   if CAN_USE_AVX
     {
         __m128d S = _mm_load_sd(&s);
         __m256d AA;
         __m128d A;
-        while (i < k-7) {
+        while (i <= k-8) {
             AA = _mm256_mul_pd (_mm256_loadA_pd(x+i), _mm256_loadA_pd(y+i));
             A = cast128(AA);
             S = _mm_add_sd (A, S);
@@ -291,7 +289,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             S = _mm_add_sd (A, S);
             i += 8;
         }
-        if (k2 & 4) {
+        if (i <= k-4) {
             AA = _mm256_mul_pd (_mm256_loadA_pd(x+i), _mm256_loadA_pd(y+i));
             A = cast128(AA);
             S = _mm_add_sd (A, S);
@@ -303,7 +301,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             S = _mm_add_sd (A, S);
             i += 4;
         }
-        if (k2 & 2) {
+        if (i <= k-2) {
             __m128d A;
             A = _mm_mul_pd (_mm_loadA_pd(x+i), _mm_loadA_pd(y+i));
             S = _mm_add_sd (A, S);
@@ -311,7 +309,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             S = _mm_add_sd (A, S);
             i += 2;
         }
-        if (k2 & 1) {
+        if (i < k) {
             __m128d A;
             A = _mm_mul_sd (_mm_load_sd(x+i), _mm_load_sd(y+i));
             S = _mm_add_sd (A, S);
@@ -323,7 +321,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
     {
         __m128d S = _mm_load_sd(&s);
         __m128d A;
-        while (i < k-3) {
+        while (i <= k-4) {
             A = _mm_mul_pd (_mm_loadA_pd(x+i), _mm_loadA_pd(y+i));
             S = _mm_add_sd (A, S);
             A = _mm_unpackhi_pd (A, A);
@@ -334,14 +332,14 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             S = _mm_add_sd (A, S);
             i += 4;
         }
-        if (k2 & 2) {
+        if (i <= k-2) {
             A = _mm_mul_pd (_mm_loadA_pd(x+i), _mm_loadA_pd(y+i));
             S = _mm_add_sd (A, S);
             A = _mm_unpackhi_pd (A, A);
             S = _mm_add_sd (A, S);
             i += 2;
         }
-        if (k2 & 1) {
+        if (i < k) {
             A = _mm_mul_sd (_mm_load_sd(x+i), _mm_load_sd(y+i));
             S = _mm_add_sd (A, S);
         }
@@ -350,19 +348,19 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 
 #   else  /* non-SIMD code */
     {
-        while (i < k-3) {
+        while (i <= k-4) {
             s += x[i+0] * y[i+0];
             s += x[i+1] * y[i+1];
             s += x[i+2] * y[i+2];
             s += x[i+3] * y[i+3];
             i += 4;
         }
-        if (k2 & 2) {
+        if (i <= k-2) {
             s += x[i+0] * y[i+0];
             s += x[i+1] * y[i+1];
             i += 2;
         }
-        if (k2 & 1) {
+        if (i < k) {
             s += x[i+0] * y[i+0];
         }
     }
