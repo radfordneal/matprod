@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit a74260b41c04c279c865f3f6366650f50a557a54
+commit b3dd67888a94e5db5cf3dba05182fbca795dcb89
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 29 09:20:03 2017 -0500
+Date:   Sat Dec 30 13:40:20 2017 -0500
 
-    update Makefile for westmere, tweak comments in make-common
+    results for skylake
