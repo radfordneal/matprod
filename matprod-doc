@@ -126,6 +126,11 @@ They are written with pointers declared as simply "double *", but, the
 actual declaration will be "double * restrict" unless the matprod
 source is compiled with -DMATPROD_NO_RESTRICT.
 
+    double matprod_scalar_vec (double x, double *y, double *z, int k)
+
+      Multiply scalar x and vector y, of dimension k, storing the
+      result in vector z, of dimension k.
+
     double matprod_vec_vec (double *x, double *y, int k)
 
       Multiply row vector x and column vector y, both of dimension k,
@@ -168,25 +173,28 @@ source is compiled with -DMATPROD_NO_RESTRICT.
       is symetrical, redundant computations of symetric elements are
       avoided.
 
+    void matprod_fill_lower (double *z, int n)
+
+      Fills the lower triangle of the n x n matrix z with the symetric
+      elements from the upper triangle.
+
 For the above procedures, the result matrix, z, must have no overlap
 with the operands, x and y.  However, the operands may be the same or
 may overlap.
 
 Some attention has been paid to making special cases of these routines
-be fast.  For example, matprod_vec_mat when the vector is of length
-one reduces to simply multiplying the elements of the matrix (which
-has one row) by a scalar.  Some cases where n, k, or m is 2 or 3 are
-also handled with special code, when the general procedure would be
-significantly slower.
-
-The matprod_outer procedure will be called from matprod_mat_mat,
-matprod_trans1, or matprod_trans2 when the value of k passed is one.
-Also, cases of matprod_mat_mat, matprod_trans1, and matprod_trans2
-that reduce to matprod_vec_mat, or matprod_mat_vec will call the
-specialized routine, and similarly cases of matprod_mat_vec and
-matprod_vec_mat that reduce to matprod_vec_vec will call that routine.
-Calling a specialized routine directly will of course be slightly
-faster when it is known that it is appropriate.
+be fast.  Some cases where n, k, or m is 2 or 3 are handled with
+special code, when the general procedure would be significantly
+slower.  Also, matprod_vec_mat and other procedures will simply call
+matprod_scalar_vec when the operation reduces to multiplication by a
+scalar.  Similarly,the matprod_outer procedure will be called from
+matprod_mat_mat, matprod_trans1, or matprod_trans2 when the value of k
+passed is one.  Also, cases of matprod_mat_mat, matprod_trans1, and
+matprod_trans2 that reduce to matprod_vec_mat, or matprod_mat_vec will
+call the specialized routine, and similarly cases of matprod_mat_vec
+and matprod_vec_mat that reduce to matprod_vec_vec will call that
+routine.  Calling a specialized routine directly will of course be
+slightly faster when it is known that it is appropriate.
 
 See matprod-imp and the comments in matprod.c for details on the
 algorithms used.

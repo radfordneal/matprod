@@ -20,6 +20,7 @@
 
 
 #include <stdlib.h>
+#include <stdint.h>
 
 #ifdef MATPROD_APP_INCLUDED
 #include "matprod-app.h"
@@ -61,8 +62,6 @@
 #endif
 
 #if 0  /* Enable for debug check */
-#   include <stdint.h>
-#   include <stdlib.h>
 #   define CHK_ALIGN(p) \
       do { if (((uintptr_t)(p)&(ALIGN-1)) != ALIGN_OFFSET) abort(); } while (0)
 #else
@@ -136,7 +135,7 @@
 /* Set vector z of length n to all zeros.  This is a degenerate special
    case of other operations. */
 
-static inline void set_to_zeros (double * MATPROD_RESTRICT z, int n)
+static void set_to_zeros (double * MATPROD_RESTRICT z, int n)
 {
     int i;
     for (i = 0; i < n; i++) {
@@ -145,53 +144,70 @@ static inline void set_to_zeros (double * MATPROD_RESTRICT z, int n)
 }
 
 
-/* Multiply vector x of length n by scalar s, storing result in vector z. 
-   This is a degenerate special case of other operations. */
+/* Multiply vector x of length n by scalar s, storing result in vector z. */
 
-static inline void scalar_multiply (double s, 
-                                    double * MATPROD_RESTRICT x,
-                                    double * MATPROD_RESTRICT z, int n)
+void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
+                                   double * MATPROD_RESTRICT z, int k)
 {
-    int i;
-    for (i = 0; i < n; i++) {
-        z[i] = s * x[i];
-    }
-}
+    CHK_ALIGN(y); CHK_ALIGN(z);
 
-/* Fill the lower triangle of an n-by-n matrix from the upper triangle.  Fills
-   two rows at once to improve cache performance. */
-
-static void fill_lower (double * MATPROD_RESTRICT z, int n)
-{
-    CHK_ALIGN(z);
-
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    int i, ii, jj, e;
-
-    /* This loop fills two rows of the lower triangle each iteration.
-       Since there's nothing to fill for the first row, we can either
-       start with it or with the next row, so that the number of rows
-       we fill will be a multiple of two. */
-
-    for (i = (n&1); i < n; i += 2) {
-
-        ii = i;    /* first position to fill in the first row of the pair */
-        jj = i*n;  /* first position to fetch from */
-
-        /* This loop fills in the pair of rows, also filling the diagonal
-           element of the first (which is unnecessary but innocuous). */
-
-        e = jj+i;
-
-        for (;;) {
-            z[ii] = z[jj];
-            z[ii+1] = z[jj+n];
-            if (jj == e) break;
-            ii += n;
-            jj += 1;
-        }
+    if (k <= 1) {
+        if (k == 1) 
+            z[0] = x * y[0];
+        return;
     }
+
+    int i = 0;
+
+#   if CAN_USE_SSE2 || CAN_USE_AVX
+
+#       if CAN_USE_AVX
+            __m256d X = _mm256_set1_pd (x);
+#       else
+            __m128d X = _mm_set1_pd (x);
+#       endif
+
+#       if (ALIGN_FORWARD & 8)
+            _mm_store_sd (z, _mm_mul_sd (cast128(X), _mm_load_sd(y)));
+            i += 1;
+#       endif
+
+#       if CAN_USE_AVX
+#           if ALIGN >= 32 && (ALIGN_FORWARD & 16)
+                if (i <= k-2) {
+                    _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X),
+                                                    _mm_loadA_pd(y+i)));
+                    i += 2;
+                }
+#           endif
+            while (i <= k-4) {
+                _mm256_storeA_pd (z+i, _mm256_mul_pd (X, _mm256_loadA_pd(y+i)));
+                i += 4;
+            }
+            if (i <= k-2) {
+                _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X), _mm_loadA_pd(y+i)));
+                i += 2;
+            }
+#       else  /* CAN_USE_SSE2 */
+            while (i <= k-2) {
+                _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X), _mm_loadA_pd(y+i)));
+                i += 2;
+            }
+#       endif
+
+        if (i < k) {
+            _mm_store_sd (z+i, _mm_mul_sd (cast128(X), _mm_load_sd(y+i)));
+        }
+
+#   else  /* non-SIMD code */
+        while (i < k) {
+            z[i] = x * y[i];
+            i += 1;
+        }
+#   endif
 }
 
 
@@ -394,7 +410,7 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
         if (k != 2) {
             if (k == 1)
-                scalar_multiply (x[0], y, z, m);
+                matprod_scalar_vec (x[0], y, z, m);
             else  /* k == 0 */
                 set_to_zeros (z, m);
         }
@@ -1176,7 +1192,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
     if (k <= 1) {
         if (k == 1)
-            scalar_multiply (y[0], x, z, n);
+            matprod_scalar_vec (y[0], x, z, n);
         else /* k == 0 */
             set_to_zeros (z, n);
         return;
@@ -1664,12 +1680,12 @@ void matprod_outer (double * MATPROD_RESTRICT x,
 
     if (n <= 1) {
         if (n == 1)
-            scalar_multiply (x[0], y, z, m);
+            matprod_scalar_vec (x[0], y, z, m);
         return;
     }
     if (m <= 1) {
         if (m == 1)
-            scalar_multiply (y[0], x, z, n);
+            matprod_scalar_vec (y[0], x, z, n);
         return;
     }
 
@@ -2737,7 +2753,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
     }
 
     if (sym)
-        fill_lower (z, n);
+        matprod_fill_lower (z, n);
 }
 
 static void matprod_subcol_trans1 (double * MATPROD_RESTRICT x, 
@@ -3502,7 +3518,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
     }
 
     if (sym)
-        fill_lower (z, n);
+        matprod_fill_lower (z, n);
 }
 
 static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
@@ -4050,5 +4066,42 @@ static void matprod_smalln_trans2 (double * MATPROD_RESTRICT x,
 
     else {
         abort();  /* called with value for n not handled here */
+    }
+}
+
+
+/* Fill the lower triangle of an n-by-n matrix from the upper triangle.  Fills
+   two rows at once to improve cache performance. */
+
+void matprod_fill_lower (double * MATPROD_RESTRICT z, int n)
+{
+    CHK_ALIGN(z);
+
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    int i, ii, jj, e;
+
+    /* This loop fills two rows of the lower triangle each iteration.
+       Since there's nothing to fill for the first row, we can either
+       start with it or with the next row, so that the number of rows
+       we fill will be a multiple of two. */
+
+    for (i = (n&1); i < n; i += 2) {
+
+        ii = i;    /* first position to fill in the first row of the pair */
+        jj = i*n;  /* first position to fetch from */
+
+        /* This loop fills in the pair of rows, also filling the diagonal
+           element of the first (which is unnecessary but innocuous). */
+
+        e = jj+i;
+
+        for (;;) {
+            z[ii] = z[jj];
+            z[ii+1] = z[jj+n];
+            if (jj == e) break;
+            ii += n;
+            jj += 1;
+        }
     }
 }
