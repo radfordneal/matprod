@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 4d28d15a58d7857c1d96b5cd4f6415ea4f255c73
+commit d4435d3a55eb1eb54b6e628dd62de100887abff3
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 29 22:53:50 2017 -0500
+Date:   Sat Dec 30 13:10:13 2017 -0500
 
-    make matprod_scalar_vec and matprod_fill_lower be in API.  Use SIMD instructions in matprod_scalar_vec
+    changes for ENABLE_ALL_AVX, used in matprod_vec_vec now
