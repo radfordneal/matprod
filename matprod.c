@@ -99,8 +99,9 @@
    The loadA and storeA macros do an aligned load/store if ALIGN is
    suitably large, assuming that any offset has been compensated for.
    The loadAA and storeAA macro do an unalign load/store only if ALIGN
-   is suitably large and ALIGN_OFFSET mod ALIGN is zero, as is appropriate 
-   for an address that is one of the arguments plus a multiple of of ALIGN. */
+   is suitably large and ALIGN_OFFSET mod the required alignment is
+   zero, as is appropriate for an address that is one of the arguments
+   plus a multiple of of ALIGN. */
 
 #define _mm_loadA_pd(w) \
    (ALIGN>=16 ? _mm_load_pd(w) : _mm_loadu_pd(w))
@@ -187,16 +188,19 @@ void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
                 _mm256_storeA_pd (z+i, _mm256_mul_pd (X, _mm256_loadA_pd(y+i)));
                 i += 4;
             }
-            if (i <= k-2) {
+#       else  /* CAN_USE_SSE2 */
+            while (i <= k-4) {
                 _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X), _mm_loadA_pd(y+i)));
                 i += 2;
-            }
-#       else  /* CAN_USE_SSE2 */
-            while (i <= k-2) {
                 _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X), _mm_loadA_pd(y+i)));
                 i += 2;
             }
 #       endif
+
+        if (i <= k-2) {
+            _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X), _mm_loadA_pd(y+i)));
+            i += 2;
+        }
 
         if (i < k) {
             _mm_store_sd (z+i, _mm_mul_sd (cast128(X), _mm_load_sd(y+i)));
