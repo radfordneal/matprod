@@ -1,5 +1,7 @@
-commit da3ba637d626826bb6917ffb5ec7cb497d276609
+gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
+ 
+commit b3dd67888a94e5db5cf3dba05182fbca795dcb89
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Dec 28 10:56:48 2017 -0500
+Date:   Sat Dec 30 13:40:20 2017 -0500
 
-    finish changes to matprod_trans2, seems to work
+    results for skylake
