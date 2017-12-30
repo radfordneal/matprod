@@ -1,5 +1,7 @@
-commit da3ba637d626826bb6917ffb5ec7cb497d276609
+gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
+ 
+commit 4d28d15a58d7857c1d96b5cd4f6415ea4f255c73
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Dec 28 10:56:48 2017 -0500
+Date:   Fri Dec 29 22:53:50 2017 -0500
 
-    finish changes to matprod_trans2, seems to work
+    make matprod_scalar_vec and matprod_fill_lower be in API.  Use SIMD instructions in matprod_scalar_vec
