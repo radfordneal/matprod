@@ -124,12 +124,21 @@
 
 /* Macro to cast a variable to __m128d if it is __m256d, which does nothing
    when AVX is not available, and hence the variable will already be __m128d.
-   This facilitates sharing of code in AVX and SSE2 sections. */
+   This facilitates sharing of code in AVX and SSE2 sections. 
+
+   The cast128a version is for use when the AVX code is enabled only if
+   ENABLE_ALL_AVX_CODE is defined. */
 
 #if CAN_USE_AVX
 #   define cast128(x) _mm256_castpd256_pd128(x)
 #else
 #   define cast128(x) (x)
+#endif
+
+#if CAN_USE_AVX && ENABLE_ALL_AVX_CODE
+#   define cast128a(x) _mm256_castpd256_pd128(x)
+#else
+#   define cast128a(x) (x)
 #endif
 
 
@@ -242,96 +251,88 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
     double s;
     int i;
 
-    /* Initialize the sum, s, perhaps doing a few products to improve alignment.
-       Set i to the number of products done.  Note that k is at least 3 here. */
+    /* Use a 4 times unrolled loop to add most products, perhaps using
+       SSE2 or AVX instructions. */
 
-#   if (ALIGN_FORWARD & 8)
-        s = x[0] * y[0];
-        i = 1;
-#   else
-        s = 0.0;
-        i = 0;
-#   endif
-
-#   if (ALIGN_FORWARD & 16)
-        s += x[i] * y[i];
-        s += x[i+1] * y[i+1];
-        i += 2;
-#   endif
-
-    /* Use an unrolled loop to add (most) remaining products to s,
-       perhaps using SSE2 or AVX instructions, then add some possible
-       final products. */
-
-#   if CAN_USE_AVX
+#   if CAN_USE_SSE2 || CAN_USE_AVX
     {
-        __m128d S = _mm_load_sd(&s);
-        __m256d AA;
-        __m128d A;
-        while (i <= k-8) {
-            AA = _mm256_mul_pd (_mm256_loadA_pd(x+i), _mm256_loadA_pd(y+i));
-            A = cast128(AA);
-            S = _mm_add_sd (A, S);
-            A = _mm_unpackhi_pd (A, A);
-            S = _mm_add_sd (A, S);
-            A = _mm256_extractf128_pd(AA,1);
-            S = _mm_add_sd (A, S);
-            A = _mm_unpackhi_pd (A, A);
-            S = _mm_add_sd (A, S);
-            AA = _mm256_mul_pd (_mm256_loadA_pd(x+i+4), _mm256_loadA_pd(y+i+4));
-            A = cast128(AA);
-            S = _mm_add_sd (A, S);
-            A = _mm_unpackhi_pd (A, A);
-            S = _mm_add_sd (A, S);
-            A = _mm256_extractf128_pd(AA,1);
-            S = _mm_add_sd (A, S);
-            A = _mm_unpackhi_pd (A, A);
-            S = _mm_add_sd (A, S);
-            i += 8;
-        }
-        if (i <= k-4) {
-            AA = _mm256_mul_pd (_mm256_loadA_pd(x+i), _mm256_loadA_pd(y+i));
-            A = cast128(AA);
-            S = _mm_add_sd (A, S);
-            A = _mm_unpackhi_pd (A, A);
-            S = _mm_add_sd (A, S);
-            A = _mm256_extractf128_pd(AA,1);
-            S = _mm_add_sd (A, S);
-            A = _mm_unpackhi_pd (A, A);
-            S = _mm_add_sd (A, S);
-            i += 4;
-        }
-        if (i <= k-2) {
-            __m128d A;
+        __m128d S, A;
+
+#       if (ALIGN_FORWARD & 8)
+            S = _mm_mul_sd (_mm_load_sd(x), _mm_load_sd(y));
+            i = 1;
+#       else
+            S = _mm_setzero_pd();
+            i = 0;
+#       endif
+
+#       if (ALIGN_FORWARD & 16)
             A = _mm_mul_pd (_mm_loadA_pd(x+i), _mm_loadA_pd(y+i));
             S = _mm_add_sd (A, S);
             A = _mm_unpackhi_pd (A, A);
             S = _mm_add_sd (A, S);
             i += 2;
-        }
-        if (i < k) {
-            __m128d A;
-            A = _mm_mul_sd (_mm_load_sd(x+i), _mm_load_sd(y+i));
-            S = _mm_add_sd (A, S);
-        }
-        _mm_store_sd (&s, S);
-    }
+#       endif
 
-#   elif CAN_USE_SSE2
-    {
-        __m128d S = _mm_load_sd(&s);
-        __m128d A;
-        while (i <= k-4) {
-            A = _mm_mul_pd (_mm_loadA_pd(x+i), _mm_loadA_pd(y+i));
-            S = _mm_add_sd (A, S);
-            A = _mm_unpackhi_pd (A, A);
-            S = _mm_add_sd (A, S);
-            A  = _mm_mul_pd (_mm_loadA_pd(x+i+2), _mm_loadA_pd(y+i+2));
-            S = _mm_add_sd (A, S);
-            A = _mm_unpackhi_pd (A, A);
-            S = _mm_add_sd (A, S);
-            i += 4;
+#       if CAN_USE_AVX && ENABLE_ALL_AVX_CODE
+        {
+            __m256d AA;
+
+            while (i <= k-8) {
+                AA = _mm256_mul_pd (_mm256_loadA_pd(x+i),
+                                    _mm256_loadA_pd(y+i));
+                A = cast128a(AA);
+                S = _mm_add_sd (A, S);
+                A = _mm_unpackhi_pd (A, A);
+                S = _mm_add_sd (A, S);
+                A = _mm256_extractf128_pd(AA,1);
+                S = _mm_add_sd (A, S);
+                A = _mm_unpackhi_pd (A, A);
+                S = _mm_add_sd (A, S);
+                AA = _mm256_mul_pd (_mm256_loadA_pd(x+i+4), 
+                                    _mm256_loadA_pd(y+i+4));
+                A = cast128a(AA);
+                S = _mm_add_sd (A, S);
+                A = _mm_unpackhi_pd (A, A);
+                S = _mm_add_sd (A, S);
+                A = _mm256_extractf128_pd(AA,1);
+                S = _mm_add_sd (A, S);
+                A = _mm_unpackhi_pd (A, A);
+                S = _mm_add_sd (A, S);
+                i += 8;
+            }
+
+            if (i <= k-4) {
+                AA = _mm256_mul_pd (_mm256_loadA_pd(x+i),
+                                    _mm256_loadA_pd(y+i));
+                A = cast128a(AA);
+                S = _mm_add_sd (A, S);
+                A = _mm_unpackhi_pd (A, A);
+                S = _mm_add_sd (A, S);
+                A = _mm256_extractf128_pd(AA,1);
+                S = _mm_add_sd (A, S);
+                A = _mm_unpackhi_pd (A, A);
+                S = _mm_add_sd (A, S);
+                i += 4;
+            }
         }
+
+#       else  /* CAN_USE_SSE2 */
+        {
+            while (i <= k-4) {
+                A = _mm_mul_pd (_mm_loadA_pd(x+i), _mm_loadA_pd(y+i));
+                S = _mm_add_sd (A, S);
+                A = _mm_unpackhi_pd (A, A);
+                S = _mm_add_sd (A, S);
+                A  = _mm_mul_pd (_mm_loadA_pd(x+i+2), _mm_loadA_pd(y+i+2));
+                S = _mm_add_sd (A, S);
+                A = _mm_unpackhi_pd (A, A);
+                S = _mm_add_sd (A, S);
+                i += 4;
+            }
+        }
+#       endif
+
         if (i <= k-2) {
             A = _mm_mul_pd (_mm_loadA_pd(x+i), _mm_loadA_pd(y+i));
             S = _mm_add_sd (A, S);
@@ -339,15 +340,31 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             S = _mm_add_sd (A, S);
             i += 2;
         }
+
         if (i < k) {
             A = _mm_mul_sd (_mm_load_sd(x+i), _mm_load_sd(y+i));
             S = _mm_add_sd (A, S);
         }
+
         _mm_store_sd (&s, S);
     }
 
 #   else  /* non-SIMD code */
     {
+#       if (ALIGN_FORWARD & 8)
+            s = x[0] * y[0];
+            i = 1;
+#       else
+            s = 0.0;
+            i = 0;
+#       endif
+
+#       if (ALIGN_FORWARD & 16)
+            s += x[i] * y[i];
+            s += x[i+1] * y[i+1];
+            i += 2;
+#       endif
+
         while (i <= k-4) {
             s += x[i+0] * y[i+0];
             s += x[i+1] * y[i+1];
@@ -355,11 +372,13 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             s += x[i+3] * y[i+3];
             i += 4;
         }
+
         if (i <= k-2) {
             s += x[i+0] * y[i+0];
             s += x[i+1] * y[i+1];
             i += 2;
         }
+
         if (i < k) {
             s += x[i+0] * y[i+0];
         }

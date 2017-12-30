@@ -51,7 +51,9 @@ II=-I.. -I../..         # Directories above with header files
 matprod-extra-progs?=matprod-nosimd-test matprod-off-nosimd-test \
                matprod-noalign-nosimd-test matprod-off-noalign-nosimd-test \
                matprod-noavx-test matprod-off-noavx-test \
-               matprod-noalign-noavx-test matprod-off-noalign-noavx-test
+               matprod-noalign-noavx-test matprod-off-noalign-noavx-test \
+               matprod-allavx-test matprod-off-allavx-test \
+               matprod-noalign-allavx-test matprod-off-noalign-allavx-test
 
 # -----------------------------------------------------------------------------
 
@@ -155,6 +157,30 @@ matprod-off-noalign-noavx-test:	../test.h ../test.c ../matprod-test.c ../../matp
 	$(CC) $(II) $(CFLAGS) -DDISABLE_AVX_CODE \
 		test.o ../matprod-test.c ../../matprod.c \
 		-o matprod-off-noalign-noavx-test
+	rm test.o
+
+matprod-allavx-test:	../test.h ../test.c ../matprod-test.c ../../matprod.h ../../matprod.c
+	$(CC) $(II) $(CFLAGS) $(ALIGN) -DENABLE_ALL_AVX_CODE \
+		../test.c ../matprod-test.c ../../matprod.c \
+		-o matprod-allavx-test
+
+matprod-off-allavx-test:	../test.h ../test.c ../matprod-test.c ../../matprod.h ../../matprod.c
+	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) -DENABLE_ALL_AVX_CODE \
+		../test.c ../matprod-test.c ../../matprod.c \
+		-o matprod-off-allavx-test
+
+matprod-noalign-allavx-test:	../test.h ../test.c ../matprod-test.c ../../matprod.h ../../matprod.c
+	$(CC) $(II) $(CFLAGS) $(ALIGN) -c ../test.c
+	$(CC) $(II) $(CFLAGS) -DENABLE_ALL_AVX_CODE \
+		test.o ../matprod-test.c ../../matprod.c \
+		-o matprod-noalign-allavx-test
+	rm test.o
+
+matprod-off-noalign-allavx-test:	../test.h ../test.c ../matprod-test.c ../../matprod.h ../../matprod.c
+	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) -c ../test.c
+	$(CC) $(II) $(CFLAGS) -DENABLE_ALL_AVX_CODE \
+		test.o ../matprod-test.c ../../matprod.c \
+		-o matprod-off-noalign-allavx-test
 	rm test.o
 
 matprod-norestrict-test:	../test.h ../test.c ../matprod-test.c ../../matprod.h ../../matprod.c
