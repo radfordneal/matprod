@@ -1,5 +1,7 @@
-commit 5cb9cc773482e668a9487d82eea1870e01dc5992
+gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
+ 
+commit 477fe33fc641bd00e552d5c82111986b503ac52b
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Dec 28 12:17:28 2017 -0500
+Date:   Fri Dec 29 23:19:31 2017 -0500
 
-    results for westmere
+    make makefile for harpertown not compile avx tests
