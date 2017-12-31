@@ -30,8 +30,8 @@
 #define MATPROD_RESTRICT restrict
 #endif
 
-void matprod_scalar_vec (double s, double * MATPROD_RESTRICT x,
-          double * MATPROD_RESTRICT z, int n);
+void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
+          double * MATPROD_RESTRICT z, int m);
 
 double matprod_vec_vec (double * MATPROD_RESTRICT x,
           double * MATPROD_RESTRICT y,

@@ -126,10 +126,10 @@ They are written with pointers declared as simply "double *", but, the
 actual declaration will be "double * restrict" unless the matprod
 source is compiled with -DMATPROD_NO_RESTRICT.
 
-    double matprod_scalar_vec (double x, double *y, double *z, int k)
+    void matprod_scalar_vec (double x, double *y, double *z, int m)
 
-      Multiply scalar x and vector y, of dimension k, storing the
-      result in vector z, of dimension k.
+      Multiply scalar x and vector y, of dimension m, storing the
+      result in vector z, of dimension m.
 
     double matprod_vec_vec (double *x, double *y, int k)
 

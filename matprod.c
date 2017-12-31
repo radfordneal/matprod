@@ -154,18 +154,18 @@ static void set_to_zeros (double * MATPROD_RESTRICT z, int n)
 }
 
 
-/* Multiply vector x of length n by scalar s, storing result in vector z. */
+/* Multiply vector y of length m by scalar x, storing result in vector z. */
 
 void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
-                                   double * MATPROD_RESTRICT z, int k)
+                                   double * MATPROD_RESTRICT z, int m)
 {
     CHK_ALIGN(y); CHK_ALIGN(z);
 
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    if (k <= 1) {
-        if (k == 1) 
+    if (m <= 1) {
+        if (m == 1) 
             z[0] = x * y[0];
         return;
     }
@@ -187,18 +187,18 @@ void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
 
 #       if CAN_USE_AVX
 #           if ALIGN >= 32 && (ALIGN_FORWARD & 16)
-                if (i <= k-2) {
+                if (i <= m-2) {
                     _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X),
                                                     _mm_loadA_pd(y+i)));
                     i += 2;
                 }
 #           endif
-            while (i <= k-4) {
+            while (i <= m-4) {
                 _mm256_storeA_pd (z+i, _mm256_mul_pd (X, _mm256_loadA_pd(y+i)));
                 i += 4;
             }
 #       else  /* CAN_USE_SSE2 */
-            while (i <= k-4) {
+            while (i <= m-4) {
                 _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X), _mm_loadA_pd(y+i)));
                 i += 2;
                 _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X), _mm_loadA_pd(y+i)));
@@ -206,17 +206,17 @@ void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
             }
 #       endif
 
-        if (i <= k-2) {
+        if (i <= m-2) {
             _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X), _mm_loadA_pd(y+i)));
             i += 2;
         }
 
-        if (i < k) {
+        if (i < m) {
             _mm_store_sd (z+i, _mm_mul_sd (cast128(X), _mm_load_sd(y+i)));
         }
 
 #   else  /* non-SIMD code */
-        while (i < k) {
+        while (i < m) {
             z[i] = x * y[i];
             i += 1;
         }
@@ -224,10 +224,8 @@ void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
 }
 
 
-/* Dot product of two vectors of length k. 
-
-   An unrolled loop is used that adds four products to the sum each
-   iteration, perhaps using SSE2 or AVX instructions. */
+/* Dot product of vectors x and y of length k, with result returned as the
+   function value. */
 
 double matprod_vec_vec (double * MATPROD_RESTRICT x, 
                         double * MATPROD_RESTRICT y, int k)
