@@ -4120,8 +4120,8 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
 
 /* -------------------------------------------------------------------------- */
 
-/* Fill the lower triangle of an n-by-n matrix from the upper triangle.  Fills
-   two rows at once to improve cache performance. */
+/* Fill the lower triangle of an n-by-n matrix from the upper
+   triangle. Fills two rows at once to improve cache performance. */
 
 void matprod_fill_lower (double * MATPROD_RESTRICT z, int n)
 {
@@ -4129,27 +4129,64 @@ void matprod_fill_lower (double * MATPROD_RESTRICT z, int n)
 
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    int i, ii, jj, e;
+    /* Note that the first row requires no action, and hence can be
+       done or not as helps alignment. */
 
-    /* This loop fills two rows of the lower triangle each iteration.
-       Since there's nothing to fill for the first row, we can either
-       start with it or with the next row, so that the number of rows
-       we fill will be a multiple of two. */
+#   if ALIGN_FORWARD & 8
+        double * MATPROD_RESTRICT zz = z + 1;
+        int i = 1;
+#   else
+        double * MATPROD_RESTRICT zz = z;
+        int i = 0;
+#   endif
 
-    for (i = (n&1); i < n; i += 2) {
+    /* Fill in two rows each time around this loop. */
 
-        ii = i;    /* first position to fill in the first row of the pair */
-        jj = i*n;  /* first position to fetch from */
+    while (zz < z+n-1) {
 
-        /* This loop fills in the pair of rows, also filling the diagonal
-           element of the first (which is unnecessary but innocuous). */
+        int ii = 0;
+        int jj = i*n;
+        int e = jj+i-1;
+        while (jj < e) {
+#           if CAN_USE_SSE2
+                _mm_storeA_pd (zz+ii, 
+                               _mm_loadh_pd (_mm_load_sd(z+jj), z+jj+n));
+                _mm_storeu_pd (zz+ii+n, 
+                               _mm_loadh_pd (_mm_load_sd(z+jj+1), z+jj+n+1));
+#           else  /* non-SIMD code */
+                zz[ii] = z[jj];
+                zz[ii+1] = z[jj+n];
+                zz[ii+n] = z[jj+1];
+                zz[ii+n+1] = z[jj+n+1];
+#           endif
+            ii += 2*n;
+            jj += 2;
+        }
+        if (jj <= e) {
+#           if CAN_USE_SSE2
+                _mm_storeA_pd (zz+ii,
+                               _mm_loadh_pd (_mm_load_sd(z+jj), z+jj+n));
+#           else  /* non-SIMD code */
+                zz[ii] = z[jj];
+                zz[ii+1] = z[jj+n];
+#           endif
+            ii += n;
+            jj += 1;
+        }
+        zz[ii+1] = z[jj+n];
 
-        e = jj+i;
+        zz += 2;
+        i += 2;
+    }
 
-        for (;;) {
-            z[ii] = z[jj];
-            z[ii+1] = z[jj+n];
-            if (jj == e) break;
+    /* Fill in the last row, if not done above. */
+
+    if (zz < z+n) {
+        int ii = 0;
+        int jj = i*n;
+        int e = jj+i;
+        while (jj < e) {
+            zz[ii] = z[jj];
             ii += n;
             jj += 1;
         }
