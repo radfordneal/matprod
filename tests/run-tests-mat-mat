@@ -26,11 +26,13 @@ echo " "; echo MAT_MAT
 
 echo " "; time $prog 50000$Z 2 522 34
 echo " "; time $prog 30000$Z 2 1053 35
+echo " "; time $prog 50000$Z 3 61 144
 echo " "; time $prog 5000$Z 3 1445 62
 
 echo " "; time $prog 100000$Z 101 2 100
 echo " "; time $prog 500$Z 1200 2 1299
 echo " "; time $prog 300$Z 1200 3 1299
+echo " "; time $prog 300$Z 901 4 1090
 
 echo " "; time $prog 2000000$Z 7 12 9
 echo " "; time $prog 20000$Z 23 222 34
@@ -39,7 +41,6 @@ echo " "; time $prog 20000$Z 43 72 64
 echo " "; time $prog 2000$Z 100 155 112
 
 echo " "; time $prog 10$Z 430 520 540
-echo " "; time $prog 2$Z 800 1150 920
-echo " "; time $prog 1$Z 1271 1541 1013
-
+echo " "; time $prog 2$Z 800 951 920
+echo " "; time $prog 1$Z 1070 1140 1010
 echo " "; time $prog 1$Z 1271 1541 1271

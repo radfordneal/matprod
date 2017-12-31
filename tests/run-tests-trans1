@@ -26,11 +26,13 @@ echo " "; echo TRANS1
 
 echo " "; time $prog 50000$Z t 2 522 34
 echo " "; time $prog 30000$Z t 2 1053 35
+echo " "; time $prog 50000$Z t 3 61 144
 echo " "; time $prog 5000$Z t 3 1445 62
 
 echo " "; time $prog 100000$Z t 101 2 100
 echo " "; time $prog 500$Z t 1200 2 1299
-echo " "; time $prog 300$Z 1200 3 1299
+echo " "; time $prog 300$Z t 1200 3 1299
+echo " "; time $prog 300$Z t 901 4 1090
 
 echo " "; time $prog 2000000$Z t 7 12 9
 echo " "; time $prog 20000$Z t 23 222 34
@@ -39,8 +41,9 @@ echo " "; time $prog 20000$Z t 43 72 64
 echo " "; time $prog 2000$Z t 100 155 112
 
 echo " "; time $prog 10$Z t 430 520 540
-echo " "; time $prog 2$Z t 800 1150 920
-echo " "; time $prog 1$Z t 1271 1541 1013
-
+echo " "; time $prog 2$Z t 800 951 920
+echo " "; time $prog 1$Z t 1070 1140 1010
 echo " "; time $prog 1$Z t 1271 1541 1271
+
+echo " "; time $prog 10000$Z T 50 155 50
 echo " "; time $prog 1$Z T 1271 1541 1271

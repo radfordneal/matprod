@@ -28,8 +28,8 @@
 ../run-tests-vec-vec $1
 ../run-tests-vec-mat $1
 ../run-tests-mat-vec $1
-../run-tests-mat-mat $1
 ../run-tests-outer $1
+../run-tests-mat-mat $1
 ../run-tests-trans1 $1
 ../run-tests-trans2 $1
 ../run-tests-special $1
