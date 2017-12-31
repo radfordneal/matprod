@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit b3dd67888a94e5db5cf3dba05182fbca795dcb89
+commit c63981d5fd8fc258de96d8ff15b5f63dab7e5dff
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Dec 30 13:40:20 2017 -0500
+Date:   Sat Dec 30 22:52:25 2017 -0500
 
-    results for skylake
+    revise tests
