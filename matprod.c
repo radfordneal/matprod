@@ -249,8 +249,8 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
     double s;
     int i;
 
-    /* Use a 4 times unrolled loop to add most products, perhaps using
-       SSE2 or AVX instructions. */
+    /* Use an unrolled loop to add most products, perhaps using SSE2
+       or AVX instructions. */
 
 #   if CAN_USE_SSE2 || CAN_USE_AVX
     {
@@ -390,14 +390,14 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 /* Product of row vector (x) of length k and k x m matrix (y), result
    stored in z.
 
-   Cases where k is 0, 1, or 2 are handled specially, perhaps using
-   SSE3 or AVX instructions.  Otherwise, the inner loop is unrolled to
-   do a set of four vector dot products, and these dot products are also
-   done with loop unrolling, perhaps using SSE2 or AVX instructions. 
+   Cases where k is 0, 1, or 2 are handled specially.  Otherwise, the
+   main loop is unrolled to do a set of four vector dot products in
+   each iteration, and these dot products are also done with loop
+   unrolling.
 
-   To improve cache performance, if y has more than VEC_MAT_ROWS
+   To improve cache performance, if y has more than VEC_MAT_YROWS
    (defined below) rows, the operation is done on successive parts of
-   the matrix, each consisting of at most VEC_MAT_ROWS of the rows.
+   the matrix, each consisting of at most VEC_MAT_YROWS of the rows.
    The second and later parts add to the result found by earlier
    parts.  The matprod_sub_vec_mat procedure below does one such
    part. */
@@ -405,7 +405,7 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
                                  double * MATPROD_RESTRICT y,
                                  double * MATPROD_RESTRICT z,
-                                 int k, int m, int rows, int add);
+                                 int k, int m, int yrows, int add);
 
 void matprod_vec_mat (double * MATPROD_RESTRICT x, 
                       double * MATPROD_RESTRICT y, 
@@ -518,41 +518,41 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
     }
 
     /* The general case with k > 2.  Calls matprod_sub_vec_mat to do parts
-       (only one part if y has matrix with fewer than VEC_MAT_ROWS).
+       (only one part if y is a matrix with fewer than VEC_MAT_YROWS).
 
-       The definition of VEC_MAT_ROWS is designed to keep the vector x
+       The definition of VEC_MAT_YROWS is designed to keep the vector x
        in an L1 cache of 32K bytes or more, given that x and four
-       columns of y (all of length VEC_MAT_ROWS) are accessed within
+       columns of y (all of length VEC_MAT_YROWS) are accessed within
        the main loop. */
 
-#   define VEC_MAT_ROWS 512  /* be multiple of 8 to keep any alignment*/
+#   define VEC_MAT_YROWS 512  /* be multiple of 8 to keep any alignment*/
 
-    int rows = k;
+    int yrows = k;
     int add = 0;
 
-    if (rows > VEC_MAT_ROWS && m > 4) {
-        while (rows >= 2*VEC_MAT_ROWS) {
-            matprod_sub_vec_mat (x, y, z, k, m, VEC_MAT_ROWS, add);
-            x += VEC_MAT_ROWS;
-            y += VEC_MAT_ROWS;
-            rows -= VEC_MAT_ROWS;
+    if (yrows > VEC_MAT_YROWS && m > 4) {
+        while (yrows >= 2*VEC_MAT_YROWS) {
+            matprod_sub_vec_mat (x, y, z, k, m, VEC_MAT_YROWS, add);
+            x += VEC_MAT_YROWS;
+            y += VEC_MAT_YROWS;
+            yrows -= VEC_MAT_YROWS;
             add = 1;
         }
-        if (rows > VEC_MAT_ROWS) {
-            int nr = ((rows+1)/2) & ~7; /* keep any alignment of x, y */
+        if (yrows > VEC_MAT_YROWS) {
+            int nr = ((yrows+1)/2) & ~7; /* keep any alignment of x, y */
             matprod_sub_vec_mat (x, y, z, k, m, nr, add);
             x += nr;
             y += nr;
-            rows -= nr;
+            yrows -= nr;
             add = 1;
         }
     }
-    matprod_sub_vec_mat (x, y, z, k, m, rows, add);
+    matprod_sub_vec_mat (x, y, z, k, m, yrows, add);
 }
 
 
-/* Multiply the first 'rows' elements of vector x with the first
-   'rows' rows of matrix y, storing the result in z if 'add' is zero,
+/* Multiply the first 'yrows' elements of vector x with the first
+   'yrows' rows of matrix y, storing the result in z if 'add' is zero,
    or adding the result to z if 'add' is non-zero.  Note that x and y
    may not be the start of the original vector/matrix.  The k argument
    is the number of rows in the original y, which is the amount to
@@ -562,12 +562,12 @@ void matprod_vec_mat (double * MATPROD_RESTRICT x,
    The same alignment assumptions hold for x, y, and z as with the
    visible procedures.
 
-   Note that k and 'rows' will be greater than 2. */
+   Note that k and 'yrows' will be greater than 2. */
 
 static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
                                  double * MATPROD_RESTRICT y,
                                  double * MATPROD_RESTRICT z,
-                                 int k, int m, int rows, int add)
+                                 int k, int m, int yrows, int add)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -608,10 +608,10 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
                 S = _mm256_add_pd (B, S);
                 y += 1;
                 p = x+2;
-                rows2 = rows-2;
+                rows2 = yrows-2;
 #           else
                 p = x+1;
-                rows2 = rows-1;
+                rows2 = yrows-1;
 #           endif
 
             while (rows2 >= 4) {
@@ -700,10 +700,10 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
                 S1 = _mm_add_pd(S1, _mm_mul_pd(P, _mm_set_pd (y[3*k], y[2*k])));
                 y += 1;
                 p = x+2;
-                rows2 = rows-2;
+                rows2 = yrows-2;
 #           else
                 p = x+1;
-                rows2 = rows-1;
+                rows2 = yrows-1;
 #           endif
 
             if (k & 1) {  /* second column not aligned if first is */
@@ -761,7 +761,7 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
                four dot products, adjusting p and y as it goes.
                Another product may be added afterwards. */
 
-            int rows2 = rows;
+            int rows2 = yrows;
 
             double s[4];
             if (add) {
@@ -832,7 +832,7 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
                 }
                 p = x+1;
                 y += 1;
-                rows2 = rows-1;
+                rows2 = yrows-1;
             }
 #           else
             {
@@ -845,7 +845,7 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
                     S2 = _mm_setzero_pd ();
                 }
                 p = x;
-                rows2 = rows;
+                rows2 = yrows;
             }
 #           endif
 
@@ -952,7 +952,7 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
 
 #       else  /* non-SIMD code */
         {
-            int rows2 = rows;
+            int rows2 = yrows;
             double s[3];
             if (add) {
                 s[0] = z[0];
@@ -1006,7 +1006,7 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
                     S = _mm_add_pd (_mm_loadu_pd(z), S);
                 p = x+1;
                 y += 1;
-                rows2 = rows-1;
+                rows2 = yrows-1;
             }
 #           else
             {
@@ -1015,7 +1015,7 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
                 else
                     S = _mm_setzero_pd ();
                 p = x;
-                rows2 = rows;
+                rows2 = yrows;
             }
 #           endif
 
@@ -1100,7 +1100,7 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
 
 #       else  /* non-SIMD code */
         {
-            int rows2 = rows;
+            int rows2 = yrows;
             double s[2];
             if (add) {
                 s[0] = z[0];
@@ -1135,7 +1135,7 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
 
     else if (m == 1) {  /* Do one final dot product */
 
-        int rows2 = rows;
+        int rows2 = yrows;
         double *p = x;
         double s;
 
@@ -1179,9 +1179,9 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
    to produce sequential accesses.  This loop is unrolled to accumulate from
    two columns of x at once.
 
-   To improve cache performance, if x has more than MAT_VEC_ROWS
+   To improve cache performance, if x has more than MAT_VEC_XROWS
    (defined below) rows, the operation is done on successive parts of
-   the matrix, each consisting of at most MAT_VEC_ROWS of the rows.
+   the matrix, each consisting of at most MAT_VEC_XROWS of the rows.
    The matprod_sub_mat_vec procedure below does one such part.
 
    Cases where k is 0 or 1 and cases where n is 2 are handled specially. */
@@ -1189,7 +1189,7 @@ static void matprod_sub_vec_mat (double * MATPROD_RESTRICT x,
 static void matprod_sub_mat_vec (double * MATPROD_RESTRICT x, 
                                  double * MATPROD_RESTRICT y, 
                                  double * MATPROD_RESTRICT z, 
-                                 int n, int k, int rows);
+                                 int n, int k, int xrows);
 
 void matprod_mat_vec (double * MATPROD_RESTRICT x, 
                       double * MATPROD_RESTRICT y, 
@@ -1317,37 +1317,37 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
     }
 
     /* The general case with n > 3.  Calls matprod_sub_mat_vec to do parts
-       (only one part for a matrix with fewer than MAT_VEC_ROWS rows). 
+       (only one part for a matrix with fewer than MAT_VEC_XROWS rows). 
 
-       The definition of MAT_VEC_ROWS is designed to keep the vector z
+       The definition of MAT_VEC_XROWS is designed to keep the vector z
        in an L1 cache of 32K bytes or more, given that z and two
-       columns of x (all of length MAT_VEC_ROWS) are accessed within
+       columns of x (all of length MAT_VEC_XROWS) are accessed within
        the main loop. */
 
-#   define MAT_VEC_ROWS 1024  /* be multiple of 8 to keep any alignment */
+#   define MAT_VEC_XROWS 1024  /* be multiple of 8 to keep any alignment */
 
-    int rows = n;
+    int xrows = n;
 
-    if (rows > MAT_VEC_ROWS && k > 2) {
-        while (rows >= 2*MAT_VEC_ROWS) {
-            matprod_sub_mat_vec (x, y, z, n, k, MAT_VEC_ROWS);
-            x += MAT_VEC_ROWS;
-            z += MAT_VEC_ROWS;
-            rows -= MAT_VEC_ROWS;
+    if (xrows > MAT_VEC_XROWS && k > 2) {
+        while (xrows >= 2*MAT_VEC_XROWS) {
+            matprod_sub_mat_vec (x, y, z, n, k, MAT_VEC_XROWS);
+            x += MAT_VEC_XROWS;
+            z += MAT_VEC_XROWS;
+            xrows -= MAT_VEC_XROWS;
         }
-        if (rows > MAT_VEC_ROWS) {
-            int nr = ((rows+1)/2) & ~7; /* keep any alignment of x, z */
+        if (xrows > MAT_VEC_XROWS) {
+            int nr = ((xrows+1)/2) & ~7; /* keep any alignment of x, z */
             matprod_sub_mat_vec (x, y, z, n, k, nr);
             x += nr;
             z += nr;
-            rows -= nr;
+            xrows -= nr;
         }
     }
-    matprod_sub_mat_vec (x, y, z, n, k, rows);
+    matprod_sub_mat_vec (x, y, z, n, k, xrows);
 }
 
 
-/* Multiply the first 'rows' of x with the elements of y, storing the
+/* Multiply the first 'xrows' of x with the elements of y, storing the
    result in z.  Note that x and z may not be the start of the
    original matrix/vector.  The k argument is the number of columns in
    x and elements in y.  The n argument is the number of rows in the
@@ -1357,12 +1357,12 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
    The same alignment assumptions hold for x, y, and z as with the
    visible procedures.
 
-   Note that k will be at least 2, and 'rows' will be at least 4. */
+   Note that k will be at least 2, and 'xrows' will be at least 4. */
 
 static void matprod_sub_mat_vec (double * MATPROD_RESTRICT x, 
                                  double * MATPROD_RESTRICT y, 
                                  double * MATPROD_RESTRICT z,
-                                 int n, int k, int rows)
+                                 int n, int k, int xrows)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -1381,7 +1381,7 @@ static void matprod_sub_mat_vec (double * MATPROD_RESTRICT x,
     double *xs; /* starting x pointer */
 
     q = z;
-    n2 = rows;
+    n2 = xrows;
     xs = x;
 
 #   if ALIGN_FORWARD & 8
@@ -1948,17 +1948,17 @@ void matprod_outer (double * MATPROD_RESTRICT x,
    gives a reasonably efficient implementation of an outer product (where
    k is one).
 
-   To improve cache performance, if x has more than MAT_MAT_ROWS
+   To improve cache performance, if x has more than MAT_MAT_XROWS
    (defined below) rows, the operation is done on successive parts of
-   the matrix, each consisting of at most MAT_MAT_ROWS of the rows.
+   the matrix, each consisting of at most MAT_MAT_XROWS of the rows.
    The matprod_sub_mat_vec procedure below does one such part.
    Furthermore, if x has more than MAT_MAT_COLS, operations on each
-   set of up to MAT_MAT_ROWS are split into operations looking at most
+   set of up to MAT_MAT_XROWS are split into operations looking at most
    MAT_MAT_COLS columns of x, with all except for the first operation
    adding to the sum from the previous columns.  This is done by the
    matprod_sub_mat_mat procedure below.
 
-   Cases where n is two are handled specially, in matprod_smalln_mat_mat, 
+   Cases where n is two are handled specially, in matprod_mat_mat_n2, 
    accumulating sums in two local variables rather than in a column of
    the result, and then storing them in the result column at the end.
    Outer products (where k is one) are also handled specially, with
@@ -1970,18 +1970,18 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
                                  double * MATPROD_RESTRICT y, 
                                  double * MATPROD_RESTRICT z,
                                  int n, int k, int m, 
-                                 int rows, int cols, int add);
+                                 int xrows, int cols, int add);
 
 static void matprod_subcol_mat_mat (double * MATPROD_RESTRICT x, 
                                     double * MATPROD_RESTRICT y, 
                                     double * MATPROD_RESTRICT z,
                                     int n, int k, int m, 
-                                    int rows);
+                                    int xrows);
 
-static void matprod_smalln_mat_mat (double * MATPROD_RESTRICT x, 
-                                    double * MATPROD_RESTRICT y, 
-                                    double * MATPROD_RESTRICT z, 
-                                    int n, int k, int m);
+static void matprod_mat_mat_n2 (double * MATPROD_RESTRICT x, 
+                                double * MATPROD_RESTRICT y, 
+                                double * MATPROD_RESTRICT z, 
+                                int k, int m);
 
 void matprod_mat_mat (double * MATPROD_RESTRICT x, 
                       double * MATPROD_RESTRICT y, 
@@ -2003,7 +2003,7 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
 
     if (n <= 2) {
         if (n == 2)
-            matprod_smalln_mat_mat (x, y, z, n, k, m);
+            matprod_mat_mat_n2 (x, y, z, k, m);
         else if (n == 1)
             matprod_vec_mat (x, y, z, k, m);
         return;
@@ -2015,51 +2015,51 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
     }
 
     /* The general case with n > 2.  Calls matprod_sub_mat_mat to do parts
-       (only one part for a matrix with fewer than MAT_MAT_ROWS rows and
+       (only one part for a matrix with fewer than MAT_MAT_XROWS rows and
        fewer than MAT_MAT_COLS columns).
 
-       The definition of MAT_MAT_ROWS is designed to keep two columns
+       The definition of MAT_MAT_XROWS is designed to keep two columns
        of z in an L1 cache of 32K bytes or more, given that two
-       columns of z and two columns of x (all of length MAT_MAT_ROWS)
+       columns of z and two columns of x (all of length MAT_MAT_XROWS)
        are accessed within the main loop. 
 
        The definition of MAT_MAT_COLS is designed to keep the submatrix
-       of x with MAT_MAT_ROWS and MAT_MAT_COLS in an L2 cache of a
+       of x with MAT_MAT_XROWS and MAT_MAT_COLS in an L2 cache of a
        least 256K bytes, while it is multiplied repeatedly by columns
        of y. */
 
-#   define MAT_MAT_ROWS (1024-64)  /* be multiple of 8 to keep any alignment */
+#   define MAT_MAT_XROWS (1024-64)  /* be multiple of 8 to keep any alignment */
 #   define MAT_MAT_COLS 32         /* be multiple of 8 to keep any alignment */
 
-    if (n <= MAT_MAT_ROWS && k <= MAT_MAT_COLS) {  /* do small cases quickly */
+    if (n <= MAT_MAT_XROWS && k <= MAT_MAT_COLS) {  /* do small cases quickly */
         matprod_sub_mat_mat (x, y, z, n, k, m, n, k, 0);
         return;
     }
 
-    int rows = n;
+    int xrows = n;
 
-    if (rows > MAT_MAT_ROWS && k > 2) {
-        while (rows >= 2*MAT_MAT_ROWS) {
-            matprod_subcol_mat_mat (x, y, z, n, k, m, MAT_MAT_ROWS);
-            x += MAT_MAT_ROWS;
-            z += MAT_MAT_ROWS;
-            rows -= MAT_MAT_ROWS;
+    if (xrows > MAT_MAT_XROWS && k > 2) {
+        while (xrows >= 2*MAT_MAT_XROWS) {
+            matprod_subcol_mat_mat (x, y, z, n, k, m, MAT_MAT_XROWS);
+            x += MAT_MAT_XROWS;
+            z += MAT_MAT_XROWS;
+            xrows -= MAT_MAT_XROWS;
         }
-        if (rows > MAT_MAT_ROWS) {
-            int nr = ((rows+1)/2) & ~7; /* keep any alignment of x, z */
+        if (xrows > MAT_MAT_XROWS) {
+            int nr = ((xrows+1)/2) & ~7; /* keep any alignment of x, z */
             matprod_subcol_mat_mat (x, y, z, n, k, m, nr);
             x += nr;
             z += nr;
-            rows -= nr;
+            xrows -= nr;
         }
     }
-    matprod_subcol_mat_mat (x, y, z, n, k, m, rows);
+    matprod_subcol_mat_mat (x, y, z, n, k, m, xrows);
 }
 
 static void matprod_subcol_mat_mat (double * MATPROD_RESTRICT x, 
                                     double * MATPROD_RESTRICT y, 
                                     double * MATPROD_RESTRICT z,
-                                    int n, int k, int m, int rows)
+                                    int n, int k, int m, int xrows)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -2070,8 +2070,8 @@ static void matprod_subcol_mat_mat (double * MATPROD_RESTRICT x,
     int chunk;
 
     if (k <= MAT_MAT_COLS 
-     || k <= (chunk = (MAT_MAT_COLS*MAT_MAT_ROWS/rows) & ~7)) {
-        matprod_sub_mat_mat (x, y, z, n, k, m, rows, k, 0);
+     || k <= (chunk = (MAT_MAT_COLS*MAT_MAT_XROWS/xrows) & ~7)) {
+        matprod_sub_mat_mat (x, y, z, n, k, m, xrows, k, 0);
         return;
     }
 
@@ -2079,7 +2079,7 @@ static void matprod_subcol_mat_mat (double * MATPROD_RESTRICT x,
     int add = 0;
 
     while (cols > 2*chunk) {
-        matprod_sub_mat_mat (x, y, z, n, k, m, rows, chunk, add);
+        matprod_sub_mat_mat (x, y, z, n, k, m, xrows, chunk, add);
         x += chunk*n;
         y += chunk;
         cols -= chunk;
@@ -2088,17 +2088,17 @@ static void matprod_subcol_mat_mat (double * MATPROD_RESTRICT x,
 
     if (cols > chunk) {
         int nc = ((cols+1)/2) & ~7;  /* keep any alignment of x */
-        matprod_sub_mat_mat (x, y, z, n, k, m, rows, nc, add);
+        matprod_sub_mat_mat (x, y, z, n, k, m, xrows, nc, add);
         x += nc*n;
         y += nc;
         cols -= nc;
         add = 1;
     }
 
-    matprod_sub_mat_mat (x, y, z, n, k, m, rows, cols, add);    
+    matprod_sub_mat_mat (x, y, z, n, k, m, xrows, cols, add);    
 }
 
-/* Multiply the first 'rows' rows and 'cols' columns of x with the m
+/* Multiply the first 'xrows' rows and 'cols' columns of x with the m
    columns of y, storing the result in z.  Note that x and z may not
    be the start of the original matrices.  The k argument is the
    number of columns in the original matrix x and rows in the matrix
@@ -2114,17 +2114,17 @@ static void matprod_subcol_mat_mat (double * MATPROD_RESTRICT x,
    The same alignment assumptions hold for x, y, and z as with the
    visible procedures.
 
-   Note that k, m, and 'cols' will be at least 2, and n and 'rows'
+   Note that k, m, and 'cols' will be at least 2, and n and 'xrows'
    will be at least 3. */
 
 static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x, 
                                  double * MATPROD_RESTRICT y, 
                                  double * MATPROD_RESTRICT z,
                                  int n, int k, int m, 
-                                 int rows, int cols, int add)
+                                 int xrows, int cols, int add)
 {
 /*  printf("- %p %p %p - %d %d %d - %d %d %d\n",
-               x, y, z,   n, k, m,  rows, cols, add);  */
+               x, y, z,   n, k, m,  xrows, cols, add);  */
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -2147,7 +2147,7 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
         if (!add) {
 
             double *r = xs;
-            int n2 = rows;
+            int n2 = xrows;
 
 #           if CAN_USE_AVX || CAN_USE_SSE2
             {
@@ -2275,7 +2275,7 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
         while (k2 > 1) {
 
             double *r = xs;
-            int n2 = rows;
+            int n2 = xrows;
 
 
 #           if CAN_USE_AVX || CAN_USE_SSE2
@@ -2430,7 +2430,7 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
             double b2 = y[k];
             double *r = xs;
             double *q = z;
-            int n2 = rows;
+            int n2 = xrows;
             do {
                 double s = r[0];
                 q[0] += s * b1;
@@ -2465,7 +2465,7 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
             double *r = xs;
             double b = y[0];
             double *q = z;
-            int n2 = rows;
+            int n2 = xrows;
             while (n2 > 1) {
                 q[0] = r[0] * b;
                 q[1] = r[1] * b;
@@ -2489,7 +2489,7 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
             double b2 = y[1];
             double *r = xs;
             double *q = z;
-            int n2 = rows;
+            int n2 = xrows;
             do {
                 q[0] = (q[0] + (r[0] * b1)) + (r[n] * b2);
                 r += 1;
@@ -2504,7 +2504,7 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
             double b = y[0];
             double *r = xs;
             double *q = z;
-            int n2 = rows;
+            int n2 = xrows;
             do { 
                 q[0] += r[0] * b; 
                 q += 1;
@@ -2515,10 +2515,10 @@ static void matprod_sub_mat_mat (double * MATPROD_RESTRICT x,
     }
 }
 
-static void matprod_smalln_mat_mat (double * MATPROD_RESTRICT x, 
-                                    double * MATPROD_RESTRICT y, 
-                                    double * MATPROD_RESTRICT z, 
-                                    int n, int k, int m)
+static void matprod_mat_mat_n2 (double * MATPROD_RESTRICT x, 
+                                double * MATPROD_RESTRICT y, 
+                                double * MATPROD_RESTRICT z, 
+                                int k, int m)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -2526,140 +2526,132 @@ static void matprod_smalln_mat_mat (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    if (n == 2) {
+    /* Compute two columns of the result each time around this loop,
+       updating y, z, and m accordingly. */
 
-        /* Compute two columns of the result each time around this loop, 
-           updating y, z, and m accordingly. */
+    while (m > 1) {
 
-        while (m > 1) {
+#       if CAN_USE_SSE2
 
-#           if CAN_USE_SSE2
-
-                double *r = x;
-                int k2 = k;
-
-                __m128d S0 = _mm_setzero_pd();
-                __m128d S1 = _mm_setzero_pd();
-
-                /* Each time around this loop, add the products of two columns
-                   of x with elements of the next two columns of y to the sums.
-                   Adjust r and y to account for this. */
-
-                while (k2 > 1) {
-                    __m128d R;
-                    R = _mm_loadAA_pd(r);
-                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[0])), S0);
-                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k])), S1);
-                    R = _mm_loadAA_pd(r+2);
-                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[1])), S0);
-                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k+1])), S1);
-                    r += 4;
-                    y += 2;
-                    k2 -= 2;
-                }
-
-                if (k2 >= 1) {
-                    __m128d R;
-                    R = _mm_loadAA_pd(r);
-                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[0])), S0);
-                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k])), S1);
-                    y += 1;
-                }
-
-                /* Store sums in the next two result columns. */
-
-                _mm_storeAA_pd (z, S0);
-                _mm_storeAA_pd (z+2, S1);
-
-#           else  /* non-SIMD code */
-
-                double s[4] = { 0, 0, 0, 0 };
-                double *r = x;
-                int k2 = k;
-
-                /* Each time around this loop, add the products of two columns
-                   of x with elements of the next two columns of y to the sums.
-                   Adjust r and y to account for this. */
-
-                while (k2 > 1) {
-                    double b11 = y[0];
-                    double b12 = y[1];
-                    double b21 = y[k];
-                    double b22 = y[k+1];
-                    s[0] = (s[0] + (r[0] * b11)) + (r[2] * b12);
-                    s[1] = (s[1] + (r[1] * b11)) + (r[3] * b12);
-                    s[2] = (s[2] + (r[0] * b21)) + (r[2] * b22);
-                    s[3] = (s[3] + (r[1] * b21)) + (r[3] * b22);
-                    r += 4;
-                    y += 2;
-                    k2 -= 2;
-                }
-
-                if (k2 >= 1) {
-                    double b1 = y[0];
-                    double b2 = y[k];
-                    s[0] += r[0] * b1;
-                    s[1] += r[1] * b1;
-                    s[2] += r[0] * b2;
-                    s[3] += r[1] * b2;
-                    y += 1;
-                }
-
-                /* Store sums in the next two result columns. */
-
-                z[0] = s[0];
-                z[1] = s[1];
-                z[2] = s[2];
-                z[3] = s[3];
-
-#           endif
-
-            /* Move forward by two to next column of the result and
-               the next column of y. */
-
-            y += k;  /* already advanced by k, so total advance is 2*k */
-            z += 4;
-            m -= 2;
-        }
-
-        /* If m is odd, compute the last column of the result. */
-
-        if (m >= 1) {
-
-            double s[2] = { 0, 0 };  /* sums for the two values in the result */
             double *r = x;
             int k2 = k;
 
+            __m128d S0 = _mm_setzero_pd();
+            __m128d S1 = _mm_setzero_pd();
+
             /* Each time around this loop, add the products of two
-               columns of x with two elements of the last column of y
-               to s[0] and s[1]. */
+               columns of x with elements of the next two columns of y
+               to the sums.  Adjust r and y to account for this. */
 
             while (k2 > 1) {
-                double b1 = y[0];
-                double b2 = y[1];
-                s[0] = (s[0] + (r[0] * b1)) + (r[2] * b2);
-                s[1] = (s[1] + (r[1] * b1)) + (r[3] * b2);
+                __m128d R;
+                R = _mm_loadAA_pd(r);
+                S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[0])), S0);
+                S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k])), S1);
+                R = _mm_loadAA_pd(r+2);
+                S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[1])), S0);
+                S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k+1])), S1);
                 r += 4;
                 y += 2;
                 k2 -= 2;
             }
 
             if (k2 >= 1) {
-                double b = y[0];
-                s[0] += r[0] * b;
-                s[1] += r[1] * b;
-                /* y += 1; */
+                __m128d R;
+                R = _mm_loadAA_pd(r);
+                S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[0])), S0);
+                S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k])), S1);
+                y += 1;
             }
 
-            /* Store the two sums in s[0] and s[1] in the result vector. */
+            /* Store sums in the next two result columns. */
+
+            _mm_storeAA_pd (z, S0);
+            _mm_storeAA_pd (z+2, S1);
+
+#       else  /* non-SIMD code */
+
+            double s[4] = { 0, 0, 0, 0 };
+            double *r = x;
+            int k2 = k;
+
+            /* Each time around this loop, add the products of two
+               columns of x with elements of the next two columns of y
+               to the sums.  Adjust r and y to account for this. */
+
+            while (k2 > 1) {
+                double b11 = y[0];
+                double b12 = y[1];
+                double b21 = y[k];
+                double b22 = y[k+1];
+                s[0] = (s[0] + (r[0] * b11)) + (r[2] * b12);
+                s[1] = (s[1] + (r[1] * b11)) + (r[3] * b12);
+                s[2] = (s[2] + (r[0] * b21)) + (r[2] * b22);
+                s[3] = (s[3] + (r[1] * b21)) + (r[3] * b22);
+                r += 4;
+                y += 2;
+                k2 -= 2;
+            }
+
+            if (k2 >= 1) {
+                double b1 = y[0];
+                double b2 = y[k];
+                s[0] += r[0] * b1;
+                s[1] += r[1] * b1;
+                s[2] += r[0] * b2;
+                s[3] += r[1] * b2;
+                y += 1;
+            }
+
+            /* Store sums in the next two result columns. */
 
             z[0] = s[0];
             z[1] = s[1];
-        }
+            z[2] = s[2];
+            z[3] = s[3];
+
+#       endif
+
+        /* Move forward by two to next column of the result and the
+           next column of y. */
+
+        y += k;  /* already advanced by k, so total advance is 2*k */
+        z += 4;
+        m -= 2;
     }
 
-    else {
-        abort();  /* called with n that isn't handled here */
+    /* If m is odd, compute the last column of the result. */
+
+    if (m >= 1) {
+
+        double s[2] = { 0, 0 };  /* sums for the two values in the result */
+        double *r = x;
+        int k2 = k;
+
+        /* Each time around this loop, add the products of two columns
+           of x with two elements of the last column of y to s[0] and s[1]. */
+
+        while (k2 > 1) {
+            double b1 = y[0];
+            double b2 = y[1];
+            s[0] = (s[0] + (r[0] * b1)) + (r[2] * b2);
+            s[1] = (s[1] + (r[1] * b1)) + (r[3] * b2);
+            r += 4;
+            y += 2;
+            k2 -= 2;
+        }
+
+        if (k2 >= 1) {
+            double b = y[0];
+            s[0] += r[0] * b;
+            s[1] += r[1] * b;
+            /* y += 1; */
+        }
+
+        /* Store the two sums in s[0] and s[1] in the result vector. */
+
+        z[0] = s[0];
+        z[1] = s[1];
     }
 }
 
@@ -2684,18 +2676,18 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y,
                                 double * MATPROD_RESTRICT z,
                                 int n, int k, int m,
-                                int sym, int add, int rows, int cols);
+                                int sym, int add, int xrows, int cols);
 
 static void matprod_subcol_trans1 (double * MATPROD_RESTRICT x, 
                                    double * MATPROD_RESTRICT y, 
                                    double * MATPROD_RESTRICT z,
                                    int n, int k, int m,
-                                   int sym, int add, int rows);
+                                   int sym, int add, int xrows);
 
-static void matprod_smallk_trans1 (double * MATPROD_RESTRICT x,
-                                   double * MATPROD_RESTRICT y,
-                                   double * MATPROD_RESTRICT z,
-                                   int n, int k, int m);
+static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
+                               double * MATPROD_RESTRICT y,
+                               double * MATPROD_RESTRICT z,
+                               int n, int m);
 
 void matprod_trans1 (double * MATPROD_RESTRICT x, 
                      double * MATPROD_RESTRICT y, 
@@ -2720,7 +2712,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 
     if (k <= 2) {
         if (k == 2)
-            matprod_smallk_trans1 (x, y, z, n, k, m);
+            matprod_trans1_k2 (x, y, z, n, m);
         else if (k == 1)
             matprod_outer (x, y, z, n, m);
         else
@@ -2728,47 +2720,47 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
         return;
     }
 
-    /* The definiton of TRANS1_ROWS is designed to keep two columns of y 
+    /* The definiton of TRANS1_XROWS is designed to keep two columns of y 
        in an L1 cache of 32K bytes or more, given that two columns of y 
-       and four columns of x (all of length TRANS1_ROWS) are accessed
+       and four columns of x (all of length TRANS1_XROWS) are accessed
        within the main loop.
 
        The definiton of TRANS1_COLS is designed to keep the submatrix
-       of x with TRANS1_ROWS and TRANS1_COLS in an L2 cache of a least
+       of x with TRANS1_XROWS and TRANS1_COLS in an L2 cache of a least
        256K bytes, while it is multiplied repeatedly by columns of y. */
 
-#   define TRANS1_ROWS 512        /* be multiple of 8 to keep any alignment */
+#   define TRANS1_XROWS 512        /* be multiple of 8 to keep any alignment */
 #   define TRANS1_COLS 48         /* be multiple of 8 to keep any alignment */
 
     int sym = x==y && n==m        /* if operands same, result is symmetric, */
               && (n>8 || k>8);    /*    but faster to ignore if n & k small */
 
-    if (k <= TRANS1_ROWS && n <= TRANS1_COLS) {   /* do small cases quickly */
+    if (k <= TRANS1_XROWS && n <= TRANS1_COLS) {   /* do small cases quickly */
         matprod_sub_trans1 (x, y, z, n, k, m, sym, 0, k, n);
     }
     else {
 
-        int rows = k;
+        int xrows = k;
         int add = 0;
 
-        if (rows > TRANS1_ROWS && n > 2) {
-            while (rows >= 2*TRANS1_ROWS) {
-                matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, TRANS1_ROWS);
-                x += TRANS1_ROWS;
-                y += TRANS1_ROWS;
-                rows -= TRANS1_ROWS;
+        if (xrows > TRANS1_XROWS && n > 2) {
+            while (xrows >= 2*TRANS1_XROWS) {
+                matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, TRANS1_XROWS);
+                x += TRANS1_XROWS;
+                y += TRANS1_XROWS;
+                xrows -= TRANS1_XROWS;
                 add = 1;
             }
-            if (rows > TRANS1_ROWS) {
-                int nr = ((rows+1)/2) & ~7;  /* keep any alignment of x */
+            if (xrows > TRANS1_XROWS) {
+                int nr = ((xrows+1)/2) & ~7;  /* keep any alignment of x */
                 matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, nr);
                 x += nr;
                 y += nr;
-                rows -= nr;
+                xrows -= nr;
                 add = 1;
             }
         }
-        matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, rows);
+        matprod_subcol_trans1 (x, y, z, n, k, m, sym, add, xrows);
     }
 
     if (sym)
@@ -2779,7 +2771,7 @@ static void matprod_subcol_trans1 (double * MATPROD_RESTRICT x,
                                    double * MATPROD_RESTRICT y, 
                                    double * MATPROD_RESTRICT z,
                                    int n, int k, int m,
-                                   int sym, int add, int rows)
+                                   int sym, int add, int xrows)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -2791,13 +2783,13 @@ static void matprod_subcol_trans1 (double * MATPROD_RESTRICT x,
     int chunk;
 
     if (cols <= TRANS1_COLS 
-     || cols <= (chunk = (TRANS1_COLS*TRANS1_ROWS/rows) & ~7)) {
-        matprod_sub_trans1 (x, y, z, n, k, m, sym, add, rows, cols);
+     || cols <= (chunk = (TRANS1_COLS*TRANS1_XROWS/xrows) & ~7)) {
+        matprod_sub_trans1 (x, y, z, n, k, m, sym, add, xrows, cols);
         return;
     }
 
     while (cols > 2*chunk) {
-        matprod_sub_trans1 (x, y, z, n, k, m, sym, add, rows, chunk);
+        matprod_sub_trans1 (x, y, z, n, k, m, sym, add, xrows, chunk);
         x += chunk*k;
         z += chunk;
         cols -= chunk;
@@ -2810,7 +2802,7 @@ static void matprod_subcol_trans1 (double * MATPROD_RESTRICT x,
 
     if (cols > chunk) {
         int nc = ((cols+1)/2) & ~7;  /* keep any alignment of x, z */
-        matprod_sub_trans1 (x, y, z, n, k, m, sym, add, rows, nc);
+        matprod_sub_trans1 (x, y, z, n, k, m, sym, add, xrows, nc);
         x += nc*k;
         z += nc;
         cols -= nc;
@@ -2821,17 +2813,17 @@ static void matprod_subcol_trans1 (double * MATPROD_RESTRICT x,
         }
     }
 
-    matprod_sub_trans1 (x, y, z, n, k, m, sym, add, rows, cols);
+    matprod_sub_trans1 (x, y, z, n, k, m, sym, add, xrows, cols);
 }
 
 static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y,
                                 double * MATPROD_RESTRICT z,
                                 int n, int k, int m,
-                                int sym, int add, int rows, int cols)
+                                int sym, int add, int xrows, int cols)
 {
 /*  printf("- %p %p %p - %d %d %d - %d %d %d %d\n",
-               x, y, z,   n, k, m,  sym, add, rows, cols);  */
+               x, y, z,   n, k, m,  sym, add, xrows, cols);  */
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -2880,10 +2872,10 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                     S1 = _mm256_add_pd (S1, _mm256_mul_pd(X,Y));
                     r += 1;
                     q = y+1;
-                    qe = q+((rows-1)-3);
+                    qe = q+((xrows-1)-3);
 #               else
                     q = y;
-                    qe = q+(rows-3);
+                    qe = q+(xrows-3);
 #               endif
                 while (q < qe) {
                     __m256d R0, Rk, M00, M0k, Mk0, Mkk, L0, H0, Lk, Hk;
@@ -2920,7 +2912,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                     r += 4;
                     q += 4;
                 }
-                qe = y+rows;
+                qe = y+xrows;
                 while (q < qe) {
                     __m256d Q = _mm256_set_pd (q[k], q[k], q[0], q[0]);
                     __m256d X;
@@ -2971,10 +2963,10 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                     S3 = _mm_add_pd (S3, _mm_mul_pd(X,Yk));
                     r += 1;
                     q = y+1;
-                    qe = q+((rows-1)-1);
+                    qe = q+((xrows-1)-1);
 #               else
                     q = y;
-                    qe = q+(rows-1);
+                    qe = q+(xrows-1);
 #               endif
                 while (q < qe) {
                     __m128d R0, Rk, M00, M0k, Mk0, Mkk, L0, H0, Lk, Hk;
@@ -3011,7 +3003,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                     r += 2;
                     q += 2;
                 }
-                if (q < y+rows) {
+                if (q < y+xrows) {
                     __m128d X;
                     __m128d Q0 = _mm_set_pd (q[0], q[0]);
                     __m128d Qk = _mm_set_pd (q[k], q[k]);
@@ -3049,7 +3041,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                     s2[0] = s2[1] = s2[2] = s2[3] = 0;
                 }
                 double *q = y;
-                int i = rows;
+                int i = xrows;
                 do {
                     double t, t2;
                     double u = q[0];
@@ -3104,10 +3096,10 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                     S = _mm256_add_pd (S, _mm256_mul_pd(X,Y));
                     r += 1;
                     q = y+1;
-                    qe = q+((rows-1)-3);
+                    qe = q+((xrows-1)-3);
 #               else
                     q = y;
-                    qe = q+(rows-3);
+                    qe = q+(xrows-3);
 #               endif
                 while (q < qe) {
                     __m256d Q0 = _mm256_loadu_pd(q);
@@ -3129,7 +3121,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                     r += 4;
                     q += 4;
                 }
-                qe = y+rows;
+                qe = y+xrows;
                 while (q < qe) {
                     __m256d X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
                     __m256d Y = _mm256_set_pd (q[k], q[k], q[0], q[0]);
@@ -3164,10 +3156,10 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                     S1 = _mm_add_pd (S1, _mm_mul_pd(X,Y));
                     r += 1;
                     q = y+1;
-                    qe = q+((rows-1)-1);
+                    qe = q+((xrows-1)-1);
 #               else
                     q = y;
-                    qe = q+(rows-1);
+                    qe = q+(xrows-1);
 #               endif
                 while (q < qe) {
                     __m128d Q0 = _mm_loadA_pd(q);
@@ -3189,7 +3181,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                     r += 2;
                     q += 2;
                 }
-                if (q < y+rows) {
+                if (q < y+xrows) {
                     __m128d X, Y;
                     X = _mm_set_pd (r[k], r[0]);
                     Y = _mm_set_pd (q[0], q[0]);
@@ -3216,7 +3208,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                 else
                     s[0] = s[1] = s[2] = s[3] = 0;
                 double *q = y;
-                int i = rows;
+                int i = xrows;
                 do {
                     double t = r[0];
                     double t2 = r[k];
@@ -3252,7 +3244,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
             }
             else
                 s0 = s1 = 0;
-            int i = rows;
+            int i = xrows;
             do {
                 double t = r[0];
                 s0 += t * q[0];
@@ -3291,7 +3283,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
             else
                 s = 0;
             double *q = y;
-            double *f = y+rows;
+            double *f = y+xrows;
             do { 
                 s += r[0] * q[0]; 
                 r += 1;
@@ -3315,7 +3307,7 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
                 s0 = s1 = 0;
             double *r = xs;
             double *q = y;
-            double *f = y+rows;
+            double *f = y+xrows;
             do {
                 double t = q[0];
                 s0 += r[0] * t;
@@ -3331,10 +3323,10 @@ static void matprod_sub_trans1 (double * MATPROD_RESTRICT x,
     }
 }
 
-static void matprod_smallk_trans1 (double * MATPROD_RESTRICT x,
-                                   double * MATPROD_RESTRICT y,
-                                   double * MATPROD_RESTRICT z,
-                                   int n, int k, int m)
+static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
+                               double * MATPROD_RESTRICT y,
+                               double * MATPROD_RESTRICT z,
+                               int n, int m)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -3342,77 +3334,69 @@ static void matprod_smallk_trans1 (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    if (k == 2) {
-
-#       if CAN_USE_AVX || CAN_USE_SSE3
-        {
-            double *e = y + 2*m;
-            double *f = x + 2*(n-3);
-            while (y < e) {
+#   if CAN_USE_AVX || CAN_USE_SSE3
+    {
+        double *e = y + 2*m;
+        double *f = x + 2*(n-3);
+        while (y < e) {
+#           if CAN_USE_AVX
+                __m256d Y = _mm256_set_pd (y[1], y[0], y[1], y[0]);
+#           else  /* CAN_USE_SSE3 */
+                __m128d Y = _mm_set_pd (y[1], y[0]);
+#           endif
+            double *p = x;
+            while (p < f) {
 #               if CAN_USE_AVX
-                    __m256d Y = _mm256_set_pd (y[1], y[0], y[1], y[0]);
+                    __m256d M0 = _mm256_mul_pd (Y, _mm256_loadu_pd(p));
+                    __m256d M1 = _mm256_mul_pd (Y, _mm256_loadu_pd(p+4));
+                    __m256d Z = _mm256_hadd_pd 
+                                  (_mm256_permute2f128_pd (M0, M1, 0x20),
+                                   _mm256_permute2f128_pd (M0, M1, 0x31));
+                    _mm256_storeu_pd (z, Z);
 #               else  /* CAN_USE_SSE3 */
-                    __m128d Y = _mm_set_pd (y[1], y[0]);
-#               endif
-                double *p = x;
-                while (p < f) {
-#                   if CAN_USE_AVX
-                        __m256d M0 = _mm256_mul_pd (Y, _mm256_loadu_pd(p));
-                        __m256d M1 = _mm256_mul_pd (Y, _mm256_loadu_pd(p+4));
-                        __m256d Z = _mm256_hadd_pd 
-                                      (_mm256_permute2f128_pd (M0, M1, 0x20),
-                                       _mm256_permute2f128_pd (M0, M1, 0x31));
-                        _mm256_storeu_pd (z, Z);
-#                   else  /* CAN_USE_SSE3 */
-                        __m128d M0, M1;
-                        M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p));
-                        M1 = _mm_mul_pd (Y, _mm_loadAA_pd(p+2));
-                        _mm_storeu_pd (z, _mm_hadd_pd (M0, M1));
-                        M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p+4));
-                        M1 = _mm_mul_pd (Y, _mm_loadAA_pd(p+6));
-                        _mm_storeu_pd (z+2, _mm_hadd_pd (M0, M1));
-#                   endif
-                    p += 8;
-                    z += 4;
-                }
-                if (n & 2) {
-                    __m128d M0 = _mm_mul_pd (cast128(Y), _mm_loadu_pd(p));
-                    __m128d M1 = _mm_mul_pd (cast128(Y), _mm_loadu_pd(p+2));
+                    __m128d M0, M1;
+                    M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p));
+                    M1 = _mm_mul_pd (Y, _mm_loadAA_pd(p+2));
                     _mm_storeu_pd (z, _mm_hadd_pd (M0, M1));
-                    p += 4;
-                    z += 2;
-                }
-                if (n & 1) {
-                    __m128d M0 = _mm_mul_pd (cast128(Y), _mm_loadu_pd(p));
-                    _mm_store_sd (z, _mm_hadd_pd (M0, M0));
-                    p += 2;
-                    z += 1;
-                }
-                y += 2;
+                    M0 = _mm_mul_pd (Y, _mm_loadAA_pd(p+4));
+                    M1 = _mm_mul_pd (Y, _mm_loadAA_pd(p+6));
+                    _mm_storeu_pd (z+2, _mm_hadd_pd (M0, M1));
+#               endif
+                p += 8;
+                z += 4;
             }
-        }
-
-#       else  /* non-SIMD code */
-        {
-            double *e = y + 2*m;
-            double *f = x + 2*n;
-            while (y < e) {
-                double *p = x;
-                while (p < f) {
-                    z[0] = p[0] * y[0] + p[1] * y[1];
-                    p += 2;
-                    z += 1;
-                }
-                y += 2;
+            if (n & 2) {
+                __m128d M0 = _mm_mul_pd (cast128(Y), _mm_loadu_pd(p));
+                __m128d M1 = _mm_mul_pd (cast128(Y), _mm_loadu_pd(p+2));
+                _mm_storeu_pd (z, _mm_hadd_pd (M0, M1));
+                p += 4;
+                z += 2;
             }
+            if (n & 1) {
+                __m128d M0 = _mm_mul_pd (cast128(Y), _mm_loadu_pd(p));
+                _mm_store_sd (z, _mm_hadd_pd (M0, M0));
+                p += 2;
+                z += 1;
+            }
+            y += 2;
         }
-#       endif
-
     }
 
-    else {
-        abort();  /* call with value for k not handled here */
+#   else  /* non-SIMD code */
+    {
+        double *e = y + 2*m;
+        double *f = x + 2*n;
+        while (y < e) {
+            double *p = x;
+            while (p < f) {
+                z[0] = p[0] * y[0] + p[1] * y[1];
+                p += 2;
+                z += 1;
+            }
+            y += 2;
+        }
     }
+#   endif
 }
 
 
@@ -3432,18 +3416,18 @@ static void matprod_sub_trans2(double * MATPROD_RESTRICT x,
                                double * MATPROD_RESTRICT y,
                                double * MATPROD_RESTRICT z,
                                int n, int k, int m,
-                               int sym, int rows, int yrows, int cols, int add);
+                               int sym, int xrows, int yrows, int cols, int add);
 
 static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
                                    double * MATPROD_RESTRICT y,
                                    double * MATPROD_RESTRICT z,
                                    int n, int k, int m,
-                                   int sym, int rows, int yrows);
+                                   int sym, int xrows, int yrows);
 
-static void matprod_smalln_trans2 (double * MATPROD_RESTRICT x,
-                                   double * MATPROD_RESTRICT y,
-                                   double * MATPROD_RESTRICT z,
-                                   int n, int k, int m);
+static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
+                               double * MATPROD_RESTRICT y,
+                               double * MATPROD_RESTRICT z,
+                               int k, int m);
 
 void matprod_trans2 (double * MATPROD_RESTRICT x, 
                      double * MATPROD_RESTRICT y, 
@@ -3465,7 +3449,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
 
     if (n <= 2) {
         if (n == 2)
-            matprod_smalln_trans2 (x, y, z, n, k, m);
+            matprod_trans2_n2 (x, y, z, k, m);
         else if (n == 1)
             matprod_mat_vec (y, x, z, m, k);
         return;
@@ -3478,54 +3462,54 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
     }
 
     /* The general case with n > 2.  Calls matprod_sub_trans2 to do
-       parts (only one part for a matrix with fewer than TRANS2_ROWS
-       rows and fewer than TRANS2_COLS columns).
+       parts (only one part for a matrix with fewer than TRANS2_XROWS
+       xrows and fewer than TRANS2_COLS columns).
 
-       The definition of TRANS2_ROWS is designed to keep two columns
+       The definition of TRANS2_XROWS is designed to keep two columns
        of z in an L1 cache of 32K bytes or more, given that two
-       columns of z and two columns of x (all of length MAT_VEC_ROWS)
+       columns of z and two columns of x (all of length TRANS2_XROWS)
        are accessed within the main loop.
 
        The definiton of TRANS2_COLS is designed to keep the submatrix
-       of x with TRANS2_ROWS and TRANS2_COLS in an L2 cache of a least
+       of x with TRANS2_XROWS and TRANS2_COLS in an L2 cache of a least
        256K bytes, while it is multiplied repeatedly by rows of y. */
 
-#   define TRANS2_ROWS (1024-64)  /* be multiple of 8 to keep any alignment */
+#   define TRANS2_XROWS (1024-64)  /* be multiple of 8 to keep any alignment */
 #   define TRANS2_COLS 32         /* be multiple of 8 to keep any alignment */
 
     int sym = x==y && n==m        /* if operands same, result is symmetric, */
               && (n>8 || k>8);    /*    but faster to ignore if n & k small */
 
-    if (n <= TRANS2_ROWS && k <= TRANS2_COLS) {  /* do small cases quickly */
+    if (n <= TRANS2_XROWS && k <= TRANS2_COLS) {  /* do small cases quickly */
         matprod_sub_trans2 (x, y, z, n, k, m, sym, n, m, k, 0);
     }
 
     else {
 
         double *zz = z;
-        int rows = n;
+        int xrows = n;
         int yrows = m;
 
-        if (rows > TRANS2_ROWS && k > 2) {
-            while (rows >= 2*TRANS2_ROWS) {
+        if (xrows > TRANS2_XROWS && k > 2) {
+            while (xrows >= 2*TRANS2_XROWS) {
                 matprod_subcol_trans2
-                               (x, y, zz, n, k, m, sym, TRANS2_ROWS, yrows);
-                x += TRANS2_ROWS;
-                zz += TRANS2_ROWS;
-                rows -= TRANS2_ROWS;
+                               (x, y, zz, n, k, m, sym, TRANS2_XROWS, yrows);
+                x += TRANS2_XROWS;
+                zz += TRANS2_XROWS;
+                xrows -= TRANS2_XROWS;
                 if (sym) {
-                    y += TRANS2_ROWS;
-                    zz += TRANS2_ROWS*n;
-                    yrows -= TRANS2_ROWS;
+                    y += TRANS2_XROWS;
+                    zz += TRANS2_XROWS*n;
+                    yrows -= TRANS2_XROWS;
                 }
             }
-            if (rows > TRANS2_ROWS) {
-                int nr = ((rows+1)/2) & ~7;  /* keep any alignment of x, z */
+            if (xrows > TRANS2_XROWS) {
+                int nr = ((xrows+1)/2) & ~7;  /* keep any alignment of x, z */
                 matprod_subcol_trans2 
                                (x, y, zz, n, k, m, sym, nr, yrows);
                 x += nr;
                 zz += nr;
-                rows -= nr;
+                xrows -= nr;
                 if (sym) {
                     y += nr;
                     zz += nr*n;
@@ -3533,7 +3517,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                 }
             }
         }
-        matprod_subcol_trans2 (x, y, zz, n, k, m, sym, rows, yrows);
+        matprod_subcol_trans2 (x, y, zz, n, k, m, sym, xrows, yrows);
     }
 
     if (sym)
@@ -3544,7 +3528,7 @@ static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
                                    double * MATPROD_RESTRICT y,
                                    double * MATPROD_RESTRICT z,
                                    int n, int k, int m,
-                                   int sym, int rows, int yrows)
+                                   int sym, int xrows, int yrows)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -3555,8 +3539,8 @@ static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
     int chunk;
 
     if (k <= TRANS2_COLS
-     || k <= (chunk = (TRANS2_COLS*TRANS2_ROWS/rows) & ~7)) {
-        matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, yrows, k, 0);
+     || k <= (chunk = (TRANS2_COLS*TRANS2_XROWS/xrows) & ~7)) {
+        matprod_sub_trans2 (x, y, z, n, k, m, sym, xrows, yrows, k, 0);
         return;
     }
 
@@ -3564,7 +3548,7 @@ static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
     int add = 0;
 
     while (cols > 2*chunk) {
-        matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, yrows, chunk, add);
+        matprod_sub_trans2 (x, y, z, n, k, m, sym, xrows, yrows, chunk, add);
         x += chunk*n;
         y += chunk*m;
         cols -= chunk;
@@ -3573,24 +3557,24 @@ static void matprod_subcol_trans2 (double * MATPROD_RESTRICT x,
 
     if (cols > chunk) {
         int nc = ((cols+1)/2) & ~7;  /* keep any alignment of x */
-        matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, yrows, nc, add);
+        matprod_sub_trans2 (x, y, z, n, k, m, sym, xrows, yrows, nc, add);
         x += nc*n;
         y += nc*m;
         cols -= nc;
         add = 1;
     }
 
-    matprod_sub_trans2 (x, y, z, n, k, m, sym, rows, yrows, cols, add);
+    matprod_sub_trans2 (x, y, z, n, k, m, sym, xrows, yrows, cols, add);
 }
 
 static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y,
                                 double * MATPROD_RESTRICT z,
                                 int n, int k, int m,
-                                int sym, int rows, int yrows, int cols, int add)
+                                int sym, int xrows, int yrows, int cols, int add)
 {
 /*  printf("- %p %p %p - %d %d %d - %d %d %d %d %d\n",
-               x, y, z,   n, k, m,  sym, rows, yrows, cols, add);  */
+               x, y, z,   n, k, m,  sym, xrows, yrows, cols, add);  */
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -3602,11 +3586,11 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
 
     /* Compute two columns of the result each time around this loop. */
 
-    double *ex = x + n*(cols-1) + rows;
+    double *ex = x + n*(cols-1) + xrows;
 
     while (m2 > 1) {
 
-        int nn = sym && sym < rows ? sym+1 : rows;
+        int nn = sym && sym < xrows ? sym+1 : xrows;
         double *ez = z + (nn-1); /* Last place to store a sum */
         double *xs = x;
         double *q = y;
@@ -3804,7 +3788,7 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
 
     if (m2 >= 1) {
 
-        double *ez = z+rows-1;
+        double *ez = z+xrows-1;
         double *xs = x;
         double *q = y;
 
@@ -3816,7 +3800,7 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
             double *r = xs;
             double *t = z;
             double b = q[0];
-            int n2 = rows;
+            int n2 = xrows;
             while (n2 > 1) {
                 t[0] = r[0] * b;
                 t[1] = r[1] * b;
@@ -3872,10 +3856,10 @@ static void matprod_sub_trans2 (double * MATPROD_RESTRICT x,
     }
 }
 
-static void matprod_smalln_trans2 (double * MATPROD_RESTRICT x,
-                                   double * MATPROD_RESTRICT y,
-                                   double * MATPROD_RESTRICT z,
-                                   int n, int k, int m)
+static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
+                               double * MATPROD_RESTRICT y,
+                               double * MATPROD_RESTRICT z,
+                               int k, int m)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -3883,208 +3867,201 @@ static void matprod_smalln_trans2 (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    if (n == 2) {
+    int m2 = m;
 
-        int m2 = m;
+    /* Compute two columns of the result each time around this loop, 
+       updating y, z, and m accordingly. */
 
-        /* Compute two columns of the result each time around this loop, 
-           updating y, z, and m accordingly. */
+    while (m2 > 1) {
 
-        while (m2 > 1) {
+        double *r = x;
+        double *q = y;
+        int k2 = k;
 
-            double *r = x;
-            double *q = y;
-            int k2 = k;
+#       if CAN_USE_AVX && 0
 
-#           if CAN_USE_AVX && 0
+            __m256d S = _mm256_setzero_pd();
 
-                __m256d S = _mm256_setzero_pd();
+            /* Each time around this loop, add the products of two columns
+               of x with elements of the next two rows of y to the sums.
+               Adjust r and y to account for this. */
 
-                /* Each time around this loop, add the products of two columns
-                   of x with elements of the next two rows of y to the sums.
-                   Adjust r and y to account for this. */
-
-                while (k2 > 1) {
-                    __m256d Q, R;
-                    __m128d X;
-                    Q = _mm256_set_pd (q[1], q[1], q[0], q[0]);
-                    X = _mm_loadAA_pd(r);
-                    R = _mm256_insertf128_pd (_mm256_castpd128_pd256(X), X, 1);
-                    S = _mm256_add_pd (_mm256_mul_pd(R,Q), S);
-                    Q = _mm256_set_pd (q[m+1], q[m+1], q[m], q[m]);
-                    X = _mm_loadAA_pd(r+2);
-                    R = _mm256_insertf128_pd (_mm256_castpd128_pd256(X), X, 1);
-                    S = _mm256_add_pd (_mm256_mul_pd(R,Q), S);
-                    q += 2*m;
-                    r += 4;
-                    k2 -= 2;
-                }
-
-                if (k2 >= 1) {
-                    __m256d Q, R;
-                    Q = _mm256_set_pd (q[1], q[1], q[0], q[0]);
-                    R = _mm256_set_pd (r[1], r[0], r[1], r[0]);
-                    S = _mm256_add_pd (_mm256_mul_pd(R,Q), S);
-                }
-
-                /* Store sums in the next two result columns. */
-
-                _mm256_storeAA_pd (z, S);
-
-#           elif CAN_USE_SSE2
-
-                __m128d S0 = _mm_setzero_pd();
-                __m128d S1 = _mm_setzero_pd();
-
-                /* Each time around this loop, add the products of two columns
-                   of x with elements of the next two rows of y to the sums.
-                   Adjust r and y to account for this. */
-
-                while (k2 > 1) {
-                    __m128d R;
-                    R = _mm_loadAA_pd(r);
-                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[0])), S0);
-                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[1])), S1);
-                    R = _mm_loadAA_pd(r+2);
-                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[m])), S0);
-                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[m+1])), S1);
-                    q += 2*m;
-                    r += 4;
-                    k2 -= 2;
-                }
-
-                if (k2 >= 1) {
-                    __m128d R;
-                    R = _mm_loadAA_pd(r);
-                    S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[0])), S0);
-                    S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[1])), S1);
-                }
-
-                /* Store sums in the next two result columns. */
-
-                _mm_storeAA_pd (z, S0);
-                _mm_storeAA_pd (z+2, S1);
-
-#           else  /* non-SIMD code */
-
-                double s[4] = { 0, 0, 0, 0 };
-
-                /* Each time around this loop, add the products of two columns
-                   of x with elements of the next two rows of y to the sums.
-                   Adjust r and q to account for this. */
-
-                while (k2 > 1) {
-                    double b00 = q[0];
-                    double b10 = q[1];
-                    double b01 = q[m];
-                    double b11 = q[m+1];
-                    s[0] = (s[0] + (r[0] * b00)) + (r[2] * b01);
-                    s[1] = (s[1] + (r[1] * b00)) + (r[3] * b01);
-                    s[2] = (s[2] + (r[0] * b10)) + (r[2] * b11);
-                    s[3] = (s[3] + (r[1] * b10)) + (r[3] * b11);
-                    q += 2*m;
-                    r += 4;
-                    k2 -= 2;
-                }
-
-                /* Add one more product if necessary. */
-
-                if (k2 >= 1) {
-                    double b0 = q[0];
-                    double b1 = q[1];
-                    s[0] += r[0] * b0;
-                    s[1] += r[1] * b0;
-                    s[2] += r[0] * b1;
-                    s[3] += r[1] * b1;
-                }
-
-                /* Store sums in the next two result columns. */
-
-                z[0] = s[0];
-                z[1] = s[1];
-                z[2] = s[2];
-                z[3] = s[3];
-
-#           endif
-
-            /* Move forward two to next column of the result and the next
-               column of y. */
-
-            y += 2;
-            z += 4;
-            m2 -= 2;
-        }
-
-        /* If m is odd, compute the last column of the result. */
-
-        if (m2 >= 1) {
-
-            double *r = x;
-            int k2 = k;
-
-#           if CAN_USE_SSE2
-            {
-                __m128d S = _mm_setzero_pd();
-
-                /* Each time around this loop, add the products of two
-                   columns of x with two elements of the last row of y
-                   to S. */
-
-                while (k2 > 1) {
-                    S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (y[0]),
-                                                   _mm_loadAA_pd(r)));
-                    S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (y[m]),
-                                                   _mm_loadAA_pd(r+2)));
-                    y += 2*m;
-                    r += 4;
-                    k2 -= 2;
-                }
-
-                if (k2 >= 1) {
-                    S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (y[0]),
-                                                   _mm_loadAA_pd(r)));
-                }
-
-                /* Store the two sums in S in the result vector. */
-
-                _mm_storeAA_pd (z, S);
+            while (k2 > 1) {
+                __m256d Q, R;
+                __m128d X;
+                Q = _mm256_set_pd (q[1], q[1], q[0], q[0]);
+                X = _mm_loadAA_pd(r);
+                R = _mm256_insertf128_pd (_mm256_castpd128_pd256(X), X, 1);
+                S = _mm256_add_pd (_mm256_mul_pd(R,Q), S);
+                Q = _mm256_set_pd (q[m+1], q[m+1], q[m], q[m]);
+                X = _mm_loadAA_pd(r+2);
+                R = _mm256_insertf128_pd (_mm256_castpd128_pd256(X), X, 1);
+                S = _mm256_add_pd (_mm256_mul_pd(R,Q), S);
+                q += 2*m;
+                r += 4;
+                k2 -= 2;
             }
-#           else  /* non-SIMD code */
-            {
-                double s[2] = { 0, 0 }; /* sums for the 2 values in the result*/
 
-                /* Each time around this loop, add the products of two
-                   columns of x with two elements of the last row of y
-                   to s[0] and s[1]. */
-
-                while (k2 > 1) {
-                    double b1 = y[0];
-                    double b2 = y[m];
-                    s[0] = (s[0] + (r[0] * b1)) + (r[2] * b2);
-                    s[1] = (s[1] + (r[1] * b1)) + (r[3] * b2);
-                    y += 2*m;
-                    r += 4;
-                    k2 -= 2;
-                }
-
-                if (k2 >= 1) {
-                    double b = y[0];
-                    s[0] += r[0] * b;
-                    s[1] += r[1] * b;
-                    /* y += 1; */
-                }
-
-                /* Store the two sums in s[0] and s[1] in the result vector. */
-
-                z[0] = s[0];
-                z[1] = s[1];
+            if (k2 >= 1) {
+                __m256d Q, R;
+                Q = _mm256_set_pd (q[1], q[1], q[0], q[0]);
+                R = _mm256_set_pd (r[1], r[0], r[1], r[0]);
+                S = _mm256_add_pd (_mm256_mul_pd(R,Q), S);
             }
-#           endif
-        }
+
+            /* Store sums in the next two result columns. */
+
+            _mm256_storeAA_pd (z, S);
+
+#       elif CAN_USE_SSE2
+
+            __m128d S0 = _mm_setzero_pd();
+            __m128d S1 = _mm_setzero_pd();
+
+            /* Each time around this loop, add the products of two columns
+               of x with elements of the next two rows of y to the sums.
+               Adjust r and y to account for this. */
+
+            while (k2 > 1) {
+                __m128d R;
+                R = _mm_loadAA_pd(r);
+                S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[0])), S0);
+                S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[1])), S1);
+                R = _mm_loadAA_pd(r+2);
+                S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[m])), S0);
+                S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[m+1])), S1);
+                q += 2*m;
+                r += 4;
+                k2 -= 2;
+            }
+
+            if (k2 >= 1) {
+                __m128d R;
+                R = _mm_loadAA_pd(r);
+                S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[0])), S0);
+                S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[1])), S1);
+            }
+
+            /* Store sums in the next two result columns. */
+
+            _mm_storeAA_pd (z, S0);
+            _mm_storeAA_pd (z+2, S1);
+
+#       else  /* non-SIMD code */
+
+            double s[4] = { 0, 0, 0, 0 };
+
+            /* Each time around this loop, add the products of two columns
+               of x with elements of the next two rows of y to the sums.
+               Adjust r and q to account for this. */
+
+            while (k2 > 1) {
+                double b00 = q[0];
+                double b10 = q[1];
+                double b01 = q[m];
+                double b11 = q[m+1];
+                s[0] = (s[0] + (r[0] * b00)) + (r[2] * b01);
+                s[1] = (s[1] + (r[1] * b00)) + (r[3] * b01);
+                s[2] = (s[2] + (r[0] * b10)) + (r[2] * b11);
+                s[3] = (s[3] + (r[1] * b10)) + (r[3] * b11);
+                q += 2*m;
+                r += 4;
+                k2 -= 2;
+            }
+
+            /* Add one more product if necessary. */
+
+            if (k2 >= 1) {
+                double b0 = q[0];
+                double b1 = q[1];
+                s[0] += r[0] * b0;
+                s[1] += r[1] * b0;
+                s[2] += r[0] * b1;
+                s[3] += r[1] * b1;
+            }
+
+            /* Store sums in the next two result columns. */
+
+            z[0] = s[0];
+            z[1] = s[1];
+            z[2] = s[2];
+            z[3] = s[3];
+
+#       endif
+
+        /* Move forward two to next column of the result and the next
+           column of y. */
+
+        y += 2;
+        z += 4;
+        m2 -= 2;
     }
 
-    else {
-        abort();  /* called with value for n not handled here */
+    /* If m is odd, compute the last column of the result. */
+
+    if (m2 >= 1) {
+
+        double *r = x;
+        int k2 = k;
+
+#       if CAN_USE_SSE2
+        {
+            __m128d S = _mm_setzero_pd();
+
+            /* Each time around this loop, add the products of two
+               columns of x with two elements of the last row of y
+               to S. */
+
+            while (k2 > 1) {
+                S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (y[0]),
+                                               _mm_loadAA_pd(r)));
+                S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (y[m]),
+                                               _mm_loadAA_pd(r+2)));
+                y += 2*m;
+                r += 4;
+                k2 -= 2;
+            }
+
+            if (k2 >= 1) {
+                S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (y[0]),
+                                               _mm_loadAA_pd(r)));
+            }
+
+            /* Store the two sums in S in the result vector. */
+
+            _mm_storeAA_pd (z, S);
+        }
+#       else  /* non-SIMD code */
+        {
+            double s[2] = { 0, 0 }; /* sums for the 2 values in the result*/
+
+            /* Each time around this loop, add the products of two
+               columns of x with two elements of the last row of y
+               to s[0] and s[1]. */
+
+            while (k2 > 1) {
+                double b1 = y[0];
+                double b2 = y[m];
+                s[0] = (s[0] + (r[0] * b1)) + (r[2] * b2);
+                s[1] = (s[1] + (r[1] * b1)) + (r[3] * b2);
+                y += 2*m;
+                r += 4;
+                k2 -= 2;
+            }
+
+            if (k2 >= 1) {
+                double b = y[0];
+                s[0] += r[0] * b;
+                s[1] += r[1] * b;
+                /* y += 1; */
+            }
+
+            /* Store the two sums in s[0] and s[1] in the result vector. */
+
+            z[0] = s[0];
+            z[1] = s[1];
+        }
+#       endif
     }
 }
 
