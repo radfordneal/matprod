@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 3bddb20470bafdedb1a1b8b49aa6b63afdeec481
+commit c63981d5fd8fc258de96d8ff15b5f63dab7e5dff
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Dec 30 15:19:09 2017 -0500
+Date:   Sat Dec 30 22:52:25 2017 -0500
 
-    results for ivybridge
+    revise tests
