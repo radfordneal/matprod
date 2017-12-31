@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit d4435d3a55eb1eb54b6e628dd62de100887abff3
+commit c63981d5fd8fc258de96d8ff15b5f63dab7e5dff
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Dec 30 13:10:13 2017 -0500
+Date:   Sat Dec 30 22:52:25 2017 -0500
 
-    changes for ENABLE_ALL_AVX, used in matprod_vec_vec now
+    revise tests
