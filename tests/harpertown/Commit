@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit 477fe33fc641bd00e552d5c82111986b503ac52b
+commit 2b1850a4eee71f594c95f0ba1cc0516bb0b56146
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Dec 29 23:19:31 2017 -0500
+Date:   Sun Dec 31 14:13:59 2017 -0500
 
-    make makefile for harpertown not compile avx tests
+    cosmetic changes
