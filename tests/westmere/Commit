@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit c63981d5fd8fc258de96d8ff15b5f63dab7e5dff
+commit 7de81608e660a625297814b524a01fa6494f581e
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Dec 30 22:52:25 2017 -0500
+Date:   Mon Jan 1 11:48:00 2018 -0500
 
-    revise tests
+    implement matprod_mat_vec_n4
