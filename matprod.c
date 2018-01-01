@@ -1710,32 +1710,77 @@ static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y, 
                                 double * MATPROD_RESTRICT z, int k)
 {
-    double s[3] = { 0, 0, 0 }; /* sums for the three values in the result */
+    /* The loops below accumulate the products of two columns of x
+       with two elements of y. */
 
-    /* Each time around this loop, add the products of two columns of
-       x with two elements of y to s[0], s[1], and s[2].  Adjust x and
-       y to account for this. */
+#   if CAN_USE_SSE2 && ALIGN >= 16 || CAN_USE_AVX
+    {
+        __m128d S;   /* first two sums */
+        __m128d S2;  /* last sum (in low 64 bits) */
 
-    while (k > 1) {
-        s[0] = (s[0] + (x[0] * y[0])) + (x[3] * y[1]);
-        s[1] = (s[1] + (x[1] * y[0])) + (x[4] * y[1]);
-        s[2] = (s[2] + (x[2] * y[0])) + (x[5] * y[1]);
-        x += 6;
-        y += 2;
-        k -= 2;
+#       if (ALIGN_FORWARD & 8)
+        {
+            __m128d B0 = _mm_set1_pd (y[0]);
+            S = _mm_mul_pd (_mm_loadA_pd (x), B0);
+            S2 = _mm_mul_sd (_mm_load_sd (x+2), B0);
+            x += 3;
+            y += 1;
+            k -= 1;
+        }
+#       else
+            S = _mm_setzero_pd();
+            S2 = _mm_setzero_pd();
+#       endif
+
+        while (k > 1) {
+            __m128d A1 = _mm_loadA_pd (x+2);
+            __m128d A2 = _mm_loadA_pd (x+4);
+            __m128d B0 = _mm_set1_pd (y[0]);
+            __m128d B1 = _mm_set1_pd (y[1]);
+            S = _mm_add_pd (S, _mm_mul_pd (_mm_loadA_pd (x), B0));
+            S2 = _mm_add_sd (S2, _mm_mul_sd (A1, B0));
+            S = _mm_add_pd (S, _mm_mul_pd (_mm_shuffle_pd (A1, A2, 1), B1));
+            S2 = _mm_add_sd (S2, _mm_mul_sd (_mm_unpackhi_pd (A2, A2), B1));
+            x += 6;
+            y += 2;
+            k -= 2;
+        }
+
+        if (k >= 1) {
+            __m128d B0 = _mm_set1_pd(y[0]);
+            S = _mm_add_pd (S, _mm_mul_pd (_mm_load_pd(x), B0));
+            S2 = _mm_add_sd (S2, _mm_mul_sd (_mm_load_sd(x+2), B0));
+        }
+
+        _mm_storeu_pd (z, S);
+        _mm_store_sd (z+2, S2);
     }
+#   else
+    {
+        double s[3] = { 0, 0, 0 }; /* sums for the three values in the result */
 
-    if (k >= 1) {
-        s[0] += x[0] * y[0];
-        s[1] += x[1] * y[0];
-        s[2] += x[2] * y[0];
+        while (k > 1) {
+            s[0] = (s[0] + (x[0] * y[0])) + (x[3] * y[1]);
+            s[1] = (s[1] + (x[1] * y[0])) + (x[4] * y[1]);
+            s[2] = (s[2] + (x[2] * y[0])) + (x[5] * y[1]);
+            x += 6;
+            y += 2;
+            k -= 2;
+        }
+
+        if (k >= 1) {
+            s[0] += x[0] * y[0];
+            s[1] += x[1] * y[0];
+            s[2] += x[2] * y[0];
+        }
+
+        /* Store the three sums in s[0], s[1], and s[2] in the result vector. */
+
+        z[0] = s[0];
+        z[1] = s[1];
+        z[2] = s[2];
     }
-
-    /* Store the three sums in s[0], s[1], and s[2] in the result vector. */
-
-    z[0] = s[0];
-    z[1] = s[1];
-    z[2] = s[2];
+#   endif
 }
 
 /* -------------------------------------------------------------------------- */
