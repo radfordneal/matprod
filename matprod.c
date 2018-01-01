@@ -1202,6 +1202,10 @@ static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y, 
                                 double * MATPROD_RESTRICT z, int k);
 
+static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x, 
+                                double * MATPROD_RESTRICT y, 
+                                double * MATPROD_RESTRICT z, int k);
+
 void matprod_mat_vec (double * MATPROD_RESTRICT x, 
                       double * MATPROD_RESTRICT y, 
                       double * MATPROD_RESTRICT z, int n, int k)
@@ -1222,10 +1226,12 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         return;
     }
 
-    /* Specially handle matrices with 3 or fewer rows. */
+    /* Specially handle matrices with 4 or fewer rows. */
 
-    if (n <= 3) {
-        if (n == 3)
+    if (n <= 4) {
+        if (n == 4)
+            matprod_mat_vec_n4 (x, y, z, k);
+        else if (n == 3)
             matprod_mat_vec_n3 (x, y, z, k);
         else if (n == 2)
             matprod_mat_vec_n2 (x, y, z, k);
@@ -1234,7 +1240,7 @@ void matprod_mat_vec (double * MATPROD_RESTRICT x,
         return;
     }
 
-    /* The general case with n > 3.  Calls matprod_mat_vec_sub_xrows
+    /* The general case with n > 4.  Calls matprod_mat_vec_sub_xrows
        to do parts (only one part for a matrix with fewer than
        MAT_VEC_XROWS rows).
 
@@ -1606,6 +1612,12 @@ static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y, 
                                 double * MATPROD_RESTRICT z, int k)
 {
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
 #   if CAN_USE_SSE2 && ALIGN >= 16 && ALIGN_OFFSET%16 == 0
 
         __m128d S;  /* sums for the two values in the result */
@@ -1677,7 +1689,7 @@ static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x,
         _mm_storeh_pd (z, S);
         _mm_store_sd (z+1, S);
 
-#   else
+#   else  /* non-SIMD code */
 
         double s[2] = { 0, 0 };  /* sums for the two values in the result */
 
@@ -1710,6 +1722,12 @@ static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y, 
                                 double * MATPROD_RESTRICT z, int k)
 {
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
     /* The loops below accumulate the products of two columns of x
        with two elements of y. */
 
@@ -1755,7 +1773,8 @@ static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x,
         _mm_storeu_pd (z, S);
         _mm_store_sd (z+2, S2);
     }
-#   else
+
+#   else  /* non-SIMD code */
     {
         double s[3] = { 0, 0, 0 }; /* sums for the three values in the result */
 
@@ -1779,6 +1798,99 @@ static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x,
         z[0] = s[0];
         z[1] = s[1];
         z[2] = s[2];
+    }
+#   endif
+}
+
+static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x, 
+                                double * MATPROD_RESTRICT y, 
+                                double * MATPROD_RESTRICT z, int k)
+{
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    /* The loops below accumulate the products of two columns of x
+       with two elements of y. */
+
+#   if CAN_USE_AVX && ENABLE_ALL_AVX_CODE
+    {
+        __m256d S = _mm256_setzero_pd();
+
+        while (k > 1) {
+            __m256d B0 = _mm256_set1_pd (y[0]);
+            __m256d A0 = _mm256_loadAA_pd (x);
+            __m256d B1 = _mm256_set1_pd (y[1]);
+            __m256d A1 = _mm256_loadAA_pd (x+4);
+            S = _mm256_add_pd (S, _mm256_mul_pd (A0, B0));
+            S = _mm256_add_pd (S, _mm256_mul_pd (A1, B1));
+            x += 8;
+            y += 2;
+            k -= 2;
+        }
+
+        if (k >= 1) {
+            __m256d B0 = _mm256_set1_pd (y[0]);
+            S = _mm256_add_pd (S, _mm256_mul_pd (_mm256_loadAA_pd (x), B0));
+        }
+
+        _mm256_storeAA_pd (z, S);
+    }
+#   elif CAN_USE_SSE2 && ALIGN >= 16 || CAN_USE_AVX
+    {
+        __m128d S0 = _mm_setzero_pd();   /* first two sums */
+        __m128d S1 = _mm_setzero_pd();   /* last two sums */
+
+        while (k > 1) {
+            __m128d B0 = _mm_set1_pd (y[0]);
+            __m128d B1 = _mm_set1_pd (y[1]);
+            S0 = _mm_add_pd (S0, _mm_mul_pd (_mm_loadA_pd (x), B0));
+            S1 = _mm_add_pd (S1, _mm_mul_pd (_mm_loadA_pd (x+2), B0));
+            S0 = _mm_add_pd (S0, _mm_mul_pd (_mm_loadA_pd (x+4), B1));
+            S1 = _mm_add_pd (S1, _mm_mul_pd (_mm_loadA_pd (x+6), B1));
+            x += 8;
+            y += 2;
+            k -= 2;
+        }
+
+        if (k >= 1) {
+            __m128d B0 = _mm_set1_pd (y[0]);
+            S0 = _mm_add_pd (S0, _mm_mul_pd (_mm_loadA_pd (x), B0));
+            S1 = _mm_add_pd (S1, _mm_mul_pd (_mm_loadA_pd (x+2), B0));
+        }
+
+        _mm_storeAA_pd (z, S0);
+        _mm_storeAA_pd (z+2, S1);
+    }
+#   else
+    {
+        double s[4] = { 0, 0, 0, 0 }; /* sums for the four values in result */
+
+        while (k > 1) {
+            s[0] = (s[0] + (x[0] * y[0])) + (x[4] * y[1]);
+            s[1] = (s[1] + (x[1] * y[0])) + (x[5] * y[1]);
+            s[2] = (s[2] + (x[2] * y[0])) + (x[6] * y[1]);
+            s[3] = (s[3] + (x[3] * y[0])) + (x[7] * y[1]);
+            x += 8;
+            y += 2;
+            k -= 2;
+        }
+
+        if (k >= 1) {
+            s[0] += x[0] * y[0];
+            s[1] += x[1] * y[0];
+            s[2] += x[2] * y[0];
+            s[3] += x[3] * y[0];
+        }
+
+        /* Store the four sums in the result vector. */
+
+        z[0] = s[0];
+        z[1] = s[1];
+        z[2] = s[2];
+        z[3] = s[3];
     }
 #   endif
 }
