@@ -1636,6 +1636,47 @@ static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x,
 
         _mm_storeu_pd (z, S);
 
+#   elif CAN_USE_SSE2 && ALIGN >= 16 && ALIGN_OFFSET%16 == 8
+
+        /* Do kitty-corner summation. */
+
+        __m128d S;  /* sums for the two values in the result, swapped */
+        __m128d A;  /* pairs of values from y */
+
+        A = _mm_loadu_pd (y);
+        S = _mm_mul_sd (_mm_load_sd(x), A);
+        S = _mm_shuffle_pd (_mm_setzero_pd(), S, 0);
+        y += 1;
+
+        /* Each time around this loop, do two additions to S of
+           products with the last element in a column of x and the
+           first element of the next column with two elements of y.
+           Adjust x and y to account for this. */
+
+        while (k >= 3) {
+            S = _mm_add_pd (S, _mm_mul_pd (_mm_load_pd(x+1), A));
+            A = _mm_load_pd (y);
+            S = _mm_add_pd (S, _mm_mul_pd (_mm_load_pd(x+3), A));
+            A = _mm_unpackhi_pd (A, A);
+            A = _mm_loadh_pd (A, y+2);
+            x += 4;
+            y += 2;
+            k -= 2;
+        }
+
+        if (k >= 2) {
+            S = _mm_add_pd (S, _mm_mul_pd (_mm_load_pd(x+1), A));
+            A = _mm_unpackhi_pd (A, A);
+            x += 2;
+        }
+
+        S = _mm_add_pd (S, _mm_mul_sd (_mm_load_sd(x+1), A));
+
+        /* Store the two sums in S in the result vector. */
+
+        _mm_storeh_pd (z, S);
+        _mm_store_sd (z+1, S);
+
 #   else
 
         double s[2] = { 0, 0 };  /* sums for the two values in the result */
