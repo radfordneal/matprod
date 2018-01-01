@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit e838132a1aa1bd4916cd0192fadc489480cf80c0
+commit 5b02b8ecadc104b1364dafe147f0aa1f2317e906
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Dec 31 18:06:06 2017 -0500
+Date:   Sun Dec 31 21:24:46 2017 -0500
 
-    more unrolling, SSE2 code, in matprod_fill_lower
+    results for skylake
