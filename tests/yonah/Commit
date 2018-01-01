@@ -1,5 +1,7 @@
-commit 5cb9cc773482e668a9487d82eea1870e01dc5992
+gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse2 -mfpmath=sse
+ 
+commit 78ef50fa5f520c29ce9f095127dbd71c20e8ce33
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Dec 28 12:17:28 2017 -0500
+Date:   Sun Dec 31 22:15:37 2017 -0500
 
-    results for westmere
+    update Makefile for yonah
