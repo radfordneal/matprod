@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit 2b1850a4eee71f594c95f0ba1cc0516bb0b56146
+commit 5b02b8ecadc104b1364dafe147f0aa1f2317e906
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Dec 31 14:13:59 2017 -0500
+Date:   Sun Dec 31 21:24:46 2017 -0500
 
-    cosmetic changes
+    results for skylake
