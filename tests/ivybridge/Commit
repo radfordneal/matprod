@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 5b02b8ecadc104b1364dafe147f0aa1f2317e906
+commit 067dace4f55e26e802dc2db516cae0c3577adc5c
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Dec 31 21:24:46 2017 -0500
+Date:   Mon Jan 1 00:49:38 2018 -0500
 
-    results for skylake
+    more SSE code in matprod_mat_vec_n2
