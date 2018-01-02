@@ -165,13 +165,19 @@ void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    if (m <= 1) {
-        if (m == 1) 
+    /* Handle m of 0, 1, or 2 specially. */
+
+    if (m <= 2) {
+        if (m == 2) {
+            z[0] = x * y[0];
+            z[1] = x * y[1];
+        }
+        else if (m == 1) 
             z[0] = x * y[0];
         return;
     }
 
-    int i = 0;
+    int i = 0;  /* indexes y and z */
 
 #   if CAN_USE_SSE2 || CAN_USE_AVX
 
@@ -181,19 +187,17 @@ void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
             __m128d X = _mm_set1_pd (x);
 #       endif
 
-#       if (ALIGN_FORWARD & 8)
+#       if ALIGN_FORWARD & 8
             _mm_store_sd (z, _mm_mul_sd (cast128(X), _mm_load_sd(y)));
             i += 1;
 #       endif
 
+#       if ALIGN_FORWARD & 16
+            _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X), _mm_loadA_pd(y+i)));
+            i += 2;
+#       endif
+
 #       if CAN_USE_AVX
-#           if ALIGN >= 32 && (ALIGN_FORWARD & 16)
-                if (i <= m-2) {
-                    _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X),
-                                                    _mm_loadA_pd(y+i)));
-                    i += 2;
-                }
-#           endif
             while (i <= m-4) {
                 _mm256_storeA_pd (z+i, _mm256_mul_pd (X, _mm256_loadA_pd(y+i)));
                 i += 4;
