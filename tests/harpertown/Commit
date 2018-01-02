@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit 8ce64f9bdecac5ad54ca28b385c0f69cd5d2fe16
+commit 04ae28b24649b30b80d431f8e3fa2f51e2e297f2
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Jan 1 12:46:45 2018 -0500
+Date:   Tue Jan 2 17:53:29 2018 -0500
 
-    results for westmere
+    changes to matprod_vec_mat_k2
