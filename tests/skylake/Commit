@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 7de81608e660a625297814b524a01fa6494f581e
+commit 741267bdfb4cc2b8df802e5d319712a032a9c12b
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Jan 1 11:48:00 2018 -0500
+Date:   Tue Jan 2 11:33:11 2018 -0500
 
-    implement matprod_mat_vec_n4
+    clean up code in matprod_mat_vec_xrows
