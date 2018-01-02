@@ -589,7 +589,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
             _mm256_storeu_pd (z, S);
         }
 
-#       elif CAN_USE_SSE2 /* && ALIGN >= 16 */ /* works, but slower, when unaligned */
+#       elif CAN_USE_SSE2 && ALIGN >= 16 /* works, but slower, when unaligned */
         {
             __m128d S0, S1, B, P;
 
@@ -709,7 +709,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
         double *yy = y;
         int i = 0;
 
-#       if CAN_USE_AVX || CAN_USE_SSE2 /* && ALIGN >= 16? slower otherwise? */
+#       if CAN_USE_AVX || CAN_USE_SSE2 && ALIGN >= 16  /* slower unaligned */
         {
             __m128d S, S2, P;
 
@@ -1187,7 +1187,8 @@ static void matprod_vec_mat_k2 (double * MATPROD_RESTRICT x,
    the matrix, each consisting of at most MAT_VEC_XROWS of the rows.
    The matprod_mat_vec_sub_xrows procedure below does one such part.
 
-   Cases where k is 0 or 1 and cases where n is 2 are handled specially. */
+   Cases where k is 0 or 1 and cases where n is 2, 3, or 4 are handled
+   specially. */
 
 static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x, 
                                        double * MATPROD_RESTRICT y, 
@@ -1302,31 +1303,31 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
 
     int n2;     /* number of elements in z after those done to help alignment */
     int n3;
-    double *q;  /* pointer going along z */
+    double *zz; /* pointer going along z */
     double *xs; /* starting x pointer */
 
-    q = z;
+    zz = z;
     n2 = xrows;
     xs = x;
 
 #   if ALIGN_FORWARD & 8
-        q[0] = x[0] * y[0] + x[n] * y[1];
+        zz[0] = x[0] * y[0] + x[n] * y[1];
         n2 -= 1;
         x += 1;
-        q += 1;
+        zz += 1;
 #   endif
 
 #   if CAN_USE_AVX && (ALIGN_FORWARD & 16)
-        /* q[0] = x[0] * y[0] + x[n] * y[1];
-           q[1] = x[1] * y[0] + x[n+1] * y[1]; */
+        /* zz[0] = x[0] * y[0] + x[n] * y[1];
+           zz[1] = x[1] * y[0] + x[n+1] * y[1]; */
         __m128d Y0 = _mm_set1_pd(y[0]);
         __m128d Y1 = _mm_set1_pd(y[1]);
         __m128d X = _mm_mul_pd (_mm_loadA_pd(x), Y0);
         __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
-        _mm_storeA_pd (q, _mm_add_pd (X, P));
+        _mm_storeA_pd (zz, _mm_add_pd (X, P));
         n2 -= 2;
         x += 2;
-        q += 2;
+        zz += 2;
 #   endif
 
     n3 = n2;
@@ -1344,26 +1345,26 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
 #           if CAN_USE_AVX
                 __m256d X = _mm256_mul_pd (_mm256_loadA_pd(x), Y0);
                 __m256d P = _mm256_mul_pd (_mm256_loadu_pd(x+n), Y1);
-                _mm256_storeA_pd (q, _mm256_add_pd (X, P));
+                _mm256_storeA_pd (zz, _mm256_add_pd (X, P));
 #           else  /* CAN_USE_SSE2 */
                 __m128d X, P;
                 X = _mm_mul_pd (_mm_loadA_pd(x), Y0);
                 P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
-                _mm_storeA_pd (q, _mm_add_pd (X, P));
+                _mm_storeA_pd (zz, _mm_add_pd (X, P));
                 X = _mm_mul_pd (_mm_loadA_pd(x+2), Y0);
                 P = _mm_mul_pd (_mm_loadu_pd(x+n+2), Y1);
-                _mm_storeA_pd (q+2, _mm_add_pd (X, P));
+                _mm_storeA_pd (zz+2, _mm_add_pd (X, P));
 #           endif
             x += 4;
-            q += 4;
+            zz += 4;
             n3 -= 4;
         }
         if (n3 > 1) {
             __m128d X = _mm_mul_pd (_mm_loadA_pd(x), cast128(Y0));
             __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), cast128(Y1));
-            _mm_storeA_pd (q, _mm_add_pd (X, P));
+            _mm_storeA_pd (zz, _mm_add_pd (X, P));
             x += 2;
-            q += 2;
+            zz += 2;
             n3 -= 2;
         }
     }
@@ -1371,26 +1372,26 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
 #   else  /* non-SIMD code */
     {
         while (n3 >= 4) { 
-            q[0] = x[0] * y[0] + x[n] * y[1];
-            q[1] = x[1] * y[0] + x[n+1] * y[1];
-            q[2] = x[2] * y[0] + x[n+2] * y[1];
-            q[3] = x[3] * y[0] + x[n+3] * y[1];
+            zz[0] = x[0] * y[0] + x[n] * y[1];
+            zz[1] = x[1] * y[0] + x[n+1] * y[1];
+            zz[2] = x[2] * y[0] + x[n+2] * y[1];
+            zz[3] = x[3] * y[0] + x[n+3] * y[1];
             x += 4;
-            q += 4;
+            zz += 4;
             n3 -= 4;
         }
         if (n3 > 1) {
-            q[0] = x[0] * y[0] + x[n] * y[1];
-            q[1] = x[1] * y[0] + x[n+1] * y[1];
+            zz[0] = x[0] * y[0] + x[n] * y[1];
+            zz[1] = x[1] * y[0] + x[n+1] * y[1];
             x += 2;
-            q += 2;
+            zz += 2;
             n3 -= 2;
         }
     }
 #   endif
 
     if (n3 >= 1) {
-        q[0] = x[0] * y[0] + x[n] * y[1];
+        zz[0] = x[0] * y[0] + x[n] * y[1];
         x += 1;
     }
 
@@ -1405,27 +1406,27 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
 
     while (k > 1) {
 
-        q = z;
+        zz = z;
         xs = x;
 
 #       if ALIGN_FORWARD & 8
-            q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
+            zz[0] = (zz[0] + x[0] * y[0]) + x[n] * y[1];
             x += 1;
-            q += 1;
+            zz += 1;
 #       endif
 
 #       if CAN_USE_AVX && (ALIGN_FORWARD & 16)
-            /* q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
-               q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1]; */
+            /* zz[0] = (zz[0] + x[0] * y[0]) + x[n] * y[1];
+               zz[1] = (zz[1] + x[1] * y[0]) + x[n+1] * y[1]; */
             __m128d Y0 = _mm_set1_pd(y[0]);
             __m128d Y1 = _mm_set1_pd(y[1]);
-            __m128d Q = _mm_loadA_pd(q);
+            __m128d Q = _mm_loadA_pd(zz);
             __m128d X = _mm_mul_pd (_mm_loadA_pd(x), Y0);
             __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
             Q = _mm_add_pd (_mm_add_pd (Q, X), P);
-            _mm_storeA_pd (q, Q);
+            _mm_storeA_pd (zz, Q);
             x += 2;
-            q += 2;
+            zz += 2;
 #       endif
 
         n3 = n2;
@@ -1442,65 +1443,65 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
             while (n3 >= 4) { 
 #               if CAN_USE_AVX
                 {
-                    __m256d Q = _mm256_loadA_pd(q);
+                    __m256d Q = _mm256_loadA_pd(zz);
                     __m256d X = _mm256_mul_pd (_mm256_loadA_pd(x), Y0);
                     __m256d P = _mm256_mul_pd (_mm256_loadu_pd(x+n), Y1);
                     Q = _mm256_add_pd (_mm256_add_pd (Q, X), P);
-                    _mm256_storeA_pd (q, Q);
+                    _mm256_storeA_pd (zz, Q);
                 }
 #               else  /* CAN_USE_SSE2 */
                 {
                     __m128d Q, X, P;
-                    Q = _mm_loadA_pd(q);
+                    Q = _mm_loadA_pd(zz);
                     X = _mm_mul_pd (_mm_loadA_pd(x), Y0);
                     P = _mm_mul_pd (_mm_loadu_pd(x+n), Y1);
                     Q = _mm_add_pd (_mm_add_pd (Q, X), P);
-                    _mm_storeA_pd (q, Q);
-                    Q = _mm_loadA_pd(q+2);
+                    _mm_storeA_pd (zz, Q);
+                    Q = _mm_loadA_pd(zz+2);
                     X = _mm_mul_pd (_mm_loadA_pd(x+2), Y0);
                     P = _mm_mul_pd (_mm_loadu_pd(x+n+2), Y1);
                     Q = _mm_add_pd (_mm_add_pd (Q, X), P);
-                    _mm_storeA_pd (q+2, Q);
+                    _mm_storeA_pd (zz+2, Q);
                 }
 #               endif
                 x += 4;
-                q += 4;
+                zz += 4;
                 n3 -= 4;
             }
             if (n3 > 1) {
-                __m128d Q = _mm_loadA_pd(q);
+                __m128d Q = _mm_loadA_pd(zz);
                 __m128d X = _mm_mul_pd (_mm_loadA_pd(x), cast128(Y0));
                 __m128d P = _mm_mul_pd (_mm_loadu_pd(x+n), cast128(Y1));
                 Q = _mm_add_pd (_mm_add_pd (Q, X), P);
-                _mm_storeA_pd (q, Q);
+                _mm_storeA_pd (zz, Q);
                 x += 2;
-                q += 2;
+                zz += 2;
                 n3 -= 2;
             }
         }
 #       else  /* non-SIMD code */
         {
             while (n3 >= 4) { 
-                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
-                q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
-                q[2] = (q[2] + x[2] * y[0]) + x[n+2] * y[1];
-                q[3] = (q[3] + x[3] * y[0]) + x[n+3] * y[1];
+                zz[0] = (zz[0] + x[0] * y[0]) + x[n] * y[1];
+                zz[1] = (zz[1] + x[1] * y[0]) + x[n+1] * y[1];
+                zz[2] = (zz[2] + x[2] * y[0]) + x[n+2] * y[1];
+                zz[3] = (zz[3] + x[3] * y[0]) + x[n+3] * y[1];
                 x += 4;
-                q += 4;
+                zz += 4;
                 n3 -= 4;
             }
             if (n3 > 1) {
-                q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
-                q[1] = (q[1] + x[1] * y[0]) + x[n+1] * y[1];
+                zz[0] = (zz[0] + x[0] * y[0]) + x[n] * y[1];
+                zz[1] = (zz[1] + x[1] * y[0]) + x[n+1] * y[1];
                 x += 2;
-                q += 2;
+                zz += 2;
                 n3 -= 2;
             }
         }
 #       endif
 
         if (n3 >= 1) {
-            q[0] = (q[0] + x[0] * y[0]) + x[n] * y[1];
+            zz[0] = (zz[0] + x[0] * y[0]) + x[n] * y[1];
             x += 1;
         }
 
@@ -1514,25 +1515,25 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
 
     if (k >= 1) {
 
-        q = z;
+        zz = z;
 
 #       if ALIGN_FORWARD & 8
         {
-            q[0] += x[0] * y[0];
+            zz[0] += x[0] * y[0];
             x += 1;
-            q += 1;
+            zz += 1;
         }
 #       endif
 
 #       if CAN_USE_AVX && (ALIGN_FORWARD & 16)
         {
             __m128d Y0 = _mm_set1_pd(y[0]);
-            __m128d Q = _mm_loadA_pd(q);
+            __m128d Q = _mm_loadA_pd(zz);
             __m128d X = _mm_mul_pd (_mm_loadA_pd(x), Y0);
             Q = _mm_add_pd (Q, X);
-            _mm_storeA_pd (q, Q);
+            _mm_storeA_pd (zz, Q);
             x += 2;
-            q += 2;
+            zz += 2;
         }
 #       endif
 
@@ -1548,54 +1549,54 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
             while (n3 >= 4) { 
 #               if CAN_USE_AVX
                 {
-                    __m256d Q = _mm256_loadA_pd(q);
+                    __m256d Q = _mm256_loadA_pd(zz);
                     __m256d X = _mm256_mul_pd (_mm256_loadA_pd(x), Y);
                     Q = _mm256_add_pd (Q, X);
-                    _mm256_storeA_pd (q, Q);
+                    _mm256_storeA_pd (zz, Q);
                 }
 #               else  /* CAN_USE_SSE2 */
                 {
                     __m128d Q, X;
-                    Q = _mm_loadA_pd(q);
+                    Q = _mm_loadA_pd(zz);
                     X = _mm_mul_pd (_mm_loadA_pd(x), Y);
                     Q = _mm_add_pd (Q, X);
-                    _mm_storeA_pd (q, Q);
-                    Q = _mm_loadA_pd(q+2);
+                    _mm_storeA_pd (zz, Q);
+                    Q = _mm_loadA_pd(zz+2);
                     X = _mm_mul_pd (_mm_loadA_pd(x+2), Y);
                     Q = _mm_add_pd (Q, X);
-                    _mm_storeA_pd (q+2, Q);
+                    _mm_storeA_pd (zz+2, Q);
                 }
 #               endif
                 x += 4;
-                q += 4;
+                zz += 4;
                 n3 -= 4;
             }
             if (n3 > 1) {
-                __m128d Q = _mm_loadA_pd(q);
+                __m128d Q = _mm_loadA_pd(zz);
                 __m128d X = _mm_mul_pd (_mm_loadA_pd(x), cast128(Y));
                 Q = _mm_add_pd (Q, X);
-                _mm_storeA_pd (q, Q);
+                _mm_storeA_pd (zz, Q);
                 x += 2;
-                q += 2;
+                zz += 2;
                 n3 -= 2;
             }
         }
 #       else  /* non-SIMD code */
         {
             while (n3 >= 4) { 
-                q[0] += x[0] * y[0];
-                q[1] += x[1] * y[0];
-                q[2] += x[2] * y[0];
-                q[3] += x[3] * y[0];
+                zz[0] += x[0] * y[0];
+                zz[1] += x[1] * y[0];
+                zz[2] += x[2] * y[0];
+                zz[3] += x[3] * y[0];
                 x += 4;
-                q += 4;
+                zz += 4;
                 n3 -= 4;
             }
             if (n3 > 1) { 
-                q[0] += x[0] * y[0];
-                q[1] += x[1] * y[0];
+                zz[0] += x[0] * y[0];
+                zz[1] += x[1] * y[0];
                 x += 2;
-                q += 2;
+                zz += 2;
                 n3 -= 2;
             }
         }
@@ -1603,7 +1604,7 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
 #       endif
 
         if (n3 >= 1) {
-            q[0] += x[0] * y[0];
+            zz[0] += x[0] * y[0];
         }
     }
 }
