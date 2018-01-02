@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit 7de81608e660a625297814b524a01fa6494f581e
+commit 465b08cb36a887750c0e327b78275004775e1db0
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Jan 1 11:48:00 2018 -0500
+Date:   Tue Jan 2 12:17:15 2018 -0500
 
-    implement matprod_mat_vec_n4
+    results for skylake
