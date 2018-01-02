@@ -1111,7 +1111,7 @@ static void matprod_vec_mat_k2 (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    int i;
+    int i = 0;
 
 #   if CAN_USE_SSE3 || CAN_USE_AVX
     {
@@ -1124,51 +1124,49 @@ static void matprod_vec_mat_k2 (double * MATPROD_RESTRICT x,
 #       if ALIGN_FORWARD & 8
         {
             __m128d A = _mm_mul_pd (cast128(T), _mm_loadAA_pd(y));
-            _mm_store_sd (z, _mm_hadd_pd(A,A));
-            z += 1;
+            _mm_store_sd (z+i, _mm_hadd_pd(A,A));
             y += 2;
-            m -= 1;
+            i += 1;
         }
 #       endif
 
-#       if CAN_USE_AVX
-            while (m >= 4) {
+        while (i <= m-4) {
+#           if CAN_USE_AVX
+            {
                  __m256d A = _mm256_mul_pd (T, _mm256_loadAA_pd(y));
                  __m256d B = _mm256_mul_pd (T, _mm256_loadAA_pd(y+4));
-                 _mm256_storeAA_pd(z,_mm256_hadd_pd
+                 _mm256_storeAA_pd(z+i,_mm256_hadd_pd
                                     (_mm256_permute2f128_pd(A,B,0x20),
                                      _mm256_permute2f128_pd(A,B,0x31)));
                 y += 8;
-                z += 4;
-                m -= 4;
+                i += 4;
             }
-#       else  /* CAN_USE_SSE3 */
-            while (m >= 4) {
+#           else  /* CAN_USE_SSE3 */
+            {
                  __m128d A, B;
                  A = _mm_mul_pd (T, _mm_loadAA_pd(y));
                  B = _mm_mul_pd (T, _mm_loadAA_pd(y+2));
-                 _mm_storeA_pd (z, _mm_hadd_pd(A,B));
+                 _mm_storeA_pd (z+i, _mm_hadd_pd(A,B));
                  A = _mm_mul_pd (T, _mm_loadAA_pd(y+4));
                  B = _mm_mul_pd (T, _mm_loadAA_pd(y+6));
                  _mm_storeA_pd (z+2, _mm_hadd_pd(A,B));
                 y += 8;
-                z += 4;
-                m -= 4;
+                i += 4;
             }
-#       endif
-
-        if (m > 1) {
-             __m128d A = _mm_mul_pd (cast128(T), _mm_loadAA_pd(y));
-             __m128d B = _mm_mul_pd (cast128(T), _mm_loadAA_pd(y+2));
-             _mm_storeA_pd (z, _mm_hadd_pd(A,B));
-            y += 4;
-            z += 2;
-            m -= 2;
+#           endif
         }
 
-        if (m >= 1) {
+        if (i <= m-2) {
+             __m128d A = _mm_mul_pd (cast128(T), _mm_loadAA_pd(y));
+             __m128d B = _mm_mul_pd (cast128(T), _mm_loadAA_pd(y+2));
+             _mm_storeA_pd (z+i, _mm_hadd_pd(A,B));
+            y += 4;
+            i += 2;
+        }
+
+        if (i < m) {
             __m128d A = _mm_mul_pd (cast128(T), _mm_loadAA_pd(y));
-            _mm_store_sd (z, _mm_hadd_pd(A,A));
+            _mm_store_sd (z+i, _mm_hadd_pd(A,A));
         }
     }
 
@@ -1176,26 +1174,24 @@ static void matprod_vec_mat_k2 (double * MATPROD_RESTRICT x,
     {
         double t[2] = { x[0], x[1] };
 
-        while (m >= 4) {
-            z[0] = t[0] * y[0] + t[1] * y[1];
-            z[1] = t[0] * y[2] + t[1] * y[3];
-            z[2] = t[0] * y[4] + t[1] * y[5];
-            z[3] = t[0] * y[6] + t[1] * y[7];
+        while (i <= m-4) {
+            z[i+0] = t[0] * y[0] + t[1] * y[1];
+            z[i+1] = t[0] * y[2] + t[1] * y[3];
+            z[i+2] = t[0] * y[4] + t[1] * y[5];
+            z[i+3] = t[0] * y[6] + t[1] * y[7];
             y += 8;
-            z += 4;
-            m -= 4;
+            i += 4;
         }
 
-        if (m > 1) {
-            z[0] = t[0] * y[0] + t[1] * y[1];
-            z[1] = t[0] * y[2] + t[1] * y[3];
+        if (i <= m-2) {
+            z[i+0] = t[0] * y[0] + t[1] * y[1];
+            z[i+1] = t[0] * y[2] + t[1] * y[3];
             y += 4;
-            z += 2;
-            m -= 2;
+            i += 2;
         }
 
-        if (m >= 1) {
-            z[0] = t[0] * y[0] + t[1] * y[1];
+        if (i < m) {
+            z[i] = t[0] * y[0] + t[1] * y[1];
         }
     }
 #   endif
