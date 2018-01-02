@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit ff877043fb88827d12d711b6baebf3e1210710dc
+commit 099707816628370b34c6c3ec4083745810e45185
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Tue Jan 2 13:42:00 2018 -0500
+Date:   Tue Jan 2 15:00:19 2018 -0500
 
-    code cleanup in matprod_vec_mat_sub_yrows
+    results for sandybridge
