@@ -5,6 +5,8 @@ ARMv7 Cortex-A9 i.MX6 processor @ 1 GHz
 Debian/Trusty 14.04.5
 gcc 4.8.4
 
+System BLAS is libatlas3-base_3.10.1-4_armhf.deb
+
  ---------------------------------------- 
 | Machine (2016MB)                       |
 |                                        |

@@ -1,0 +1,7 @@
+gcc -g -std=gnu99 -O3 -ffp-contract=off
+ 
+commit e9d838283cd130f733d89f9a0b3ca7514f5dd665
+Author: Radford Neal <radfordneal@gmail.com>
+Date:   Tue Jan 2 02:45:20 2018 +0100
+
+    System and Makefile for cortex-A9
