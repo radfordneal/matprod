@@ -1,5 +1,7 @@
-commit 579ad0231f235b3f05ace8e8729fd1c72d043c68
+gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
+ 
+commit f5f0dba59537c164a93e55ec5a0509e251954b3c
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Dec 28 15:11:17 2017 -0500
+Date:   Mon Jan 1 20:04:46 2018 -0500
 
-    results for foster
+    results for harpertown
