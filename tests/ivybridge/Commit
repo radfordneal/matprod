@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 067dace4f55e26e802dc2db516cae0c3577adc5c
+commit 1a2e98513f4d92ec03186890f76a6b5a95067f86
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Jan 1 00:49:38 2018 -0500
+Date:   Tue Jan 2 15:21:35 2018 -0500
 
-    more SSE code in matprod_mat_vec_n2
+    tweak to matprod_scalar_vec
