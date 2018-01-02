@@ -589,7 +589,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
             _mm256_storeu_pd (z, S);
         }
 
-#       elif CAN_USE_SSE2 /* && ALIGN >= 16 */ /* works, but slower, when unaligned */
+#       elif CAN_USE_SSE2 && ALIGN >= 16 /* works, but slower, when unaligned */
         {
             __m128d S0, S1, B, P;
 
@@ -709,7 +709,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
         double *yy = y;
         int i = 0;
 
-#       if CAN_USE_AVX || CAN_USE_SSE2 /* && ALIGN >= 16? slower otherwise? */
+#       if CAN_USE_AVX || CAN_USE_SSE2 && ALIGN >= 16  /* slower unaligned */
         {
             __m128d S, S2, P;
 
