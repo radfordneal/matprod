@@ -2348,34 +2348,58 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
        The definition of MAT_MAT_XCOLS is designed to keep the
        submatrix of x with MAT_MAT_XROWS and MAT_MAT_XCOLS in an L2
        cache of a least 256K bytes, while it is multiplied repeatedly
-       by columns of y. */
+       by columns of y. 
 
-#   define MAT_MAT_XROWS (1024-64)  /* be multiple of 8 to keep any alignment */
-#   define MAT_MAT_XCOLS 32         /* be multiple of 8 to keep any alignment */
+       If y is large, its columns are done in groups, whose size is
+       designed to keep these columns of y and z in a last-level cache
+       that can hold MAT_MAT_LLC doubles. */
+
+#   define MAT_MAT_XROWS (1024-64) /* be multiple of 8 to keep any alignment  */
+#   define MAT_MAT_XCOLS 32        /* be multiple of 8 to keep any alignment  */
+#   define MAT_MAT_LLC 100000      /* doubles assumed fit in last-level cache */
 
     if (n <= MAT_MAT_XROWS && k <= MAT_MAT_XCOLS) { /* do small cases quickly */
         matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m, n, k, 0);
         return;
     }
 
-    int xrows = n;
+    int cachable_yzcols = 
+      (int) (MAT_MAT_LLC / ((double)k + (n<MAT_MAT_XROWS ? n : MAT_MAT_XROWS)));
 
-    if (xrows > MAT_MAT_XROWS && k > 2) {
-        while (xrows >= 2*MAT_MAT_XROWS) {
-            matprod_mat_mat_sub_xrows (x, y, z, n, k, m, MAT_MAT_XROWS);
-            x += MAT_MAT_XROWS;
-            z += MAT_MAT_XROWS;
-            xrows -= MAT_MAT_XROWS;
+    int mm = m;
+
+    for (;;) {
+        double *xx = x;
+        double *zz = z;
+        int m1 = mm;
+        if (m1 > cachable_yzcols) {
+            m1 = mm < 2*cachable_yzcols ? mm/2 : cachable_yzcols;
+            m1 = (m1 + 7) & ~7;
+            if (m1 > mm) m1 = mm;
         }
-        if (xrows > MAT_MAT_XROWS) {
-            int nr = ((xrows+1)/2) & ~7; /* keep any alignment of x, z */
-            matprod_mat_mat_sub_xrows (x, y, z, n, k, m, nr);
-            x += nr;
-            z += nr;
-            xrows -= nr;
+        int xrows = n;
+        if (xrows > MAT_MAT_XROWS && k > 2) {
+            while (xrows >= 2*MAT_MAT_XROWS) {
+                matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1, MAT_MAT_XROWS);
+                xx += MAT_MAT_XROWS;
+                zz += MAT_MAT_XROWS;
+                xrows -= MAT_MAT_XROWS;
+            }
+            if (xrows > MAT_MAT_XROWS) {
+                int nr = ((xrows+1)/2) & ~7; /* keep any alignment of x, z */
+                matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1, nr);
+                xx += nr;
+                zz += nr;
+                xrows -= nr;
+            }
         }
+        matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1, xrows);
+        mm -= m1;
+        if (mm == 0)
+            break;
+        y += m1*k;
+        z += m1*n;
     }
-    matprod_mat_mat_sub_xrows (x, y, z, n, k, m, xrows);
 }
 
 static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x, 
