@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit d25ff9097113583a9c10c8d25c6bd1d4b5253a53
+commit d5b93a665c156f7b49e1411c6950b4862008758e
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Wed Jan 3 09:41:36 2018 -0500
+Date:   Wed Jan 3 17:14:37 2018 -0500
 
-    don't split on y cols in matprod_mat_mat if only one group of x rows
+    SSE code and other revisions in matprod_mat_mat_n2
