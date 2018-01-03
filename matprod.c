@@ -2350,9 +2350,10 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
        cache of a least 256K bytes, while it is multiplied repeatedly
        by columns of y. 
 
-       If y is large, its columns are done in groups, whose size is
-       designed to keep these columns of y and z in a last-level cache
-       that can hold MAT_MAT_LLC doubles. */
+       If y is large, and rows of x will be split, the columns of y
+       are done in groups, whose size is designed to keep these
+       columns of y and z in a last-level cache that can hold
+       MAT_MAT_LLC doubles. */
 
 #   define MAT_MAT_XROWS (1024-64) /* be multiple of 8 to keep any alignment  */
 #   define MAT_MAT_XCOLS 32        /* be multiple of 8 to keep any alignment  */
@@ -2363,7 +2364,7 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
         return;
     }
 
-    int cachable_yzcols = 
+    int cachable_yzcols = n <= MAT_MAT_XROWS ? m :
       (int) (MAT_MAT_LLC / ((double)k + (n<MAT_MAT_XROWS ? n : MAT_MAT_XROWS)));
 
     int mm = m;
