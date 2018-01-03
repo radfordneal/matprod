@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit f5f0dba59537c164a93e55ec5a0509e251954b3c
+commit 08973bf88b47371272c4fc98fb3598cbc6707be9
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Jan 1 20:04:46 2018 -0500
+Date:   Wed Jan 3 11:59:12 2018 -0500
 
-    results for harpertown
+    results for ivybridge
