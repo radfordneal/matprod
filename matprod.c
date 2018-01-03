@@ -2878,76 +2878,71 @@ static void matprod_mat_mat_n2 (double * MATPROD_RESTRICT x,
 
     while (m > 1) {
 
+        double *xx = x;
+        int i = 0;
+
 #       if CAN_USE_SSE2
-
-            double *r = x;
-            int k2 = k;
-
+        {
             __m128d S0 = _mm_setzero_pd();
             __m128d S1 = _mm_setzero_pd();
 
             /* Each time around this loop, add the products of two
                columns of x with elements of the next two columns of y
-               to the sums.  Adjust r and y to account for this. */
+               to the sums. */
 
-            while (k2 > 1) {
-                __m128d R;
-                R = _mm_loadAA_pd(r);
-                S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[0])), S0);
-                S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k])), S1);
-                R = _mm_loadAA_pd(r+2);
-                S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[1])), S0);
-                S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k+1])), S1);
-                r += 4;
-                y += 2;
-                k2 -= 2;
+            while (i <= k-2) {
+                __m128d X;
+                X = _mm_loadAA_pd(xx);
+                S0 = _mm_add_pd (_mm_mul_pd (X, _mm_set1_pd(y[i+0])), S0);
+                S1 = _mm_add_pd (_mm_mul_pd (X, _mm_set1_pd(y[i+k])), S1);
+                X = _mm_loadAA_pd(xx+2);
+                S0 = _mm_add_pd (_mm_mul_pd (X, _mm_set1_pd(y[i+1])), S0);
+                S1 = _mm_add_pd (_mm_mul_pd (X, _mm_set1_pd(y[i+k+1])), S1);
+                xx += 4;
+                i += 2;
             }
 
-            if (k2 >= 1) {
-                __m128d R;
-                R = _mm_loadAA_pd(r);
-                S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[0])), S0);
-                S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(y[k])), S1);
-                y += 1;
+            if (i < k) {
+                __m128d X;
+                X = _mm_loadAA_pd(xx);
+                S0 = _mm_add_pd (_mm_mul_pd (X, _mm_set1_pd(y[i+0])), S0);
+                S1 = _mm_add_pd (_mm_mul_pd (X, _mm_set1_pd(y[i+k])), S1);
             }
 
             /* Store sums in the next two result columns. */
 
             _mm_storeAA_pd (z, S0);
             _mm_storeAA_pd (z+2, S1);
+        }
 
 #       else  /* non-SIMD code */
-
+        {
             double s[4] = { 0, 0, 0, 0 };
-            double *r = x;
-            int k2 = k;
 
             /* Each time around this loop, add the products of two
                columns of x with elements of the next two columns of y
-               to the sums.  Adjust r and y to account for this. */
+               to the sums. */
 
-            while (k2 > 1) {
-                double b11 = y[0];
-                double b12 = y[1];
-                double b21 = y[k];
-                double b22 = y[k+1];
-                s[0] = (s[0] + (r[0] * b11)) + (r[2] * b12);
-                s[1] = (s[1] + (r[1] * b11)) + (r[3] * b12);
-                s[2] = (s[2] + (r[0] * b21)) + (r[2] * b22);
-                s[3] = (s[3] + (r[1] * b21)) + (r[3] * b22);
-                r += 4;
-                y += 2;
-                k2 -= 2;
+            while (i <= k-2) {
+                double b11 = y[i+0];
+                double b12 = y[i+1];
+                double b21 = y[i+k];
+                double b22 = y[i+k+1];
+                s[0] = (s[0] + (xx[0] * b11)) + (xx[2] * b12);
+                s[1] = (s[1] + (xx[1] * b11)) + (xx[3] * b12);
+                s[2] = (s[2] + (xx[0] * b21)) + (xx[2] * b22);
+                s[3] = (s[3] + (xx[1] * b21)) + (xx[3] * b22);
+                xx += 4;
+                i += 2;
             }
 
-            if (k2 >= 1) {
-                double b1 = y[0];
-                double b2 = y[k];
-                s[0] += r[0] * b1;
-                s[1] += r[1] * b1;
-                s[2] += r[0] * b2;
-                s[3] += r[1] * b2;
-                y += 1;
+            if (i < k) {
+                double b1 = y[i+0];
+                double b2 = y[i+k];
+                s[0] += xx[0] * b1;
+                s[1] += xx[1] * b1;
+                s[2] += xx[0] * b2;
+                s[3] += xx[1] * b2;
             }
 
             /* Store sums in the next two result columns. */
@@ -2956,13 +2951,13 @@ static void matprod_mat_mat_n2 (double * MATPROD_RESTRICT x,
             z[1] = s[1];
             z[2] = s[2];
             z[3] = s[3];
-
+        }
 #       endif
 
         /* Move forward by two to next column of the result and the
            next column of y. */
 
-        y += k;  /* already advanced by k, so total advance is 2*k */
+        y += k; y +=k;  /* not y += 2*k, since 2*k could overflow */
         z += 4;
         m -= 2;
     }
@@ -2971,34 +2966,67 @@ static void matprod_mat_mat_n2 (double * MATPROD_RESTRICT x,
 
     if (m >= 1) {
 
-        double s[2] = { 0, 0 };  /* sums for the two values in the result */
-        double *r = x;
-        int k2 = k;
+        double *xx = x;
+        int i = 0;
 
-        /* Each time around this loop, add the products of two columns
-           of x with two elements of the last column of y to s[0] and s[1]. */
+#       if CAN_USE_SSE2
+        {
+            __m128d S = _mm_setzero_pd();
 
-        while (k2 > 1) {
-            double b1 = y[0];
-            double b2 = y[1];
-            s[0] = (s[0] + (r[0] * b1)) + (r[2] * b2);
-            s[1] = (s[1] + (r[1] * b1)) + (r[3] * b2);
-            r += 4;
-            y += 2;
-            k2 -= 2;
+            /* Each time around this loop, add the products of the
+               next two columns of x with elements of the last column
+               of y to the sums. */
+
+            while (i <= k-2) {
+                __m128d X;
+                X = _mm_loadAA_pd(xx);
+                S = _mm_add_pd (_mm_mul_pd (X, _mm_set1_pd(y[i+0])), S);
+                X = _mm_loadAA_pd(xx+2);
+                S = _mm_add_pd (_mm_mul_pd (X, _mm_set1_pd(y[i+1])), S);
+                xx += 4;
+                i += 2;
+            }
+
+            if (i < k) {
+                __m128d X;
+                X = _mm_loadAA_pd(xx);
+                S = _mm_add_pd (_mm_mul_pd (X, _mm_set1_pd(y[i])), S);
+            }
+
+            /* Store sums in the last result column. */
+
+            _mm_storeAA_pd (z, S);
         }
 
-        if (k2 >= 1) {
-            double b = y[0];
-            s[0] += r[0] * b;
-            s[1] += r[1] * b;
-            /* y += 1; */
+#       else  /* non-SIMD code */
+        {
+            double s[2] = { 0, 0 };  /* sums for the two values in the result */
+
+            /* Each time around this loop, add the products of two
+               columns of x with two elements of the last column of y
+               to s[0] and s[1]. */
+
+            while (i <= k-2) {
+                double b1 = y[i+0];
+                double b2 = y[i+1];
+                s[0] = (s[0] + (xx[0] * b1)) + (xx[2] * b2);
+                s[1] = (s[1] + (xx[1] * b1)) + (xx[3] * b2);
+                xx += 4;
+                i += 2;
+            }
+
+            if (i < k) {
+                double b = y[i+0];
+                s[0] += xx[0] * b;
+                s[1] += xx[1] * b;
+            }
+
+            /* Store the two sums in s[0] and s[1] in the result vector. */
+
+            z[0] = s[0];
+            z[1] = s[1];
         }
-
-        /* Store the two sums in s[0] and s[1] in the result vector. */
-
-        z[0] = s[0];
-        z[1] = s[1];
+#       endif
     }
 }
 
