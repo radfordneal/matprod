@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit 806eb7b2162fe89c1d43c90be5d986a4baed9c5c
+commit d25ff9097113583a9c10c8d25c6bd1d4b5253a53
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Tue Jan 2 19:42:56 2018 -0500
+Date:   Wed Jan 3 09:41:36 2018 -0500
 
-    improved m=2 and m=3 cases of matprod_vec_mat
+    don't split on y cols in matprod_mat_mat if only one group of x rows
