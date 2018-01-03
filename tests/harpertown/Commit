@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit 04ae28b24649b30b80d431f8e3fa2f51e2e297f2
+commit 806eb7b2162fe89c1d43c90be5d986a4baed9c5c
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Tue Jan 2 17:53:29 2018 -0500
+Date:   Tue Jan 2 19:42:56 2018 -0500
 
-    changes to matprod_vec_mat_k2
+    improved m=2 and m=3 cases of matprod_vec_mat
