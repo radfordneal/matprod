@@ -55,7 +55,7 @@
 
 #if ALIGN >= 8 && __GNUC__
 #define CAN_ASSUME_ALIGNED 1
-#define ASSUME_ALIGNED(x,a,o) __builtin_assume_aligned(x,a,o);
+#define ASSUME_ALIGNED(x,a,o) __builtin_assume_aligned(x,a,o)
 #else
 #define CAN_ASSUME_ALIGNED 0
 #define ASSUME_ALIGNED(x,a,o) (x)
@@ -762,27 +762,52 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
 #           endif
 
 #           if CAN_USE_AVX
-                while (i <= yrows-4) {
-                    __m256d P = _mm256_loadA_pd(x+i);
-                    __m256d T0 = _mm256_mul_pd (_mm256_loadA_pd(y+i), P);
-                    __m256d T1 = _mm256_mul_pd (_mm256_loadu_pd(y+i+k), P);
-                    __m256d T2 = _mm256_mul_pd (_mm256_loadu_pd(y+i+2*k), P);
-                    __m128d L2 = cast128 (T2);
-                    __m128d H2 = _mm256_extractf128_pd (T2, 1);
-                    __m256d L = _mm256_unpacklo_pd(T0,T1);
-                    __m256d H = _mm256_unpackhi_pd(T0,T1);
-                    S = _mm_add_pd (cast128(L), S);
-                    S = _mm_add_pd (cast128(H), S);
-                    S = _mm_add_pd (_mm256_extractf128_pd(L,1), S);
-                    S = _mm_add_pd (_mm256_extractf128_pd(H,1), S);
-                    S2 = _mm_add_sd (L2, S2);
-                    S2 = _mm_add_sd (_mm_unpackhi_pd(L2,L2), S2);
-                    S2 = _mm_add_sd (H2, S2);
-                    S2 = _mm_add_sd (_mm_unpackhi_pd(H2,H2), S2);
-                    i += 4;
+                if (ALIGN >= 16 && (k & 1)) {
+                    while (i <= yrows-4) {
+                        __m256d P = _mm256_loadA_pd(x+i);
+                        __m256d T0 = _mm256_mul_pd (_mm256_loadA_pd(y+i), P);
+                        __m256d T1 = _mm256_mul_pd (_mm256_loadu_pd(y+i+k), P);
+                        __m256d T2 = _mm256_mul_pd (_mm256_loadu_pd 
+                                          (ASSUME_ALIGNED (y+i+2*k, 16, 0)), P);
+                        __m128d L2 = cast128 (T2);
+                        __m128d H2 = _mm256_extractf128_pd (T2, 1);
+                        __m256d L = _mm256_unpacklo_pd(T0,T1);
+                        __m256d H = _mm256_unpackhi_pd(T0,T1);
+                        S = _mm_add_pd (cast128(L), S);
+                        S = _mm_add_pd (cast128(H), S);
+                        S = _mm_add_pd (_mm256_extractf128_pd(L,1), S);
+                        S = _mm_add_pd (_mm256_extractf128_pd(H,1), S);
+                        S2 = _mm_add_sd (L2, S2);
+                        S2 = _mm_add_sd (_mm_unpackhi_pd(L2,L2), S2);
+                        S2 = _mm_add_sd (H2, S2);
+                        S2 = _mm_add_sd (_mm_unpackhi_pd(H2,H2), S2);
+                        i += 4;
+                    }
+                }
+                else {  /* third column aligned if first is */
+                    while (i <= yrows-4) {
+                        __m256d P = _mm256_loadA_pd(x+i);
+                        __m256d T0 = _mm256_mul_pd (_mm256_loadA_pd(y+i),P);
+                        __m256d T1 = _mm256_mul_pd (_mm256_loadu_pd
+                          (ALIGN < 16 ? y+i+k : ASSUME_ALIGNED(y+i+k,16,0)), P);
+                        __m256d T2 = _mm256_mul_pd (_mm256_loadA_pd(y+i+2*k),P);
+                        __m128d L2 = cast128 (T2);
+                        __m128d H2 = _mm256_extractf128_pd (T2, 1);
+                        __m256d L = _mm256_unpacklo_pd(T0,T1);
+                        __m256d H = _mm256_unpackhi_pd(T0,T1);
+                        S = _mm_add_pd (cast128(L), S);
+                        S = _mm_add_pd (cast128(H), S);
+                        S = _mm_add_pd (_mm256_extractf128_pd(L,1), S);
+                        S = _mm_add_pd (_mm256_extractf128_pd(H,1), S);
+                        S2 = _mm_add_sd (L2, S2);
+                        S2 = _mm_add_sd (_mm_unpackhi_pd(L2,L2), S2);
+                        S2 = _mm_add_sd (H2, S2);
+                        S2 = _mm_add_sd (_mm_unpackhi_pd(H2,H2), S2);
+                        i += 4;
+                    }
                 }
 #           else  /* CAN_USE_SSE2 */
-                if (k & 1) {  /* second column not aligned if first is */
+                if (ALIGN >= 16 && (k & 1)) {
                     while (i <= yrows-4) {
                         __m128d P, T0, T1, T2;
                         P = _mm_loadA_pd(x+i);
@@ -919,22 +944,39 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
 
 #           if CAN_USE_AVX
             {
-                while (i <= yrows-4) {
-                    __m256d P = _mm256_loadA_pd(x+i);
-                    __m256d T0 = _mm256_mul_pd (_mm256_loadA_pd(y+i), P);
-                    __m256d T1 = _mm256_mul_pd (_mm256_loadu_pd(y+i+k), P);
-                    __m256d L = _mm256_unpacklo_pd(T0,T1);
-                    __m256d H = _mm256_unpackhi_pd(T0,T1);
-                    S = _mm_add_pd (cast128(L), S);
-                    S = _mm_add_pd (cast128(H), S);
-                    S = _mm_add_pd (_mm256_extractf128_pd(L,1), S);
-                    S = _mm_add_pd (_mm256_extractf128_pd(H,1), S);
-                    i += 4;
+                if (ALIGN >= 16 && (k & 1)) {
+                    while (i <= yrows-4) {
+                        __m256d P = _mm256_loadA_pd(x+i);
+                        __m256d T0 = _mm256_mul_pd (_mm256_loadA_pd(y+i), P);
+                        __m256d T1 = _mm256_mul_pd (_mm256_loadu_pd(y+i+k), P);
+                        __m256d L = _mm256_unpacklo_pd(T0,T1);
+                        __m256d H = _mm256_unpackhi_pd(T0,T1);
+                        S = _mm_add_pd (cast128(L), S);
+                        S = _mm_add_pd (cast128(H), S);
+                        S = _mm_add_pd (_mm256_extractf128_pd(L,1), S);
+                        S = _mm_add_pd (_mm256_extractf128_pd(H,1), S);
+                        i += 4;
+                    }
+                }
+                else {  /* second column has same 16-byte alignment as first */
+                    while (i <= yrows-4) {
+                        __m256d P = _mm256_loadA_pd(x+i);
+                        __m256d T0 = _mm256_mul_pd (_mm256_loadA_pd(y+i), P);
+                        __m256d T1 = _mm256_mul_pd (_mm256_loadu_pd
+                          (ALIGN < 16 ? y+i+k : ASSUME_ALIGNED(y+i+k,16,0)), P);
+                        __m256d L = _mm256_unpacklo_pd(T0,T1);
+                        __m256d H = _mm256_unpackhi_pd(T0,T1);
+                        S = _mm_add_pd (cast128(L), S);
+                        S = _mm_add_pd (cast128(H), S);
+                        S = _mm_add_pd (_mm256_extractf128_pd(L,1), S);
+                        S = _mm_add_pd (_mm256_extractf128_pd(H,1), S);
+                        i += 4;
+                    }
                 }
             }
 #           else  /* CAN_USE_SSE2 */
             {
-                if (k & 1) {  /* second column not aligned if first is */
+                if (ALIGN >= 16 && (k & 1)) {
                     while (i <= yrows-4) {
                         __m128d P, T0, T1;
                         P = _mm_loadA_pd(x+i);
