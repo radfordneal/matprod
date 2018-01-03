@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 1a2e98513f4d92ec03186890f76a6b5a95067f86
+commit 806eb7b2162fe89c1d43c90be5d986a4baed9c5c
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Tue Jan 2 15:21:35 2018 -0500
+Date:   Tue Jan 2 19:42:56 2018 -0500
 
-    tweak to matprod_scalar_vec
+    improved m=2 and m=3 cases of matprod_vec_mat
