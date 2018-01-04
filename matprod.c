@@ -2488,8 +2488,8 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
 
         /* Unless we're adding, initialize sums in next two columns of
            z to the sum of the first two products, which will exist,
-           since 'xcols' is at least two.  Note also that n is at least
-           three. */
+           since 'xcols' is at least two.  Note also that 'xrows' is
+           at least three. */
 
         if (!add) {
 
@@ -2801,63 +2801,152 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
 
     if (m >= 1) {
 
-        double *e = y+xcols-1;  /* where y should stop */
-        double *xs = x;
+        double *xx = x;
+        int i = 0;
+        int j;
 
-        /* If we're not adding, initialize sums in z to the product of
-           the first element of the next column of y with the first
-           column of x. */
+        /* If we're not adding, initialize sums in the last column of
+           z to the product of the first element of the last column of
+           y with the first column of x. */
 
         if (!add) {
-            double *r = xs;
-            double b = y[0];
-            double *q = z;
-            int n2 = xrows;
-            while (n2 > 1) {
-                q[0] = r[0] * b;
-                q[1] = r[1] * b;
-                q += 2;
-                r += 2;
-                n2 -= 2;
-            }
-            if (n2 >= 1) {
-                q[0] = r[0] * b;
-            }
-            xs += n;
-            y += 1;
+            double b = y[i];
+            for (j = 0; j < xrows; j++)
+                z[j] = xx[j] * b;
+            xx += n;
+            i += 1;
         }
 
         /* Each time around this loop, add the products of two columns
-           of x with two elements of the next column of y to the
-           result vector, z. */
+           of x with two elements of the last column of y to the last
+           column of the result. */
 
-        while (y < e) {
-            double b1 = y[0];
-            double b2 = y[1];
-            double *r = xs;
-            double *q = z;
-            int n2 = xrows;
-            do {
-                q[0] = (q[0] + (r[0] * b1)) + (r[n] * b2);
-                r += 1;
-                q += 1;
-                n2 -= 1;
-            } while (n2 > 0);
-            xs += 2*n;
-            y += 2;
+        while (i <= xcols-2) {
+
+#           if CAN_USE_SSE2 || CAN_USE_AVX
+            {
+#               if CAN_USE_AVX
+                    __m256d B0 = _mm256_set1_pd (y[i+0]);
+                    __m256d B1 = _mm256_set1_pd (y[i+1]);
+#               else
+                    __m128d B0 = _mm_set1_pd (y[i+0]);
+                    __m128d B1 = _mm_set1_pd (y[i+1]);
+#               endif
+
+                j = 0;
+
+#               if ALIGN_FORWARD & 8
+                    __m128d T = _mm_load_sd(z+j);
+                    T = _mm_add_sd (_mm_add_sd (T, 
+                          _mm_mul_sd (_mm_load_sd (xx+j), cast128(B0))),
+                          _mm_mul_sd (_mm_load_sd (xx+n+j), cast128(B1)));
+                    _mm_store_sd (z+j, T);
+                    j += 1;
+#               endif
+
+#               if CAN_USE_AVX && (ALIGN_FORWARD & 16)
+                {
+                    __m128d T = _mm_loadA_pd(z+j);
+                    T = _mm_add_pd (_mm_add_pd (T, 
+                          _mm_mul_pd (_mm_loadA_pd (xx+j), cast128(B0))),
+                          _mm_mul_pd (_mm_loadA_pd (xx+n+j), cast128(B1)));
+                    _mm_storeA_pd (z+j, T);
+                    j += 2;
+                }
+#               endif
+
+                while (j <= xrows-4) {
+#                   if CAN_USE_AVX
+                    {
+                        __m256d T = _mm256_loadA_pd(z+j);
+                        T = _mm256_add_pd (_mm256_add_pd (T, 
+                              _mm256_mul_pd (_mm256_loadA_pd (xx+j), B0)),
+                              _mm256_mul_pd (_mm256_loadA_pd (xx+n+j), B1));
+                        _mm256_storeA_pd (z+j, T);
+                    }
+#                   else  /* CAN_USE_SSE2 */
+                    {
+                        __m128d T;
+                        T = _mm_loadA_pd(z+j);
+                        T = _mm_add_pd (_mm_add_pd (T, 
+                              _mm_mul_pd (_mm_loadA_pd (xx+j), B0)),
+                              _mm_mul_pd (_mm_loadA_pd (xx+n+j), B1));
+                        _mm_storeA_pd (z+j, T);
+                        T = _mm_loadA_pd(z+j+2);
+                        T = _mm_add_pd (_mm_add_pd (T, 
+                              _mm_mul_pd (_mm_loadA_pd (xx+j+2), B0)),
+                              _mm_mul_pd (_mm_loadA_pd (xx+n+j+2), B1));
+                        _mm_storeA_pd (z+j+2, T);
+                    }
+#                   endif
+                    j += 4;
+                }
+
+                if (j <= xrows-2) {
+                    __m128d T = _mm_loadA_pd(z+j);
+                    T = _mm_add_pd (_mm_add_pd (T, 
+                          _mm_mul_pd (_mm_loadA_pd (xx+j), cast128(B0))),
+                          _mm_mul_pd (_mm_loadA_pd (xx+n+j), cast128(B1)));
+                    _mm_storeA_pd (z+j, T);
+                    j += 2;
+                }
+
+                if (j < xrows) {
+                    __m128d T = _mm_load_sd(z+j);
+                    T = _mm_add_sd (_mm_add_sd (T, 
+                          _mm_mul_sd (_mm_load_sd (xx+j), cast128(B0))),
+                          _mm_mul_sd (_mm_load_sd (xx+n+j), cast128(B1)));
+                    _mm_store_sd (z+j, T);
+                }
+            }
+
+#           elif CAN_USE_SSE2
+            {
+                j = 0;
+#               if ALIGN_FORWARD & 8
+                    __m128d T = _mm_load_sd(z+j);
+                    T = _mm_add_sd (_mm_add_sd (T, 
+                          _mm_mul_sd (_mm_load_sd (xx+j), B0)),
+                          _mm_mul_sd (_mm_load_sd (xx+n+j), B1));
+                    _mm_store_sd (z+j, T);
+                    j += 1;
+#               endif
+                while (j <= xrows-2) {
+                    __m128d T = _mm_loadA_pd(z+j);
+                    T = _mm_add_pd (_mm_add_pd (T, 
+                          _mm_mul_pd (_mm_loadA_pd (xx+j), B0)),
+                          _mm_mul_pd (_mm_loadA_pd (xx+n+j), B1));
+                    _mm_storeA_pd (z+j, T);
+                    j += 2;
+                }
+                if (j < xrows) {
+                    __m128d T = _mm_load_sd(z+j);
+                    T = _mm_add_sd (_mm_add_sd (T, 
+                          _mm_mul_sd (_mm_load_sd (xx+j), B0)),
+                          _mm_mul_sd (_mm_load_sd (xx+n+j), B1));
+                    _mm_store_sd (z+j, T);
+                }
+            }
+
+#           else  /* non-SIMD code */
+            {
+                double b0 = y[i+0];
+                double b1 = y[i+1];
+                for (j = 0; j < xrows; j++)
+                    z[j] = (z[j] + xx[j] * b0) + (xx+n)[j] * b1;
+            }
+#           endif
+
+            xx += n; xx += n;
+            i += 2;
         }
 
-        if (y <= e) {
-            double b = y[0];
-            double *r = xs;
-            double *q = z;
-            int n2 = xrows;
-            do { 
-                q[0] += r[0] * b; 
-                q += 1;
-                r += 1;
-                n2 -= 1;
-            } while (n2 > 0);
+        /* Add products with final column of x, if not done above. */
+
+        if (i < xcols) {
+            double b = y[i];
+            for (j = 0; j < xrows; j++)
+                z[j] += xx[j] * b;
         }
     }
 }
