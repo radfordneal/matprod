@@ -2026,195 +2026,225 @@ void matprod_outer (double * MATPROD_RESTRICT x,
 
     if (n > 4) {
 
-        const int n2 = (ALIGN_FORWARD & 8) ? n-1 : n;
-        int j;
+        int j = 0;
 
-        for (j = 0; j < m; j++) {
+        while (j < m) {
 
-            double t = y[0];
-            double *p;
+            int i = 0;
 
-#           if ALIGN_FORWARD & 8
-                z[0] = x[0] * t;
-                z += 1;
-                p = ASSUME_ALIGNED (x+1, ALIGN, (ALIGN_OFFSET+8)%ALIGN);
-#           else
-                p = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+#           if CAN_USE_SSE2 || CAN_USE_AVX
+            {
+#               if CAN_USE_AVX
+                    __m256d T = _mm256_set1_pd (y[j]);
+#               else
+                    __m128d T = _mm_set1_pd (y[j]);
+#               endif
+
+#               if ALIGN_FORWARD & 8
+                    _mm_store_sd (z+i, 
+                       _mm_mul_sd (_mm_load_sd (x+i), cast128(T)));
+                    i += 1;
+#               endif
+
+#               if CAN_USE_AVX
+                {
+#                   if ALIGN_FORWARD & 16
+                        _mm_storeu_pd (z+i, 
+                           _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
+                        i += 2;
+#                   endif
+                    while (i <= n-4) {
+                        _mm256_storeu_pd (z+i, 
+                              _mm256_mul_pd (_mm256_loadA_pd (x+i), T));
+                        i += 4;
+                    }
+                }
+#               else  /* CAN_USE_SSE2 */
+                {
+                    while (i <= n-4) {
+                        _mm_storeu_pd (z+i, 
+                           _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
+                        _mm_storeu_pd (z+i+2, 
+                           _mm_mul_pd (_mm_loadA_pd (x+i+2), cast128(T)));
+                        i += 4;
+                    }
+                }
+#               endif
+
+                if (i <= n-2) {
+                    _mm_storeu_pd (z+i, 
+                       _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
+                    i += 2;
+                }
+
+                if (i < n) {
+                    _mm_store_sd (z+i,
+                       _mm_mul_sd (_mm_load_sd (x+i), cast128(T)));
+                }
+            }
+
+#           else  /* non-SIMD code */
+            {
+                double t = y[j];
+
+                while (i <= n-4) {
+                    z[i+0] = x[i+0] * t;
+                    z[i+1] = x[i+1] * t;
+                    z[i+2] = x[i+2] * t;
+                    z[i+3] = x[i+3] * t;
+                    i += 4;
+                }
+
+                if (i <= n-2) {
+                    z[i+0] = x[i+0] * t;
+                    z[i+1] = x[i+1] * t;
+                    i += 2;
+                }
+
+                if (i < n) {
+                    z[i] = x[i] * t;
+                }
+            }
 #           endif
 
-            double *f = p+(n2-3);
-
-            if (CAN_ASSUME_ALIGNED && ALIGN >= 32 && (((j*n) & 3) == 0)) {
-                z = ASSUME_ALIGNED (z, 32, (ALIGN_OFFSET & 8) 
-                                             ? (ALIGN_OFFSET+8)%32
-                                             : ALIGN_OFFSET%32);
-                while (p < f) {
-                    z[0] = p[0] * t;
-                    z[1] = p[1] * t;
-                    z[2] = p[2] * t;
-                    z[3] = p[3] * t;
-                    z += 4;
-                    p += 4;
-                }
-            }
-            else if (CAN_ASSUME_ALIGNED && ALIGN >= 16 && (((j&n) & 1) == 0)) {
-                z = ASSUME_ALIGNED (z, 16, (ALIGN_OFFSET & 8) 
-                                             ? (ALIGN_OFFSET+8)%16
-                                             : ALIGN_OFFSET%16);
-                while (p < f) {
-                    z[0] = p[0] * t;
-                    z[1] = p[1] * t;
-                    z[2] = p[2] * t;
-                    z[3] = p[3] * t;
-                    z += 4;
-                    p += 4;
-                }
-            }
-            else {
-                while (p < f) {
-                    z[0] = p[0] * t;
-                    z[1] = p[1] * t;
-                    z[2] = p[2] * t;
-                    z[3] = p[3] * t;
-                    z += 4;
-                    p += 4;
-                }
-            }
-
-            if (n2 & 2) {
-                z[0] = p[0] * t;
-                z[1] = p[1] * t;
-                z += 2;
-                p += 2;
-            }
-
-            if (n2 & 1) {
-                z[0] = p[0] * t;
-                z += 1;
-            }
-
-            y += 1;
+            z += n;
+            j += 1;
         }
     }
 
     else if (n == 4) {
-        double *e = z + 4*m;
+
+        int j = 0;
+
 #       if CAN_USE_AVX
         {
             __m256d X = _mm256_loadu_pd (x);
-            while (z < e) {
-                __m256d Y0 = _mm256_set1_pd (y[0]);
-                _mm256_storeu_pd (z, _mm256_mul_pd(X,Y0));
+            while (j < m) {
+                __m256d Y = _mm256_set1_pd (y[j]);
+                _mm256_storeu_pd (z, _mm256_mul_pd(X,Y));
                 z += 4;
-                y += 1;
+                j += 1;
             }
         }
+
 #       elif CAN_USE_SSE2
         {
             __m128d Xa = _mm_loadu_pd (x);
             __m128d Xb = _mm_loadu_pd (x+2);
-            while (z < e) {
-                __m128d Y0 = _mm_set1_pd (y[0]);
-                _mm_storeu_pd (z, _mm_mul_pd(Xa,Y0));
-                _mm_storeu_pd (z+2, _mm_mul_pd(Xb,Y0));
+            while (j < m) {
+                __m128d Y = _mm_set1_pd (y[j]);
+                _mm_storeu_pd (z, _mm_mul_pd(Xa,Y));
+                _mm_storeu_pd (z+2, _mm_mul_pd(Xb,Y));
                 z += 4;
-                y += 1;
+                j += 1;
             }
         }
-#       else
+
+#       else  /* non-SIMD code */
         {
             double X[4] = { x[0], x[1], x[2], x[3] };
-            while (z < e) {
-                double y0 = y[0];
-                z[0] = y0 * X[0];
-                z[1] = y0 * X[1];
-                z[2] = y0 * X[2];
-                z[3] = y0 * X[3];
+            while (j < m) {
+                double yj = y[j];
+                z[0] = yj * X[0];
+                z[1] = yj * X[1];
+                z[2] = yj * X[2];
+                z[3] = yj * X[3];
                 z += 4;
-                y += 1;
+                j += 1;
             }
         }
 #       endif
     }
 
     else if (n == 3) {
-#       if CAN_USE_AVX && 0
+
+        int j = 0;
+
+#       if CAN_USE_AVX && ENABLE_ALL_AVX_CODE
         {
             __m256d Xa = _mm256_set_pd (x[0], x[2], x[1], x[0]);
             __m128d Xc = _mm_loadu_pd (x+1);
-            double *e = z + 3*(m-1);
-            while (z < e) {
-                __m256d Ya = _mm256_set_pd (y[1], y[0], y[0], y[0]);
+
+            while (j <= m-2) {
+                __m256d Ya = _mm256_set_pd (y[j+1], y[j], y[j], y[j]);
                 _mm256_storeu_pd (z, _mm256_mul_pd(Xa,Ya));
-                __m128d Yc = _mm_set1_pd (y[1]);
+                __m128d Yc = _mm_set1_pd (y[j+1]);
                 _mm_storeu_pd (z+4, _mm_mul_pd(Xc,Yc));
                 z += 6;
-                y += 2;
+                j += 2;
             }
-            if (m & 1) {
-                __m128d Y = _mm_set1_pd (y[0]);
+
+            if (j < m) {
+                __m128d Y = _mm_set1_pd (y[j]);
                 _mm_storeu_pd (z, _mm_mul_pd (cast128(Xa), Y));
                 _mm_store_sd (z+2, _mm_mul_sd (_mm256_extractf128_pd(Xa,1), Y));
             }
         }
+
 #       elif CAN_USE_SSE2
         {
             __m128d Xa = _mm_set_pd (x[1], x[0]);
             __m128d Xb = _mm_set_pd (x[0], x[2]);
             __m128d Xc = _mm_set_pd (x[2], x[1]);
             __m128d Y;
+
             if (ALIGN_FORWARD & 8) {
-                Y = _mm_set1_pd (y[0]);
+                Y = _mm_set1_pd (y[j]);
                 _mm_store_sd (z, _mm_mul_sd(Xa,Y));
                 _mm_storeA_pd (z+1, _mm_mul_pd(Xc,Y));
                 z += 3;
-                y += 1;
-                m -= 1;
+                j += 1;
             }
-            double *e = z + 3*(m-1);
-            while (z < e) {
-                Y = _mm_set1_pd (y[0]);
+
+            while (j <= m-2) {
+                Y = _mm_set1_pd (y[j]);
                 _mm_storeA_pd (z, _mm_mul_pd(Xa,Y));
-                Y = _mm_set_pd (y[1],y[0]);
+                Y = _mm_set_pd (y[j+1],y[j]);
                 _mm_storeA_pd (z+2, _mm_mul_pd(Xb,Y));
-                Y = _mm_set1_pd (y[1]);
+                Y = _mm_set1_pd (y[j+1]);
                 _mm_storeA_pd (z+4, _mm_mul_pd(Xc,Y));
                 z += 6;
-                y += 2;
+                j += 2;
             }
-            if (m & 1) {
-                Y = _mm_set1_pd (y[0]);
+
+            if (j < m) {
+                Y = _mm_set1_pd (y[j]);
                 _mm_storeA_pd (z, _mm_mul_pd(Xa,Y));
                 _mm_store_sd (z+2, _mm_mul_sd(Xb,Y));
             }
         }
-#       else
+
+#       else  /* non-SIMD code */
         {
             double X[3] = { x[0], x[1], x[2] };
-            double *e = z + 3*(m-1);
-            while (z < e) {
-                double y0 = y[0];
+
+            while (j <= m-2) {
+                double y0 = y[j+0];
                 z[0] = y0 * X[0];
                 z[1] = y0 * X[1];
                 z[2] = y0 * X[2];
-                double y1 = y[1];
+                double y1 = y[j+1];
                 z[3] = y1 * X[0];
                 z[4] = y1 * X[1];
                 z[5] = y1 * X[2];
                 z += 6;
-                y += 2;
+                j += 2;
             }
-            if (m & 1) {
-                double y0 = y[0];
-                z[0] = y0 * X[0];
-                z[1] = y0 * X[1];
-                z[2] = y0 * X[2];
+
+            if (j < m) {
+                double yj = y[j];
+                z[0] = yj * X[0];
+                z[1] = yj * X[1];
+                z[2] = yj * X[2];
             }
         }
 #       endif
     }
 
     else {  /* n == 2 */
+
+        int j = 0;
+
 #       if CAN_USE_AVX || CAN_USE_SSE2
         {
 #           if CAN_USE_AVX
@@ -2222,33 +2252,34 @@ void matprod_outer (double * MATPROD_RESTRICT x,
 #           else  /* CAN_USE_SSE2 */
                 __m128d X = _mm_loadu_pd (x);
 #           endif
-            double *e = z + (m-1) + (m-1);
-            while (z < e) {
+
+            while (j <= m-2) {
 #               if CAN_USE_AVX
                     _mm256_storeu_pd (z, _mm256_mul_pd (X,
-                                      _mm256_set_pd (y[1], y[1], y[0], y[0])));
+                                 _mm256_set_pd (y[j+1], y[j+1], y[j], y[j])));
 #               else  /* CAN_USE_SSE2 */
-                    _mm_storeu_pd (z, _mm_mul_pd(X, _mm_set1_pd (y[0])));
-                    _mm_storeu_pd (z+2, _mm_mul_pd(X, _mm_set1_pd (y[1])));
+                    _mm_storeu_pd (z, _mm_mul_pd(X, _mm_set1_pd (y[j])));
+                    _mm_storeu_pd (z+2, _mm_mul_pd(X, _mm_set1_pd (y[j+1])));
 #               endif
                 z += 4;
-                y += 2;
+                j += 2;
             }
-            if (m & 1) {
-                __m128d Y = _mm_set1_pd (y[0]);
+            if (j < m) {
+                __m128d Y = _mm_set1_pd (y[j]);
                 _mm_storeu_pd (z, _mm_mul_pd (cast128(X), Y));
             }
         }
-#       else
+
+#       else  /* non-SIMD code */
         {
             double X[3] = { x[0], x[1] };
-            double *e = z + m + m;
-            while (z < e) {
-                double y0 = y[0];
-                z[0] = y0 * X[0];
-                z[1] = y0 * X[1];
+
+            while (j < m) {
+                double yj = y[j];
+                z[0] = yj * X[0];
+                z[1] = yj * X[1];
                 z += 2;
-                y += 1;
+                j += 1;
             }
         }
 #       endif
