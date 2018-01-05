@@ -38,7 +38,7 @@
 #define ALIGN_OFFSET 0
 #endif
 
-static inline double *ALLOC (int n)
+static inline double *ALLOC (size_t n)
 {
   double *a = malloc (n * sizeof (double) + ALIGN-1);
   while ((((uintptr_t)a) & (ALIGN-1)) != ALIGN_OFFSET)
@@ -46,8 +46,8 @@ static inline double *ALLOC (int n)
   }
 
 # if 0
-    printf ("Allocated matrix of %d doubles, aligned as %d,%d: %p\n", 
-             n, ALIGN, ALIGN_OFFSET, a);
+    printf ("Allocated matrix of %lld doubles, aligned as %d,%d: %p\n", 
+             (long long)n, ALIGN, ALIGN_OFFSET, a);
 # endif
 
   return a;
@@ -57,15 +57,16 @@ static inline double *ALLOC (int n)
 
 static void usage(void)
 { 
-  fprintf (stderr, "Usage: %s rep [ \"t\" | \"T\" ] dim dim dim { dim } [ \"t\" | \"T\" ]\n", 
-                    prog_name);
+  fprintf (stderr, 
+    "Usage: %s rep [ \"t\" | \"T\" ] dim dim dim { dim } [ \"t\" | \"T\" ]\n", 
+    prog_name);
   exit(1);
 }
 
 void print_result (void)
 { 
   double *m = product[0];
-  int s = prodlen[0];
+  size_t s = prodlen[0];
 
   printf ("%.16g", m[0]);
   if (s>1) printf (" %.16g", m[1]);
@@ -78,7 +79,7 @@ void print_result (void)
     printf("\n");
     for (i = 0; i<matrows[0]; i++)
     { for (j = 0; j<matcols[nmat-1]; j++)
-      { printf(" %f",product[0][i+j*matrows[0]]);
+      { printf(" %f",product[0][i+matrows[0]*(size_t)j]);
       }
       printf("\n");
     }
@@ -99,10 +100,10 @@ static void check_results (void)
   { double *x = matrix[i];
     double *y = product_check[i+1];
     double *z = product_check[i];
-    int N = matrows[i];
-    int K = matcols[i];
-    int M = matcols[nmat-1];
-    int j, k, l;
+    size_t N = matrows[i];
+    size_t K = matcols[i];
+    size_t M = matcols[nmat-1];
+    size_t j, k, l;
     double s;
     v |= vec[i+1];
     if (vec[i] && v && N==1 && M==1)  /* vec X vec */
@@ -217,11 +218,7 @@ int main (int argc, char **argv)
      (if possible) when a "T" option applies. */
 
   for (i = 0; i<nmat; i++)
-  { if ((double) matrows[i] * matcols[i] > INT_MAX)
-    { fprintf(stderr,"Matrix is too large\n");
-      exit(2);
-    }
-    matlen[i] = matrows[i] * matcols[i];
+  { matlen[i] = (size_t) matrows[i] * (size_t) matcols[i];
     if (i==1 && trans1>1 || i==nmat-1 && trans2>1)
     { if (matrows[i-1]!=matcols[i])
       { fprintf(stderr,"\"T\" option used when dimensions don't match\n");
@@ -246,11 +243,7 @@ int main (int argc, char **argv)
   /* For each product, compute prodlen and allocate space. */
 
   for (i = 0; i<nmat-1; i++)
-  { if ((double) matrows[i] * matcols[nmat-1] > INT_MAX)
-    { fprintf(stderr,"Product matrix is too large\n");
-      exit(2);
-    }
-    prodlen[i] = matrows[i] * matcols[nmat-1];
+  { prodlen[i] = (size_t) matrows[i] * (size_t) matcols[nmat-1];
     product[i] = ALLOC(prodlen[i]+1);
     if (do_check) product_check[i] = ALLOC(prodlen[i]);
     if (product[i]==0 || do_check && product_check[i]==0)
@@ -273,16 +266,16 @@ int main (int argc, char **argv)
 #   define INITVAL(i,j,k) (i == 0 ? (j==0 && k==0 ? 1.1 : 1) \
                                   : (j==0 && k==0 ? 2.2 : 1))
 # else
-#   define INITVAL(i,j,k) (0.1*(matrows[i]+matcols[i])  \
-                            + 0.01 * (matrows[i]*matcols[i]) \
-                            + 0.01 * ((j+1)*(k+1)))
+#   define INITVAL(i,j,k) (0.1*((double)matrows[i]+(double)matcols[i])  \
+                            + 0.01 * ((double)matrows[i]*(double)matcols[i]) \
+                            + 0.01 * ((j+1.0)*(k+1.0)))
 # endif
 
   for (i = 0; i<nmat; i++)
   { for (j = 0; j<matcols[i]; j++) 
     { for (k = 0; k<matrows[i]; k++) 
-      { int ix = i==0 && trans1 || i==nmat-1 && trans2 
-                   ? j + matcols[i]*k : k + matrows[i]*j;
+      { size_t ix = i==0 && trans1 || i==nmat-1 && trans2 
+                     ? j + matcols[i]*(size_t)k : k + matrows[i]*(size_t)j;
         matrix[i][ix] = INITVAL(i,j,k);
       }
     }
@@ -290,8 +283,8 @@ int main (int argc, char **argv)
     { printf("\nInput matrix %d\n\n",i);
       for (k = 0; k<matrows[i]; k++) 
       { for (j = 0; j<matcols[i]; j++) 
-        { int ix = i==0 && trans1 || i==nmat-1 && trans2 
-                     ? j + matcols[i]*k : k + matrows[i]*j;
+        { size_t ix = i==0 && trans1 || i==nmat-1 && trans2 
+                       ? j + matcols[i]*(size_t)k : k + matrows[i]*(size_t)j;
           printf(" %f",matrix[i][ix]);
         }
         printf("\n");
@@ -309,12 +302,12 @@ int main (int argc, char **argv)
   for (i = 0; i<nmat; i++)
   { for (j = 0; j<matcols[i]; j++) 
     { for (k = 0; k<matrows[i]; k++) 
-      { int ix = i==0 && trans1 || i==nmat-1 && trans2 
-                   ? j + matcols[i]*k : k + matrows[i]*j;
+      { size_t ix = i==0 && trans1 || i==nmat-1 && trans2 
+                     ? j + matcols[i]*(size_t)k : k + matrows[i]*(size_t)j;
         if (matrix[i][ix] != INITVAL(i,j,k))
         { fprintf (stderr, 
-                  "Input matrix %d changed after operation (%d, %g, %g)\n",
-                   i, ix, matrix[i][ix], INITVAL(i,j,k));
+                  "Input matrix %d changed after operation (%lld, %g, %g)\n",
+                   i, (long long)ix, matrix[i][ix], INITVAL(i,j,k));
           abort();
         }
       }

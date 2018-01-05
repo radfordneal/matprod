@@ -18,6 +18,7 @@
    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
+#include <stdlib.h>
 
 #ifndef EXTERN
 #define EXTERN extern
@@ -30,7 +31,7 @@ EXTERN int nmat;                     /* Number of matrices used */
 EXTERN double *matrix[MAX_MATRICES]; /* Pointers to storage for matrices */
 EXTERN int matrows[MAX_MATRICES];    /* Number of rows in each matrix */
 EXTERN int matcols[MAX_MATRICES];    /* Number of columns in each matrix */
-EXTERN int matlen[MAX_MATRICES];     /* Length of each matrix (rows x cols) */
+EXTERN size_t matlen[MAX_MATRICES];  /* Length of each matrix (rows x cols) */
 
 EXTERN int vec[MAX_MATRICES+1];      /* Indicator to treat as a vector */
 EXTERN int last_V;                   /* Whether last argument is "V" */
@@ -38,7 +39,7 @@ EXTERN int trans1;                   /* Treat first matrix as its transpose? */
 EXTERN int trans2;                   /* Treat last matrix as its transpose? */
 
 EXTERN double *product[MAX_MATRICES];/* Pointers to storage for products */
-EXTERN int prodlen[MAX_MATRICES];    /* Length of each product matrix */
+EXTERN size_t prodlen[MAX_MATRICES]; /* Length of each product matrix */
 
 extern char *prog_name;              /* Name of test program (for usage msg) */
 
