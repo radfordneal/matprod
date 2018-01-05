@@ -2160,23 +2160,32 @@ void matprod_outer (double * MATPROD_RESTRICT x,
 
         int j = 0;
 
-#       if CAN_USE_AVX && ENABLE_ALL_AVX_CODE
+#       if CAN_USE_AVX
         {
             __m256d Xa = _mm256_set_pd (x[0], x[2], x[1], x[0]);
             __m128d Xc = _mm_loadu_pd (x+1);
 
+            if (ALIGN_FORWARD & 8) {
+                __m128d Y = _mm_set1_pd (y[j]);
+                _mm_store_sd (z, _mm_mul_sd(cast128(Xa),Y));
+                _mm_storeA_pd (z+1, _mm_mul_pd(Xc,Y));
+                z += 3;
+                j += 1;
+            }
+
             while (j <= m-2) {
-                __m256d Ya = _mm256_set_pd (y[j+1], y[j], y[j], y[j]);
-                _mm256_storeu_pd (z, _mm256_mul_pd(Xa,Ya));
-                __m128d Yc = _mm_set1_pd (y[j+1]);
-                _mm_storeu_pd (z+4, _mm_mul_pd(Xc,Yc));
+                __m256d Y0 = _mm256_set1_pd (y[j]);
+                __m256d Y1 = _mm256_set1_pd (y[j+1]);
+                __m256d Ya = _mm256_blend_pd (Y0, Y1, 0x8);
+                _mm256_storeu_pd (z, _mm256_mul_pd (Xa, Ya));
+                _mm_storeA_pd (z+4, _mm_mul_pd (Xc, cast128(Y1)));
                 z += 6;
                 j += 2;
             }
 
             if (j < m) {
                 __m128d Y = _mm_set1_pd (y[j]);
-                _mm_storeu_pd (z, _mm_mul_pd (cast128(Xa), Y));
+                _mm_storeA_pd (z, _mm_mul_pd (cast128(Xa), Y));
                 _mm_store_sd (z+2, _mm_mul_sd (_mm256_extractf128_pd(Xa,1), Y));
             }
         }
