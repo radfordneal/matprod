@@ -2222,7 +2222,7 @@ void matprod_outer (double * MATPROD_RESTRICT x,
 #           else  /* CAN_USE_SSE2 */
                 __m128d X = _mm_loadu_pd (x);
 #           endif
-            double *e = z + 2*(m-1);
+            double *e = z + (m-1) + (m-1);
             while (z < e) {
 #               if CAN_USE_AVX
                     _mm256_storeu_pd (z, _mm256_mul_pd (X,
@@ -2242,7 +2242,7 @@ void matprod_outer (double * MATPROD_RESTRICT x,
 #       else
         {
             double X[3] = { x[0], x[1] };
-            double *e = z + 2*m;
+            double *e = z + m + m;
             while (z < e) {
                 double y0 = y[0];
                 z[0] = y0 * X[0];
