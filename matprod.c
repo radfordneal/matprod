@@ -526,7 +526,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                 S = _mm256_setzero_pd();
 
 #           if ALIGN_FORWARD & 8
-                B = _mm256_set_pd (y[i+3*k], y[i+2*k], y[i+k], y[i+0]);
+                B = _mm256_set_pd ((y+k+k+k)[i], (y+k+k)[i], (y+k)[i], y[i]);
                 B = _mm256_mul_pd (_mm256_set1_pd(x[i]), B);
                 S = _mm256_add_pd (B, S);
                 i += 1;
@@ -538,8 +538,8 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                 __m256d T0, T1;
                 Y0 = _mm_loadA_pd(y+i);
                 Y1 = _mm_loadu_pd(y+i+k);
-                Y2 = _mm_loadA_pd(y+i+2*k);
-                Y3 = _mm_loadu_pd(y+i+3*k);
+                Y2 = _mm_loadA_pd(y+i+k+k);
+                Y3 = _mm_loadu_pd(y+i+k+k+k);
                 T0 = _mm256_castpd128_pd256 (Y0);
                 T0 = _mm256_insertf128_pd (T0, Y2, 1);
                 T1 = _mm256_castpd128_pd256 (Y1);
@@ -559,8 +559,8 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                 __m256d T0, T1;
                 Y0 = _mm256_loadA_pd(y+i);
                 Y1 = _mm256_loadu_pd(y+i+k);
-                Y2 = _mm256_loadu_pd(y+i+2*k);
-                Y3 = _mm256_loadu_pd(y+i+3*k);
+                Y2 = _mm256_loadu_pd(y+i+k+k);
+                Y3 = _mm256_loadu_pd(y+i+k+k+k);
                 T0 = _mm256_permute2f128_pd (Y0, Y2, 0x20);
                 T1 = _mm256_permute2f128_pd (Y1, Y3, 0x20);
                 B = _mm256_unpacklo_pd (T0, T1);
@@ -585,8 +585,8 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                 __m256d T0, T1;
                 Y0 = _mm_loadA_pd(y+i);
                 Y1 = _mm_loadu_pd(y+i+k);
-                Y2 = _mm_loadA_pd(y+i+2*k);
-                Y3 = _mm_loadu_pd(y+i+3*k);
+                Y2 = _mm_loadA_pd(y+i+k+k);
+                Y3 = _mm_loadu_pd(y+i+k+k+k);
                 T0 = _mm256_castpd128_pd256 (Y0);
                 T0 = _mm256_insertf128_pd (T0, Y2, 1);
                 T1 = _mm256_castpd128_pd256 (Y1);
@@ -601,7 +601,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
             }
 
             if (i < yrows) {
-                B = _mm256_set_pd (y[i+3*k], y[i+2*k], y[i+k], y[i+0]);
+                B = _mm256_set_pd (y[i+k+k+k], y[i+k+k], y[i+k], y[i]);
                 B = _mm256_mul_pd (_mm256_set1_pd(x[i]), B);
                 S = _mm256_add_pd (B, S);
             }
@@ -626,9 +626,9 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
             {
                 __m128d P = _mm_set1_pd(x[i]);
                 S0 = _mm_add_pd(S0, _mm_mul_pd (P, 
-                                        _mm_set_pd (y[i+k], y[i+0])));
+                                        _mm_set_pd ((y+k)[i], y[i])));
                 S1 = _mm_add_pd(S1, _mm_mul_pd (P,
-                                        _mm_set_pd (y[i+3*k], y[i+2*k])));
+                                        _mm_set_pd ((y+k+k+k)[i], (y+k+k)[i])));
                 i += 1;
             }
 #           endif
@@ -641,8 +641,8 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                     T1 = _mm_mul_pd (_mm_loadu_pd(y+i+k), P);
                     S0 = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S0);
                     S0 = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S0);
-                    T0 = _mm_mul_pd (_mm_loadA_pd(y+i+2*k), P);
-                    T1 = _mm_mul_pd (_mm_loadu_pd(y+i+3*k), P);
+                    T0 = _mm_mul_pd (_mm_loadA_pd(y+i+k+k), P);
+                    T1 = _mm_mul_pd (_mm_loadu_pd(y+i+k+k+k), P);
                     S1 = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S1);
                     S1 = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S1);
                     i += 2;
@@ -656,8 +656,8 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                     T1 = _mm_mul_pd (_mm_loadA_pd(y+i+k), P);
                     S0 = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S0);
                     S0 = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S0);
-                    T0 = _mm_mul_pd (_mm_loadA_pd(y+i+2*k), P);
-                    T1 = _mm_mul_pd (_mm_loadA_pd(y+i+3*k), P);
+                    T0 = _mm_mul_pd (_mm_loadA_pd(y+i+k+k), P);
+                    T1 = _mm_mul_pd (_mm_loadA_pd(y+i+k+k+k), P);
                     S1 = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S1);
                     S1 = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S1);
                     i += 2;
@@ -667,9 +667,9 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
             if (i < yrows) {
                 __m128d P = _mm_set1_pd(x[i]);
                 S0 = _mm_add_pd (S0, 
-                         _mm_mul_pd (P, _mm_set_pd(y[i+k],y[i+0])));
+                         _mm_mul_pd (P, _mm_set_pd((y+k)[i],y[i])));
                 S1 = _mm_add_pd (S1, 
-                         _mm_mul_pd (P, _mm_set_pd(y[i+3*k],y[i+2*k])));
+                         _mm_mul_pd (P, _mm_set_pd((y+k+k+k)[i],(y+k+k)[i])));
             }
 
             _mm_storeu_pd (z, S0);
@@ -690,22 +690,22 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                 s[0] = s[1] = s[2] = s[3] = 0.0;
 
             while (i <= yrows-2) {
-                s[0] += x[i+0] * y[i+0];
-                s[1] += x[i+0] * y[i+k];
-                s[2] += x[i+0] * y[i+2*k];
-                s[3] += x[i+0] * y[i+3*k];
+                s[0] += x[i+0] * y[i];
+                s[1] += x[i+0] * (y+k)[i];
+                s[2] += x[i+0] * (y+k+k)[i];
+                s[3] += x[i+0] * (y+k+k+k)[i];
                 s[0] += x[i+1] * y[i+1];
-                s[1] += x[i+1] * y[i+k+1];
-                s[2] += x[i+1] * y[i+2*k+1];
-                s[3] += x[i+1] * y[i+3*k+1];
+                s[1] += x[i+1] * (y+k)[i+1];
+                s[2] += x[i+1] * (y+k+k)[i+1];
+                s[3] += x[i+1] * (y+k+k+k)[i+1];
                 i += 2;
             }
 
             if (i < yrows) {
-                s[0] += x[i] * y[i+0];
-                s[1] += x[i] * y[i+k];
-                s[2] += x[i] * y[i+2*k];
-                s[3] += x[i] * y[i+3*k];
+                s[0] += x[i] * y[i];
+                s[1] += x[i] * (y+k)[i];
+                s[2] += x[i] * (y+k+k)[i];
+                s[3] += x[i] * (y+k+k+k)[i];
             }
 
             z[0] = s[0];
@@ -716,7 +716,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
 
 #       endif
 
-        y += 4*k;
+        y += k; y += k; y += k; y += k;
         z += 4;
         m -= 4;
     }
@@ -742,8 +742,8 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
 
 #           if ALIGN_FORWARD & 8
                 P = _mm_set1_pd(x[i]);
-                S = _mm_add_pd (S, _mm_mul_pd (P, _mm_set_pd (y[i+k], y[i+0])));
-                S2 = _mm_add_sd (S2, _mm_mul_sd (P, _mm_set_sd (y[i+2*k])));
+                S = _mm_add_pd (S, _mm_mul_pd (P, _mm_set_pd ((y+k)[i], y[i])));
+                S2 = _mm_add_sd (S2, _mm_mul_sd (P, _mm_set_sd ((y+k+k)[i])));
                 i += 1;
 #           endif
 
@@ -752,7 +752,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                 __m128d P = _mm_loadA_pd(x+i);
                 __m128d T0 = _mm_mul_pd (_mm_loadA_pd(y+i), P);
                 __m128d T1 = _mm_mul_pd (_mm_loadu_pd(y+i+k), P);
-                __m128d T2 = _mm_mul_pd (_mm_loadA_pd(y+i+2*k), P);
+                __m128d T2 = _mm_mul_pd (_mm_loadA_pd(y+i+k+k), P);
                 S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
                 S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
                 S2 = _mm_add_sd (T2, S2);
@@ -768,7 +768,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                         __m256d T0 = _mm256_mul_pd (_mm256_loadA_pd(y+i), P);
                         __m256d T1 = _mm256_mul_pd (_mm256_loadu_pd(y+i+k), P);
                         __m256d T2 = _mm256_mul_pd (_mm256_loadu_pd 
-                                          (ASSUME_ALIGNED (y+i+2*k, 16, 0)), P);
+                                          (ASSUME_ALIGNED (y+i+k+k, 16, 0)), P);
                         __m128d L2 = cast128 (T2);
                         __m128d H2 = _mm256_extractf128_pd (T2, 1);
                         __m256d L = _mm256_unpacklo_pd(T0,T1);
@@ -790,7 +790,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                         __m256d T0 = _mm256_mul_pd (_mm256_loadA_pd(y+i),P);
                         __m256d T1 = _mm256_mul_pd (_mm256_loadu_pd
                           (ALIGN < 16 ? y+i+k : ASSUME_ALIGNED(y+i+k,16,0)), P);
-                        __m256d T2 = _mm256_mul_pd (_mm256_loadA_pd(y+i+2*k),P);
+                        __m256d T2 = _mm256_mul_pd (_mm256_loadA_pd(y+i+k+k),P);
                         __m128d L2 = cast128 (T2);
                         __m128d H2 = _mm256_extractf128_pd (T2, 1);
                         __m256d L = _mm256_unpacklo_pd(T0,T1);
@@ -813,7 +813,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                         P = _mm_loadA_pd(x+i);
                         T0 = _mm_mul_pd (_mm_loadA_pd(y+i), P);
                         T1 = _mm_mul_pd (_mm_loadu_pd(y+i+k), P);
-                        T2 = _mm_mul_pd (_mm_loadA_pd(y+i+2*k), P);
+                        T2 = _mm_mul_pd (_mm_loadA_pd(y+i+k+k), P);
                         S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
                         S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
                         S2 = _mm_add_sd (T2, S2);
@@ -821,7 +821,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                         P = _mm_loadA_pd(x+i+2);
                         T0 = _mm_mul_pd (_mm_loadA_pd(y+i+2), P);
                         T1 = _mm_mul_pd (_mm_loadu_pd(y+i+k+2), P);
-                        T2 = _mm_mul_pd (_mm_loadA_pd(y+i+2*k+2), P);
+                        T2 = _mm_mul_pd (_mm_loadA_pd(y+i+k+k+2), P);
                         S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
                         S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
                         S2 = _mm_add_sd (T2, S2);
@@ -835,7 +835,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                         P = _mm_loadA_pd(x+i);
                         T0 = _mm_mul_pd (_mm_loadA_pd(y+i), P);
                         T1 = _mm_mul_pd (_mm_loadA_pd(y+i+k), P);
-                        T2 = _mm_mul_pd (_mm_loadA_pd(y+i+2*k), P);
+                        T2 = _mm_mul_pd (_mm_loadA_pd(y+i+k+k), P);
                         S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
                         S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
                         S2 = _mm_add_sd (T2, S2);
@@ -843,7 +843,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                         P = _mm_loadA_pd(x+i+2);
                         T0 = _mm_mul_pd (_mm_loadA_pd(y+i+2), P);
                         T1 = _mm_mul_pd (_mm_loadA_pd(y+i+k+2), P);
-                        T2 = _mm_mul_pd (_mm_loadA_pd(y+i+2*k+2), P);
+                        T2 = _mm_mul_pd (_mm_loadA_pd(y+i+k+k+2), P);
                         S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
                         S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
                         S2 = _mm_add_sd (T2, S2);
@@ -857,7 +857,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                 __m128d P = _mm_loadA_pd(x+i);
                 __m128d T0 = _mm_mul_pd (_mm_loadA_pd(y+i), P);
                 __m128d T1 = _mm_mul_pd (_mm_loadu_pd(y+i+k), P);
-                __m128d T2 = _mm_mul_pd (_mm_loadA_pd(y+i+2*k), P);
+                __m128d T2 = _mm_mul_pd (_mm_loadA_pd(y+i+k+k), P);
                 S = _mm_add_pd (_mm_unpacklo_pd(T0,T1), S);
                 S = _mm_add_pd (_mm_unpackhi_pd(T0,T1), S);
                 S2 = _mm_add_sd (T2, S2);
@@ -868,9 +868,9 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
             if (i < yrows) {
                 __m128d P = _mm_set1_pd(x[i]);
                 __m128d B;
-                B = _mm_mul_pd (P, _mm_set_pd(y[i+k],y[i+0]));
+                B = _mm_mul_pd (P, _mm_set_pd((y+k)[i],y[i]));
                 S = _mm_add_pd (B, S);
-                B = _mm_mul_sd (P, _mm_set_sd (y[i+2*k]));
+                B = _mm_mul_sd (P, _mm_set_sd ((y+k+k)[i]));
                 S2 = _mm_add_sd (B, S2);
             }
 
@@ -890,19 +890,19 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                 s[0] = s[1] = s[2] = 0.0;
 
             while (i <= yrows-2) {
-                s[0] += x[i+0] * y[i+0];
-                s[1] += x[i+0] * y[i+k];
-                s[2] += x[i+0] * y[i+2*k];
+                s[0] += x[i+0] * y[i];
+                s[1] += x[i+0] * (y+k)[i];
+                s[2] += x[i+0] * (y+k+k)[i];
                 s[0] += x[i+1] * y[i+1];
-                s[1] += x[i+1] * y[i+k+1];
-                s[2] += x[i+1] * y[i+2*k+1];
+                s[1] += x[i+1] * (y+k)[i+1];
+                s[2] += x[i+1] * (y+k+k)[i+1];
                 i += 2;
             }
 
             if (i < yrows) {
-                s[0] += x[i] * y[i+0];
-                s[1] += x[i] * y[i+k];
-                s[2] += x[i] * y[i+2*k];
+                s[0] += x[i] * y[i];
+                s[1] += x[i] * (y+k)[i];
+                s[2] += x[i] * (y+k+k)[i];
             }
 
             z[0] = s[0];
@@ -927,7 +927,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
 
 #           if ALIGN_FORWARD & 8
                 S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd(x[i]),
-                                               _mm_set_pd (y[i+k], y[i+0])));
+                                               _mm_set_pd ((y+k)[i], y[i])));
                 i += 1;
 #           endif
 
@@ -1022,7 +1022,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
 
             if (i < yrows) {
                 __m128d B;
-                B = _mm_mul_pd (_mm_set1_pd(x[i]), _mm_set_pd(y[i+k],y[i+0]));
+                B = _mm_mul_pd (_mm_set1_pd(x[i]), _mm_set_pd((y+k)[i],y[i]));
                 S = _mm_add_pd (B, S);
             }
 
@@ -1041,16 +1041,16 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                 s[0] = s[1] = 0.0;
 
             while (i <= yrows-2) {
-                s[0] += x[i+0] * y[i+0];
-                s[1] += x[i+0] * y[i+k];
+                s[0] += x[i+0] * y[i];
+                s[1] += x[i+0] * (y+k)[i];
                 s[0] += x[i+1] * y[i+1];
-                s[1] += x[i+1] * y[i+k+1];
+                s[1] += x[i+1] * (y+k)[i+1];
                 i += 2;
             }
 
             if (i < yrows) {
-                s[0] += x[i] * y[i+0];
-                s[1] += x[i] * y[i+k];
+                s[0] += x[i] * y[i];
+                s[1] += x[i] * (y+k)[i];
             }
 
             z[0] = s[0];
