@@ -2880,7 +2880,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                     __m128d T = _mm_loadA_pd(z+j);
                     T = _mm_add_pd (_mm_add_pd (T, 
                           _mm_mul_pd (_mm_loadA_pd (xx+j), cast128(B0))),
-                          _mm_mul_pd (_mm_loadA_pd (xx+n+j), cast128(B1)));
+                          _mm_mul_pd (_mm_loadu_pd (xx+n+j), cast128(B1)));
                     _mm_storeA_pd (z+j, T);
                     j += 2;
                 }
@@ -2918,7 +2918,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                     __m128d T = _mm_loadA_pd(z+j);
                     T = _mm_add_pd (_mm_add_pd (T, 
                           _mm_mul_pd (_mm_loadA_pd (xx+j), cast128(B0))),
-                          _mm_mul_pd (_mm_loadA_pd (xx+n+j), cast128(B1)));
+                          _mm_mul_pd (_mm_loadu_pd (xx+n+j), cast128(B1)));
                     _mm_storeA_pd (z+j, T);
                     j += 2;
                 }
@@ -2947,7 +2947,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                     __m128d T = _mm_loadA_pd(z+j);
                     T = _mm_add_pd (_mm_add_pd (T, 
                           _mm_mul_pd (_mm_loadA_pd (xx+j), B0)),
-                          _mm_mul_pd (_mm_loadA_pd (xx+n+j), B1));
+                          _mm_mul_pd (_mm_loadu_pd (xx+n+j), B1));
                     _mm_storeA_pd (z+j, T);
                     j += 2;
                 }
