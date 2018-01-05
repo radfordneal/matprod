@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit d5b93a665c156f7b49e1411c6950b4862008758e
+commit 7c0c8783dcd6811c218360c801707de26b958241
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Wed Jan 3 17:14:37 2018 -0500
+Date:   Fri Jan 5 14:10:25 2018 -0500
 
-    SSE code and other revisions in matprod_mat_mat_n2
+    improve AVX code for n=3 in matprod_outer
