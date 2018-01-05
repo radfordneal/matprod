@@ -2061,12 +2061,23 @@ void matprod_outer (double * MATPROD_RESTRICT x,
                 }
 #               else  /* CAN_USE_SSE2 */
                 {
-                    while (i <= n-4) {
-                        _mm_storeu_pd (z+i, 
-                           _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
-                        _mm_storeu_pd (z+i+2, 
-                           _mm_mul_pd (_mm_loadA_pd (x+i+2), cast128(T)));
-                        i += 4;
+                    if ((1 & n & j)) {  /* z+i won't be 16-byte aligned */
+                        while (i <= n-4) {
+                            _mm_storeu_pd (z+i, 
+                               _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
+                            _mm_storeu_pd (z+i+2, 
+                               _mm_mul_pd (_mm_loadA_pd (x+i+2), cast128(T)));
+                            i += 4;
+                        }
+                    }
+                    else {  /* z+i and z+i+2 are 16-byte aligned if ALIGN>=16 */
+                        while (i <= n-4) {
+                            _mm_storeA_pd (z+i, 
+                               _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
+                            _mm_storeA_pd (z+i+2, 
+                               _mm_mul_pd (_mm_loadA_pd (x+i+2), cast128(T)));
+                            i += 4;
+                        }
                     }
                 }
 #               endif
