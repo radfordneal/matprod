@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit a236a0661c9dce1342e6b89c5e4c7c5054a8c696
+commit 8b2aa105f8aac4717522bac41f57f3d11d50e8c5
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Jan 6 12:25:17 2018 -0500
+Date:   Sat Jan 6 13:20:21 2018 -0500
 
-    tweak how alignment is handled in matprod_mat_mat_sub_xrowscols
+    tweak SSE2 alignment in matprod_mat_mat_sub_xrowscols
