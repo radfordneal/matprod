@@ -2578,8 +2578,8 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
 #               endif
                 while (j <= xrows-4) {
 #                   if CAN_USE_AVX
-                        __m256d S1 = _mm256_loadA_pd(r);
-                        __m256d S2 = _mm256_loadu_pd(r+n);
+                        __m256d S1 = _mm256_loadA_pd(xx+j);
+                        __m256d S2 = _mm256_loadu_pd(xx+j+n);
                         _mm256_storeu_pd (z+j, 
                                           _mm256_add_pd(_mm256_mul_pd(S1,B11),
                                                         _mm256_mul_pd(S2,B12)));
