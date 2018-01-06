@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 7c0c8783dcd6811c218360c801707de26b958241
+commit 6fd1fd7e3a377f80fd63ea2b145d7a997ef5cd55
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Jan 5 14:10:25 2018 -0500
+Date:   Fri Jan 5 17:56:28 2018 -0500
 
-    improve AVX code for n=3 in matprod_outer
+    results for sandybridge
