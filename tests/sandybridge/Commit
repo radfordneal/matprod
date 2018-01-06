@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit b735626bfe15b8e2f6f1fc5f0bb3fc34056d44e3
+commit a236a0661c9dce1342e6b89c5e4c7c5054a8c696
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Jan 5 16:14:48 2018 -0500
+Date:   Sat Jan 6 12:25:17 2018 -0500
 
-    results for harpertown
+    tweak how alignment is handled in matprod_mat_mat_sub_xrowscols
