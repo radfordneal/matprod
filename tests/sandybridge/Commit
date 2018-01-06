@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit a236a0661c9dce1342e6b89c5e4c7c5054a8c696
+commit 36c2fd1862fbab75b7c5527a0c33c045fa42d4ab
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Jan 6 12:25:17 2018 -0500
+Date:   Sat Jan 6 14:33:06 2018 -0500
 
-    tweak how alignment is handled in matprod_mat_mat_sub_xrowscols
+    more tweaks in matprod_mat_mat
