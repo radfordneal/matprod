@@ -2525,7 +2525,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
 
     while (m > 1) {
 
-        double *ys = y;
+        double *yy = y;
         double *xx = x;
         int i = 0;
 
@@ -2541,15 +2541,15 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
 #           if CAN_USE_AVX || CAN_USE_SSE2
             {
 #               if CAN_USE_AVX
-                    __m256d B11 = _mm256_set1_pd (y[0]);
-                    __m256d B12 = _mm256_set1_pd (y[1]);
-                    __m256d B21 = _mm256_set1_pd ((y+k)[0]);
-                    __m256d B22 = _mm256_set1_pd ((y+k)[1]);
+                    __m256d B11 = _mm256_set1_pd (yy[0]);
+                    __m256d B12 = _mm256_set1_pd (yy[1]);
+                    __m256d B21 = _mm256_set1_pd ((yy+k)[0]);
+                    __m256d B22 = _mm256_set1_pd ((yy+k)[1]);
 #               else  /* CAN_USE_SSE2 */
-                    __m128d B11 = _mm_set1_pd (y[0]);
-                    __m128d B12 = _mm_set1_pd (y[1]);
-                    __m128d B21 = _mm_set1_pd ((y+k)[0]);
-                    __m128d B22 = _mm_set1_pd ((y+k)[1]);
+                    __m128d B11 = _mm_set1_pd (yy[0]);
+                    __m128d B12 = _mm_set1_pd (yy[1]);
+                    __m128d B21 = _mm_set1_pd ((yy+k)[0]);
+                    __m128d B22 = _mm_set1_pd ((yy+k)[1]);
 #               endif
 
 #               if ALIGN_FORWARD & 8
@@ -2623,10 +2623,10 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
             }
 #           else  /* non-SIMD code */
             {
-                double b11 = y[0];
-                double b12 = y[1];
-                double b21 = (y+k)[0];
-                double b22 = (y+k)[1];
+                double b11 = yy[0];
+                double b12 = yy[1];
+                double b21 = (yy+k)[0];
+                double b22 = (yy+k)[1];
                 while (j < xrows) {
                     double s1 = xx[j];
                     double s2 = (xx+n)[j];
@@ -2638,7 +2638,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
 #           endif
 
             xx += n; xx += n;
-            y += 2;
+            yy += 2;
             i += 2;
         }
 
@@ -2649,180 +2649,169 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
 
         while (i <= xcols-2) {
 
-            double *r = xx;
-            int n2 = xrows;
+            int j = 0;
 
 #           if CAN_USE_AVX || CAN_USE_SSE2
             {
 #               if CAN_USE_AVX
-                    __m256d B11 = _mm256_set1_pd(y[0]);
-                    __m256d B12 = _mm256_set1_pd(y[1]);
-                    __m256d B21 = _mm256_set1_pd(y[k]);
-                    __m256d B22 = _mm256_set1_pd(y[k+1]);
+                    __m256d B11 = _mm256_set1_pd(yy[0]);
+                    __m256d B12 = _mm256_set1_pd(yy[1]);
+                    __m256d B21 = _mm256_set1_pd(yy[k]);
+                    __m256d B22 = _mm256_set1_pd(yy[k+1]);
 #               else
-                    __m128d B11 = _mm_set1_pd(y[0]);
-                    __m128d B12 = _mm_set1_pd(y[1]);
-                    __m128d B21 = _mm_set1_pd(y[k]);
-                    __m128d B22 = _mm_set1_pd(y[k+1]);
+                    __m128d B11 = _mm_set1_pd(yy[0]);
+                    __m128d B12 = _mm_set1_pd(yy[1]);
+                    __m128d B21 = _mm_set1_pd(yy[k]);
+                    __m128d B22 = _mm_set1_pd(yy[k+1]);
 #               endif
-
-                double *q = z;
 
 #               if ALIGN_FORWARD & 8
                 {
-                    __m128d S1 = _mm_set_sd(r[0]);
-                    __m128d S2 = _mm_set_sd(r[n]);
-                    _mm_store_sd (q, _mm_add_sd (_mm_add_sd (_mm_load_sd(q),
-                        _mm_mul_sd(S1,cast128(B11))),
-                        _mm_mul_sd(S2,cast128(B12))));
-                    _mm_store_sd (q+n, _mm_add_sd (_mm_add_sd (_mm_load_sd(q+n),
-                        _mm_mul_sd(S1,cast128(B21))),
-                        _mm_mul_sd(S2,cast128(B22))));
-                    r += 1;
-                    q += 1;
-                    n2 -= 1;
+                    __m128d S1 = _mm_set_sd((xx+j)[0]);
+                    __m128d S2 = _mm_set_sd((xx+j+n)[0]);
+                    _mm_store_sd (z+j,
+                                  _mm_add_sd (_mm_add_sd (_mm_load_sd(z+j),
+                                                _mm_mul_sd(S1,cast128(B11))),
+                                              _mm_mul_sd(S2,cast128(B12))));
+                    _mm_store_sd (z+j+n,
+                                  _mm_add_sd (_mm_add_sd (_mm_load_sd(z+j+n),
+                                                _mm_mul_sd(S1,cast128(B21))),
+                                              _mm_mul_sd(S2,cast128(B22))));
+                    j += 1;
                 }
 #               endif
 #               if CAN_USE_AVX && (ALIGN_FORWARD & 16)
                 {
-                    __m128d S1 = _mm_loadA_pd(r);
-                    __m128d S2 = _mm_loadu_pd(r+n);
-                    _mm_storeA_pd (q, _mm_add_pd (_mm_add_pd (_mm_loadA_pd(q),
-                        _mm_mul_pd(S1,cast128(B11))),
-                        _mm_mul_pd(S2,cast128(B12))));
-                    _mm_storeu_pd(q+n,_mm_add_pd (_mm_add_pd (_mm_loadu_pd(q+n),
-                        _mm_mul_pd(S1,cast128(B21))),
-                        _mm_mul_pd(S2,cast128(B22))));
-                    r += 2;
-                    q += 2;
-                    n2 -= 2;
+                    __m128d S1 = _mm_loadA_pd(xx+j);
+                    __m128d S2 = _mm_loadu_pd(xx+j+n);
+                    _mm_storeA_pd (z+j,
+                                   _mm_add_pd (_mm_add_pd (_mm_loadA_pd(z+j),
+                                                 _mm_mul_pd(S1,cast128(B11))),
+                                               _mm_mul_pd(S2,cast128(B12))));
+                    _mm_storeu_pd (z+j+n,
+                                   _mm_add_pd (_mm_add_pd (_mm_loadu_pd(z+j+n),
+                                                 _mm_mul_pd(S1,cast128(B21))),
+                                               _mm_mul_pd(S2,cast128(B22))));
+                    j += 2;
                 }
 #               endif
 
-                while (n2 >= 4) {
+                while (j <= xrows-4) {
 #                   if CAN_USE_AVX
-                        __m256d S1 = _mm256_loadu_pd(r);
-                        __m256d S2 = _mm256_loadu_pd(r+n);
-                        _mm256_storeu_pd (q, _mm256_add_pd (_mm256_add_pd (
-                                    _mm256_loadA_pd(q),_mm256_mul_pd(S1,B11)),
+                        __m256d S1 = _mm256_loadu_pd(xx+j);
+                        __m256d S2 = _mm256_loadu_pd(xx+j+n);
+                        _mm256_storeu_pd (z+j, _mm256_add_pd (_mm256_add_pd (
+                                    _mm256_loadA_pd(z+j),_mm256_mul_pd(S1,B11)),
                                                        _mm256_mul_pd(S2,B12)));
-                        _mm256_storeu_pd(q+n,_mm256_add_pd (_mm256_add_pd (
-                                  _mm256_loadA_pd(q+n),_mm256_mul_pd(S1,B21)),
+                        _mm256_storeu_pd(z+j+n,_mm256_add_pd (_mm256_add_pd (
+                                  _mm256_loadA_pd(z+j+n),_mm256_mul_pd(S1,B21)),
                                                        _mm256_mul_pd(S2,B22)));
 #                   else  /* CAN_USE_SSE2 */
                         __m128d S1, S2;
-                        S1 = _mm_loadA_pd(r);
-                        S2 = _mm_loadu_pd(r+n);
-                        _mm_storeA_pd (q, _mm_add_pd (
-                                                 _mm_add_pd(_mm_loadA_pd(q),
-                                                 _mm_mul_pd(S1,B11)),
-                                                 _mm_mul_pd(S2,B12)));
-                        _mm_storeu_pd (q+n, _mm_add_pd (
-                                                 _mm_add_pd(_mm_loadu_pd(q+n),
-                                                 _mm_mul_pd(S1,B21)),
-                                                 _mm_mul_pd(S2,B22)));
-                        S1 = _mm_loadA_pd(r+2);
-                        S2 = _mm_loadu_pd(r+n+2);
-                        _mm_storeA_pd (q+2, _mm_add_pd (
-                                                 _mm_add_pd(_mm_loadA_pd(q+2),
-                                                 _mm_mul_pd(S1,B11)),
-                                                 _mm_mul_pd(S2,B12)));
-                        _mm_storeu_pd (q+n+2, _mm_add_pd (
-                                                 _mm_add_pd(_mm_loadu_pd(q+n+2),
-                                                 _mm_mul_pd(S1,B21)),
-                                                 _mm_mul_pd(S2,B22)));
+                        S1 = _mm_loadA_pd(xx+j);
+                        S2 = _mm_loadu_pd(xx+j+n);
+                        _mm_storeA_pd(z+j, _mm_add_pd (
+                                               _mm_add_pd(_mm_loadA_pd(z+j),
+                                               _mm_mul_pd(S1,B11)),
+                                               _mm_mul_pd(S2,B12)));
+                        _mm_storeu_pd(z+j+n, _mm_add_pd (
+                                               _mm_add_pd(_mm_loadu_pd(z+j+n),
+                                               _mm_mul_pd(S1,B21)),
+                                               _mm_mul_pd(S2,B22)));
+                        S1 = _mm_loadA_pd(xx+j+2);
+                        S2 = _mm_loadu_pd(xx+j+n+2);
+                        _mm_storeA_pd(z+j+2, _mm_add_pd (
+                                               _mm_add_pd(_mm_loadA_pd(z+j+2),
+                                               _mm_mul_pd(S1,B11)),
+                                               _mm_mul_pd(S2,B12)));
+                        _mm_storeu_pd(z+j+n+2,_mm_add_pd (
+                                               _mm_add_pd(_mm_loadu_pd(z+j+n+2),
+                                               _mm_mul_pd(S1,B21)),
+                                               _mm_mul_pd(S2,B22)));
 #                   endif
-                    r += 4;
-                    q += 4;
-                    n2 -= 4;
+                    j += 4;
                 }
 
-                if (n2 > 1) {
-                    __m128d S1 = _mm_loadA_pd(r);
-                    __m128d S2 = _mm_loadu_pd(r+n);
-                    _mm_storeA_pd (q, _mm_add_pd (_mm_add_pd (_mm_loadA_pd(q),
-                        _mm_mul_pd(S1,cast128(B11))),
-                        _mm_mul_pd(S2,cast128(B12))));
-                    _mm_storeu_pd(q+n,_mm_add_pd (_mm_add_pd (_mm_loadu_pd(q+n),
-                        _mm_mul_pd(S1,cast128(B21))),
-                        _mm_mul_pd(S2,cast128(B22))));
-                    r += 2;
-                    q += 2;
-                    n2 -= 2;
+                if (j <= xrows-2) {
+                    __m128d S1 = _mm_loadA_pd(xx+j);
+                    __m128d S2 = _mm_loadu_pd(xx+j+n);
+                    _mm_storeA_pd (z+j, 
+                                   _mm_add_pd (_mm_add_pd (_mm_loadA_pd(z+j),
+                                                 _mm_mul_pd(S1,cast128(B11))),
+                                               _mm_mul_pd(S2,cast128(B12))));
+                    _mm_storeu_pd (z+j+n,
+                                   _mm_add_pd (_mm_add_pd (_mm_loadu_pd(z+j+n),
+                                                 _mm_mul_pd(S1,cast128(B21))),
+                                               _mm_mul_pd(S2,cast128(B22))));
+                    j += 2;
                 }
 
-                if (n2 >= 1) {
-                    __m128d S1 = _mm_set_sd(r[0]);
-                    __m128d S2 = _mm_set_sd(r[n]);
-                    _mm_store_sd (q, _mm_add_sd (_mm_add_sd (_mm_load_sd(q),
-                        _mm_mul_sd(S1,cast128(B11))),
-                        _mm_mul_sd(S2,cast128(B12))));
-                    _mm_store_sd (q+n, _mm_add_sd (_mm_add_sd (_mm_load_sd(q+n),
-                        _mm_mul_sd(S1,cast128(B21))),
-                        _mm_mul_sd(S2,cast128(B22))));
-                    r += 1;
+                if (j < xrows) {
+                    __m128d S1 = _mm_set_sd((xx+j)[0]);
+                    __m128d S2 = _mm_set_sd((xx+j+n)[0]);
+                    _mm_store_sd (z+j, 
+                                  _mm_add_sd (_mm_add_sd (_mm_load_sd(z+j),
+                                                _mm_mul_sd(S1,cast128(B11))),
+                                              _mm_mul_sd(S2,cast128(B12))));
+                    _mm_store_sd (z+j+n,
+                                  _mm_add_sd (_mm_add_sd (_mm_load_sd(z+j+n),
+                                                _mm_mul_sd(S1,cast128(B21))),
+                                              _mm_mul_sd(S2,cast128(B22))));
                 }
             }
 #           else  /* non-SIMD code */
             {
-                double b11 = y[0];
-                double b12 = y[1];
-                double b21 = y[k];
-                double b22 = y[k+1];
+                double b11 = yy[0];
+                double b12 = yy[1];
+                double b21 = yy[k];
+                double b22 = yy[k+1];
                 double s1, s2;
-                double *q = z;
-                int n2 = xrows;
-                while (n2 > 1) {
-                    s1 = r[0];
-                    s2 = r[n];
-                    q[0] = (q[0] + (s1 * b11)) + (s2 * b12);
-                    q[n] = (q[n] + (s1 * b21)) + (s2 * b22);
-                    s1 = r[1];
-                    s2 = r[n+1];
-                    q[1] = (q[1] + (s1 * b11)) + (s2 * b12);
-                    (q+n)[1] = ((q+n)[1] + (s1 * b21)) + (s2 * b22);
-                    r += 2;
-                    q += 2;
-                    n2 -= 2;
+
+                while (j <= xrows-2) {
+                    s1 = xx[j];
+                    s2 = (xx+n)[j];
+                    z[j] = (z[j] + (s1 * b11)) + (s2 * b12);
+                    (z+n)[j] = ((z+n)[j] + (s1 * b21)) + (s2 * b22);
+                    s1 = xx[j+1];
+                    s2 = (xx+n)[j+1];
+                    z[j+1] = (z[j+1] + (s1 * b11)) + (s2 * b12);
+                    (z+n)[j+1] = ((z+n)[j+1] + (s1 * b21)) + (s2 * b22);
+                    j += 2;
                 }
-                if (n2 >= 1) {
-                    s1 = r[0];
-                    s2 = r[n];
-                    q[0] = (q[0] + (s1 * b11)) + (s2 * b12);
-                    (q+n)[0] = ((q+n)[0] + (s1 * b21)) + (s2 * b22);
-                    r += 1;
+
+                if (j < xrows) {
+                    s1 = xx[j];
+                    s2 = (xx+n)[j];
+                    z[j] = (z[j] + (s1 * b11)) + (s2 * b12);
+                    (z+n)[j] = ((z+n)[j] + (s1 * b21)) + (s2 * b22);
                 }
             }
 #           endif
 
             xx += n; xx += n;
-            y += 2;
+            yy += 2;
             i += 2;
         }
 
         /* Add products with the last column of x, if not already done above. */
 
         if (i < xcols) {
-            double b1 = y[0];
-            double b2 = y[k];
+            double b1 = yy[0];
+            double b2 = yy[k];
             double *r = xx;
-            double *q = z;
-            int n2 = xrows;
-            do {
-                double s = r[0];
-                q[0] += s * b1;
-                q[n] += s * b2;
-                r += 1;
-                q += 1;
-                n2 -= 1;
-            } while (n2 > 0);
-            y += 1;
+            int j = 0;
+            while (j < xrows) {
+                double s = xx[j];
+                z[j] += s * b1;
+                (z+n)[j] += s * b2;
+                j += 1;
+            }
         }
 
         /* Move to the next pairs of y and z columns. */
 
         z += n; z += n;
-        y = ys+k; y += k;
+        y += k; y += k;
         m -= 2;
     }
 
@@ -2831,6 +2820,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
     if (m >= 1) {
 
         double *xx = x;
+        double *yy = y;
         int i = 0;
         int j;
 
@@ -2839,8 +2829,8 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
            column of y with the first two columns of x. */
 
         if (!add) {
-            double b0 = y[i+0];
-            double b1 = y[i+1];
+            double b0 = yy[i+0];
+            double b1 = yy[i+1];
             j = 0;
 #           if ALIGN_FORWARD & 8
                 z[j] = xx[j] * b0 + (xx+n)[j] * b1;
@@ -2867,11 +2857,11 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
 #           if CAN_USE_SSE2 || CAN_USE_AVX
             {
 #               if CAN_USE_AVX
-                    __m256d B0 = _mm256_set1_pd (y[i+0]);
-                    __m256d B1 = _mm256_set1_pd (y[i+1]);
+                    __m256d B0 = _mm256_set1_pd (yy[i+0]);
+                    __m256d B1 = _mm256_set1_pd (yy[i+1]);
 #               else
-                    __m128d B0 = _mm_set1_pd (y[i+0]);
-                    __m128d B1 = _mm_set1_pd (y[i+1]);
+                    __m128d B0 = _mm_set1_pd (yy[i+0]);
+                    __m128d B1 = _mm_set1_pd (yy[i+1]);
 #               endif
 
                 j = 0;
@@ -2972,8 +2962,8 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
 
 #           else  /* non-SIMD code */
             {
-                double b0 = y[i+0];
-                double b1 = y[i+1];
+                double b0 = yy[i+0];
+                double b1 = yy[i+1];
                 j = 0;
                 while (j <= xrows-2) {
                     z[j+0] = (z[j+0] + xx[j+0] * b0) + (xx+n)[j+0] * b1;
@@ -2993,7 +2983,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
         /* Add products with final column of x, if not done above. */
 
         if (i < xcols) {
-            double b = y[i];
+            double b = yy[i];
             j = 0;
 #           if ALIGN_FORWARD & 8
                 z[j] += xx[j] * b;
