@@ -2681,9 +2681,8 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                 }
 #               endif
 
-#               if CAN_USE_AVX
+#               if CAN_USE_AVX && ALIGN >= 32
                 {
-#                   if ALIGN >= 32
                     if (((uintptr_t)(z+j) & 0x1f) != 0)
                     {
                         __m128d S1 = _mm_loadA_pd(xx+j);
@@ -2698,12 +2697,15 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                                                 _mm_mul_pd(S2,cast128(B22))));
                         j += 2;
                     }
-#                   endif
+#               endif
 
+                if (j <= xrows-4)
+#               if CAN_USE_AVX
+                {
                     __m256d S1, S2;
 
                     if ((n & 3) == 0) {
-                        while (j <= xrows-4) {
+                        do {
                             S1 = _mm256_loadA_pd(xx+j);
                             S2 = _mm256_loadA_pd(xx+j+n);
                             _mm256_storeA_pd(z+j, _mm256_add_pd (_mm256_add_pd(
@@ -2713,10 +2715,10 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                                   _mm256_loadA_pd(z+j+n),_mm256_mul_pd(S1,B21)),
                                                        _mm256_mul_pd(S2,B22)));
                             j += 4;
-                        }
+                        } while (j <= xrows-4);
                     }
                     else if (((uintptr_t)(xx+j) & 0x1f) == 0) {
-                        while (j <= xrows-4) {
+                        do {
                             S1 = _mm256_loadA_pd(xx+j);
                             S2 = _mm256_loadu_pd(xx+j+n);
                             _mm256_storeA_pd(z+j, _mm256_add_pd (_mm256_add_pd(
@@ -2726,10 +2728,10 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                                   _mm256_loadu_pd(z+j+n),_mm256_mul_pd(S1,B21)),
                                                        _mm256_mul_pd(S2,B22)));
                             j += 4;
-                        }
+                        } while (j <= xrows-4);
                     }
                     else {
-                        while (j <= xrows-4) {
+                        do {
                             S1 = _mm256_loadu_pd(xx+j);
                             S2 = _mm256_loadu_pd(xx+j+n);
                             _mm256_storeA_pd(z+j, _mm256_add_pd (_mm256_add_pd(
@@ -2739,13 +2741,13 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                                   _mm256_loadu_pd(z+j+n),_mm256_mul_pd(S1,B21)),
                                                        _mm256_mul_pd(S2,B22)));
                             j += 4;
-                        }
+                        } while (j <= xrows-4);
                     }
                 }
 #               else  /* CAN_USE_SSE2 */
                 {
                     if ((n & 1) == 0) {  /* adding n to ptr keeps alignment */
-                        while (j <= xrows-4) {
+                        do {
                             __m128d S1, S2;
                             S1 = _mm_loadA_pd(xx+j);
                             S2 = _mm_loadA_pd(xx+j+n);
@@ -2768,10 +2770,10 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                                                _mm_mul_pd(S1,B21)),
                                                _mm_mul_pd(S2,B22)));
                             j += 4;
-                        }
+                        } while (j <= xrows-4);
                     }
                     else {
-                        while (j <= xrows-4) {
+                        do {
                             __m128d S1, S2;
                             S1 = _mm_loadA_pd(xx+j);
                             S2 = _mm_loadu_pd(xx+j+n);
@@ -2794,7 +2796,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                                                _mm_mul_pd(S1,B21)),
                                                _mm_mul_pd(S2,B22)));
                             j += 4;
-                        }
+                        } while (j <= xrows-4);
                     }
                 }
 #               endif
