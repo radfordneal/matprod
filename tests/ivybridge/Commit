@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 6fd1fd7e3a377f80fd63ea2b145d7a997ef5cd55
+commit 8b2aa105f8aac4717522bac41f57f3d11d50e8c5
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Jan 5 17:56:28 2018 -0500
+Date:   Sat Jan 6 13:20:21 2018 -0500
 
-    results for sandybridge
+    tweak SSE2 alignment in matprod_mat_mat_sub_xrowscols
