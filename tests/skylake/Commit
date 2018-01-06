@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 4aa78f38a336769e9eb68908bbdb59e1df8e40ff
+commit a236a0661c9dce1342e6b89c5e4c7c5054a8c696
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Jan 6 08:34:06 2018 -0500
+Date:   Sat Jan 6 12:25:17 2018 -0500
 
-    revise looping/indexing methods in matprod_mat_mat_sub_xrowscols
+    tweak how alignment is handled in matprod_mat_mat_sub_xrowscols
