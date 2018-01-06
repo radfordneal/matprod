@@ -2744,29 +2744,57 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                 }
 #               else  /* CAN_USE_SSE2 */
                 {
-                    while (j <= xrows-4) {
-                        __m128d S1, S2;
-                        S1 = _mm_loadA_pd(xx+j);
-                        S2 = _mm_loadu_pd(xx+j+n);
-                        _mm_storeA_pd(z+j, _mm_add_pd (
+                    if ((n & 1) == 0) {  /* adding n to ptr keeps alignment */
+                        while (j <= xrows-4) {
+                            __m128d S1, S2;
+                            S1 = _mm_loadA_pd(xx+j);
+                            S2 = _mm_loadA_pd(xx+j+n);
+                            _mm_storeA_pd(z+j,_mm_add_pd (
                                                _mm_add_pd(_mm_loadA_pd(z+j),
                                                _mm_mul_pd(S1,B11)),
                                                _mm_mul_pd(S2,B12)));
-                        _mm_storeu_pd(z+j+n, _mm_add_pd (
-                                               _mm_add_pd(_mm_loadu_pd(z+j+n),
+                            _mm_storeA_pd(z+j+n,_mm_add_pd (
+                                               _mm_add_pd(_mm_loadA_pd(z+j+n),
                                                _mm_mul_pd(S1,B21)),
                                                _mm_mul_pd(S2,B22)));
-                        S1 = _mm_loadA_pd(xx+j+2);
-                        S2 = _mm_loadu_pd(xx+j+n+2);
-                        _mm_storeA_pd(z+j+2, _mm_add_pd (
+                            S1 = _mm_loadA_pd(xx+j+2);
+                            S2 = _mm_loadA_pd(xx+j+n+2);
+                            _mm_storeA_pd(z+j+2,_mm_add_pd (
                                                _mm_add_pd(_mm_loadA_pd(z+j+2),
                                                _mm_mul_pd(S1,B11)),
                                                _mm_mul_pd(S2,B12)));
-                        _mm_storeu_pd(z+j+n+2,_mm_add_pd (
+                            _mm_storeA_pd(z+j+n+2,_mm_add_pd (
+                                               _mm_add_pd(_mm_loadA_pd(z+j+n+2),
+                                               _mm_mul_pd(S1,B21)),
+                                               _mm_mul_pd(S2,B22)));
+                            j += 4;
+                        }
+                    }
+                    else {
+                        while (j <= xrows-4) {
+                            __m128d S1, S2;
+                            S1 = _mm_loadA_pd(xx+j);
+                            S2 = _mm_loadu_pd(xx+j+n);
+                            _mm_storeA_pd(z+j,_mm_add_pd (
+                                               _mm_add_pd(_mm_loadA_pd(z+j),
+                                               _mm_mul_pd(S1,B11)),
+                                               _mm_mul_pd(S2,B12)));
+                            _mm_storeu_pd(z+j+n,_mm_add_pd (
+                                               _mm_add_pd(_mm_loadu_pd(z+j+n),
+                                               _mm_mul_pd(S1,B21)),
+                                               _mm_mul_pd(S2,B22)));
+                            S1 = _mm_loadA_pd(xx+j+2);
+                            S2 = _mm_loadu_pd(xx+j+n+2);
+                            _mm_storeA_pd(z+j+2,_mm_add_pd (
+                                               _mm_add_pd(_mm_loadA_pd(z+j+2),
+                                               _mm_mul_pd(S1,B11)),
+                                               _mm_mul_pd(S2,B12)));
+                            _mm_storeu_pd(z+j+n+2,_mm_add_pd (
                                                _mm_add_pd(_mm_loadu_pd(z+j+n+2),
                                                _mm_mul_pd(S1,B21)),
                                                _mm_mul_pd(S2,B22)));
-                        j += 4;
+                            j += 4;
+                        }
                     }
                 }
 #               endif
