@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit 8b2aa105f8aac4717522bac41f57f3d11d50e8c5
+commit 36c2fd1862fbab75b7c5527a0c33c045fa42d4ab
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Jan 6 13:20:21 2018 -0500
+Date:   Sat Jan 6 14:33:06 2018 -0500
 
-    tweak SSE2 alignment in matprod_mat_mat_sub_xrowscols
+    more tweaks in matprod_mat_mat
