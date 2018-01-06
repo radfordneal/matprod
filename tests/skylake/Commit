@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 6fd1fd7e3a377f80fd63ea2b145d7a997ef5cd55
+commit 4aa78f38a336769e9eb68908bbdb59e1df8e40ff
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Jan 5 17:56:28 2018 -0500
+Date:   Sat Jan 6 08:34:06 2018 -0500
 
-    results for sandybridge
+    revise looping/indexing methods in matprod_mat_mat_sub_xrowscols
