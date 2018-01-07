@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 36c2fd1862fbab75b7c5527a0c33c045fa42d4ab
+commit 258531f42ca2832109fd7206a496913d6ec017f6
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Jan 6 14:33:06 2018 -0500
+Date:   Sat Jan 6 22:34:24 2018 -0500
 
-    more tweaks in matprod_mat_mat
+    results for ivybridge
