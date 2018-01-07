@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit ff877043fb88827d12d711b6baebf3e1210710dc
+commit bf21397423a0f59470d1f268fc93484d16e4afeb
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Tue Jan 2 13:42:00 2018 -0500
+Date:   Sun Jan 7 10:43:08 2018 -0500
 
-    code cleanup in matprod_vec_mat_sub_yrows
+    add another check in test.c
