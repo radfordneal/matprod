@@ -1,5 +1,7 @@
-commit fb677ae12555ba0d12060095b352322d3dfe3355
+gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
+ 
+commit a39a32aa26a5fded7d6320a23fac857569dee7cb
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Dec 17 20:59:30 2017 -0500
+Date:   Sun Jan 7 11:09:03 2018 -0500
 
-    results for haswell
+    results for westmere
