@@ -1,5 +1,7 @@
-commit d57ac49f9d751934ed4b79d4db9f4b20dba01dcf
+gcc -g -std=gnu99 -O3 -ffp-contract=off -msse2 -mfpmath=sse
+ 
+commit 7af6fe5c06e89bce30d80014474458ba88a962da
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Dec 24 18:54:35 2017 -0500
+Date:   Sun Jan 7 10:10:56 2018 -0500
 
-    lstopo output for foster
+    add SSE/AVX code for handling last odd column in matprod_mat_mat_sub_xrowscols
