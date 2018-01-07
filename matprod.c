@@ -2704,13 +2704,13 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
 #               if CAN_USE_AVX
                     __m256d B11 = _mm256_set1_pd(yy[0]);
                     __m256d B12 = _mm256_set1_pd(yy[1]);
-                    __m256d B21 = _mm256_set1_pd(yy[k]);
-                    __m256d B22 = _mm256_set1_pd(yy[k+1]);
+                    __m256d B21 = _mm256_set1_pd((yy+k)[0]);
+                    __m256d B22 = _mm256_set1_pd((yy+k)[1]);
 #               else
                     __m128d B11 = _mm_set1_pd(yy[0]);
                     __m128d B12 = _mm_set1_pd(yy[1]);
-                    __m128d B21 = _mm_set1_pd(yy[k]);
-                    __m128d B22 = _mm_set1_pd(yy[k+1]);
+                    __m128d B21 = _mm_set1_pd((yy+k)[0]);
+                    __m128d B22 = _mm_set1_pd((yy+k)[1]);
 #               endif
 
 #               if ALIGN_FORWARD & 8
@@ -2879,8 +2879,8 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
             {
                 double b11 = yy[0];
                 double b12 = yy[1];
-                double b21 = yy[k];
-                double b22 = yy[k+1];
+                double b21 = (yy+k)[0];
+                double b22 = (yy+k)[1];
                 double s1, s2;
 
                 while (j <= xrows-2) {
@@ -2912,17 +2912,34 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
         /* Add products with the last column of x, if not already done above. */
 
         if (i < xcols) {
-            double b1 = yy[0];
-            double b2 = yy[k];
-            double *r = xx;
+
             int j = 0;
-            while (j < xrows) {
-                double s = xx[j];
-                z[j] += s * b1;
-                (z+n)[j] += s * b2;
-                j += 1;
+
+#           if 0 && (CAN_USE_AVX || CAN_USE_SSE2)
+            {
+            }
+
+#           else  /* non-SIMD code */
+            {
+                double b1 = yy[0];
+                double b2 = (yy+k)[0];
+                while (j <= xrows-2) {
+                    double s1 = xx[j];
+                    double s2 = xx[j+1];
+                    z[j] += s1 * b1;
+                    z[j+1] += s2 * b1;
+                    (z+n)[j] += s1 * b2;
+                    (z+n)[j+1] += s2 * b2;
+                    j += 2;
+                }
+                if (j < xrows) {
+                    double s = xx[j];
+                    z[j] += s * b1;
+                    (z+n)[j] += s * b2;
+                }
             }
         }
+#       endif
 
         /* Move to the next pairs of y and z columns. */
 
