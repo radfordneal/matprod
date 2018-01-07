@@ -2915,8 +2915,73 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
 
             int j = 0;
 
-#           if 0 && (CAN_USE_AVX || CAN_USE_SSE2)
+#           if CAN_USE_AVX || CAN_USE_SSE2
             {
+#               if CAN_USE_AVX
+                    __m256d B1 = _mm256_set1_pd (yy[0]);
+                    __m256d B2 = _mm256_set1_pd ((yy+k)[0]);
+#               else
+                    __m128d B1 = _mm_set1_pd (yy[0]);
+                    __m128d B2 = _mm_set1_pd ((yy+k)[0]);
+#               endif
+
+#               if ALIGN_FORWARD & 8
+                {
+                    __m128d S = _mm_load_sd(xx+j);
+                    _mm_store_sd (z+j, _mm_add_sd (_mm_load_sd(z+j), 
+                                                   _mm_mul_sd(S, cast128(B1))));
+                    _mm_store_sd (z+j+n, _mm_add_sd (_mm_load_sd(z+j+n), 
+                                                   _mm_mul_sd(S, cast128(B2))));
+                    j += 1;
+                }
+#               endif
+
+                while (j <= xrows-4) {
+#                   if CAN_USE_AVX
+                    {
+                        __m256d S;
+                        S = _mm256_loadu_pd(xx+j);
+                        _mm256_storeu_pd (z+j, _mm256_add_pd (
+                                                        _mm256_loadu_pd(z+j), 
+                                                        _mm256_mul_pd(S,B1)));
+                        _mm256_storeu_pd (z+j+n, _mm256_add_pd(
+                                                        _mm256_loadu_pd(z+j+n), 
+                                                        _mm256_mul_pd(S,B2)));
+                    }
+#                   else
+                    {
+                        __m128d S;
+                        S = _mm_loadA_pd(xx+j);
+                        _mm_storeA_pd (z+j, _mm_add_pd (_mm_loadA_pd(z+j), 
+                                                    _mm_mul_pd(S,cast128(B1))));
+                        _mm_storeu_pd (z+j+n,_mm_add_pd(_mm_loadu_pd(z+j+n), 
+                                                    _mm_mul_pd(S,cast128(B2))));
+                        S = _mm_loadA_pd(xx+j+2);
+                        _mm_storeA_pd (z+j+2, _mm_add_pd (_mm_loadA_pd(z+j+2), 
+                                                    _mm_mul_pd(S,cast128(B1))));
+                        _mm_storeu_pd (z+j+n+2,_mm_add_pd(_mm_loadu_pd(z+j+n+2),
+                                                    _mm_mul_pd(S,cast128(B2))));
+                    }
+#                   endif
+                    j += 4;
+                }
+
+                if (j <= xrows-2) {
+                    __m128d S = _mm_loadA_pd(xx+j);
+                    _mm_storeA_pd (z+j, _mm_add_pd (_mm_loadA_pd(z+j), 
+                                                    _mm_mul_pd(S,cast128(B1))));
+                    _mm_storeu_pd (z+j+n,_mm_add_pd(_mm_loadu_pd(z+j+n), 
+                                                    _mm_mul_pd(S,cast128(B2))));
+                    j += 2;
+                }
+
+                if (j < xrows) {
+                    __m128d S = _mm_load_sd(xx+j);
+                    _mm_store_sd (z+j, _mm_add_sd (_mm_load_sd(z+j), 
+                                                   _mm_mul_sd(S, cast128(B1))));
+                    _mm_store_sd (z+j+n, _mm_add_sd (_mm_load_sd(z+j+n), 
+                                                   _mm_mul_sd(S, cast128(B2))));
+                }
             }
 
 #           else  /* non-SIMD code */
@@ -2938,8 +3003,8 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                     (z+n)[j] += s * b2;
                 }
             }
+#           endif
         }
-#       endif
 
         /* Move to the next pairs of y and z columns. */
 
