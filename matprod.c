@@ -2936,13 +2936,24 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                 }
 #               endif
 
+#               if CAN_USE_AVX && ALIGN >= 32
+                    if (((uintptr_t)(z+j) & 0x1f) != 0) {
+                        __m128d S = _mm_loadA_pd(xx+j);
+                        _mm_storeA_pd (z+j, _mm_add_pd (_mm_loadA_pd(z+j), 
+                                                    _mm_mul_pd(S,cast128(B1))));
+                        _mm_storeu_pd (z+j+n,_mm_add_pd(_mm_loadu_pd(z+j+n), 
+                                                    _mm_mul_pd(S,cast128(B2))));
+                        j += 2;
+                    }
+#               endif
+
                 while (j <= xrows-4) {
 #                   if CAN_USE_AVX
                     {
                         __m256d S;
                         S = _mm256_loadu_pd(xx+j);
-                        _mm256_storeu_pd (z+j, _mm256_add_pd (
-                                                        _mm256_loadu_pd(z+j), 
+                        _mm256_storeA_pd (z+j, _mm256_add_pd (
+                                                        _mm256_loadA_pd(z+j), 
                                                         _mm256_mul_pd(S,B1)));
                         _mm256_storeu_pd (z+j+n, _mm256_add_pd(
                                                         _mm256_loadu_pd(z+j+n), 
