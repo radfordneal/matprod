@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit bf21397423a0f59470d1f268fc93484d16e4afeb
+commit d3a12b468d101c6ab57ea3b30527769d2fc0b883
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Jan 7 10:43:08 2018 -0500
+Date:   Sun Jan 7 21:51:04 2018 -0500
 
-    add another check in test.c
+    results for ivybridge
