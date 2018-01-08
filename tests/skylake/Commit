@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 3d32809fd5a321d915dfcf1a2bc34b0a2d3a73cd
+commit f7ee25fa1b3f21162932bc011be26bf8b486fb22
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Jan 7 17:01:57 2018 -0500
+Date:   Sun Jan 7 19:12:14 2018 -0500
 
-    results for sandybridge
+    tweak alignment in matprod_outer
