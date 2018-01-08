@@ -1,7 +1,197 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 258531f42ca2832109fd7206a496913d6ec017f6
+commit 73940f24d82f84cc8b6be510bf55097c9f69bc50
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Jan 6 22:34:24 2018 -0500
+Date:   Sun Jan 7 13:52:30 2018 -0500
 
-    results for ivybridge
+    better AVX alignment for final x col in matprod_mat_mat
+diff --git a/matprod.c b/matprod.c
+index f80d885..c6dad61 100644
+--- a/matprod.c
++++ b/matprod.c
+@@ -2730,31 +2730,29 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
+ #               endif
+ 
+ #               if CAN_USE_AVX && ALIGN >= 32
+-                    if (((uintptr_t)(z+j) & 0x1f) != 0)
+-                    {
+-                        __m128d S1 = _mm_loadA_pd(xx+j);
+-                        __m128d S2 = _mm_loadu_pd(xx+j+n);
+-                        _mm_storeA_pd (z+j,
+-                                      _mm_add_pd (_mm_add_pd (_mm_loadA_pd(z+j),
++                if (((uintptr_t)(z+j) & 0x1f) != 0)
++                {
++                    __m128d S1 = _mm_loadA_pd(xx+j);
++                    __m128d S2 = _mm_loadu_pd(xx+j+n);
++                    _mm_storeA_pd (z+j,
++                                  _mm_add_pd (_mm_add_pd (_mm_loadA_pd(z+j),
+                                                    _mm_mul_pd(S1,cast128(B11))),
+                                                   _mm_mul_pd(S2,cast128(B12))));
+-                        _mm_storeu_pd (z+j+n,
+-                                    _mm_add_pd (_mm_add_pd (_mm_loadu_pd(z+j+n),
++                    _mm_storeu_pd (z+j+n,
++                                _mm_add_pd (_mm_add_pd (_mm_loadu_pd(z+j+n),
+                                                   _mm_mul_pd(S1,cast128(B21))),
+                                                 _mm_mul_pd(S2,cast128(B22))));
+-                        j += 2;
+-                    }
++                    j += 2;
++                }
+ #               endif
+ 
+                 if (j <= xrows-4)
+ #               if CAN_USE_AVX
+                 {
+-                    __m256d S1, S2;
+-
+-                    if ((n & 3) == 0) {
++                    if ((n & 3) == 0) {  /* adding n to ptr keeps alignment */
+                         do {
+-                            S1 = _mm256_loadA_pd(xx+j);
+-                            S2 = _mm256_loadA_pd(xx+j+n);
++                            __m256d S1 = _mm256_loadA_pd(xx+j);
++                            __m256d S2 = _mm256_loadA_pd(xx+j+n);
+                             _mm256_storeA_pd(z+j, _mm256_add_pd (_mm256_add_pd(
+                                     _mm256_loadA_pd(z+j),_mm256_mul_pd(S1,B11)),
+                                                        _mm256_mul_pd(S2,B12)));
+@@ -2766,8 +2764,8 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
+                     }
+                     else if (((uintptr_t)(xx+j) & 0x1f) == 0) {
+                         do {
+-                            S1 = _mm256_loadA_pd(xx+j);
+-                            S2 = _mm256_loadu_pd(xx+j+n);
++                            __m256d S1 = _mm256_loadA_pd(xx+j);
++                            __m256d S2 = _mm256_loadu_pd(xx+j+n);
+                             _mm256_storeA_pd(z+j, _mm256_add_pd (_mm256_add_pd(
+                                     _mm256_loadA_pd(z+j),_mm256_mul_pd(S1,B11)),
+                                                        _mm256_mul_pd(S2,B12)));
+@@ -2779,8 +2777,8 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
+                     }
+                     else {
+                         do {
+-                            S1 = _mm256_loadu_pd(xx+j);
+-                            S2 = _mm256_loadu_pd(xx+j+n);
++                            __m256d S1 = _mm256_loadu_pd(xx+j);
++                            __m256d S2 = _mm256_loadu_pd(xx+j+n);
+                             _mm256_storeA_pd(z+j, _mm256_add_pd (_mm256_add_pd(
+                                     _mm256_loadA_pd(z+j),_mm256_mul_pd(S1,B11)),
+                                                        _mm256_mul_pd(S2,B12)));
+@@ -2937,45 +2935,94 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
+ #               endif
+ 
+ #               if CAN_USE_AVX && ALIGN >= 32
+-                    if (((uintptr_t)(z+j) & 0x1f) != 0) {
+-                        __m128d S = _mm_loadA_pd(xx+j);
+-                        _mm_storeA_pd (z+j, _mm_add_pd (_mm_loadA_pd(z+j), 
++                if (((uintptr_t)(z+j) & 0x1f) != 0) {
++                    __m128d S = _mm_loadA_pd(xx+j);
++                    _mm_storeA_pd (z+j, _mm_add_pd (_mm_loadA_pd(z+j), 
+                                                     _mm_mul_pd(S,cast128(B1))));
+-                        _mm_storeu_pd (z+j+n,_mm_add_pd(_mm_loadu_pd(z+j+n), 
++                    _mm_storeu_pd (z+j+n,_mm_add_pd(_mm_loadu_pd(z+j+n), 
+                                                     _mm_mul_pd(S,cast128(B2))));
+-                        j += 2;
+-                    }
++                    j += 2;
++                }
+ #               endif
+ 
+-                while (j <= xrows-4) {
+-#                   if CAN_USE_AVX
+-                    {
+-                        __m256d S;
+-                        S = _mm256_loadu_pd(xx+j);
+-                        _mm256_storeA_pd (z+j, _mm256_add_pd (
++                if (j <= xrows-4)
++#               if CAN_USE_AVX
++                {
++                    if ((n & 3) == 0) {  /* adding n to ptr keeps alignment */
++                        do {
++                            __m256d S = _mm256_loadA_pd(xx+j);
++                            _mm256_storeA_pd (z+j, _mm256_add_pd (
++                                                        _mm256_loadA_pd(z+j), 
++                                                        _mm256_mul_pd(S,B1)));
++                            _mm256_storeA_pd (z+j+n, _mm256_add_pd(
++                                                        _mm256_loadA_pd(z+j+n), 
++                                                        _mm256_mul_pd(S,B2)));
++                            j += 4;
++                        } while (j <= xrows-4);
++                    }
++                    else if (((uintptr_t)(xx+j) & 0x1f) == 0) {
++                        do {
++                            __m256d S = _mm256_loadA_pd(xx+j);
++                            _mm256_storeA_pd (z+j, _mm256_add_pd (
+                                                         _mm256_loadA_pd(z+j), 
+                                                         _mm256_mul_pd(S,B1)));
+-                        _mm256_storeu_pd (z+j+n, _mm256_add_pd(
++                            _mm256_storeu_pd (z+j+n, _mm256_add_pd(
+                                                         _mm256_loadu_pd(z+j+n), 
+                                                         _mm256_mul_pd(S,B2)));
++                            j += 4;
++                        } while (j <= xrows-4);
+                     }
+-#                   else
+-                    {
+-                        __m128d S;
+-                        S = _mm_loadA_pd(xx+j);
+-                        _mm_storeA_pd (z+j, _mm_add_pd (_mm_loadA_pd(z+j), 
++                    else {
++                        do {
++                            __m256d S = _mm256_loadu_pd(xx+j);
++                            _mm256_storeA_pd (z+j, _mm256_add_pd (
++                                                        _mm256_loadA_pd(z+j), 
++                                                        _mm256_mul_pd(S,B1)));
++                            _mm256_storeu_pd (z+j+n, _mm256_add_pd(
++                                                        _mm256_loadu_pd(z+j+n), 
++                                                        _mm256_mul_pd(S,B2)));
++                            j += 4;
++                        } while (j <= xrows-4);
++                    }
++                }
++#               else  /* CAN_USE_SSE2 */
++                {
++                    if ((n & 1) == 0) {  /* adding n to ptr keeps alignment */
++                        do {
++                            __m128d S;
++                            S = _mm_loadA_pd(xx+j);
++                            _mm_storeA_pd (z+j, _mm_add_pd (_mm_loadA_pd(z+j), 
+                                                     _mm_mul_pd(S,cast128(B1))));
+-                        _mm_storeu_pd (z+j+n,_mm_add_pd(_mm_loadu_pd(z+j+n), 
++                            _mm_storeA_pd (z+j+n,_mm_add_pd(_mm_loadA_pd(z+j+n),
+                                                     _mm_mul_pd(S,cast128(B2))));
+-                        S = _mm_loadA_pd(xx+j+2);
+-                        _mm_storeA_pd (z+j+2, _mm_add_pd (_mm_loadA_pd(z+j+2), 
++                            S = _mm_loadA_pd(xx+j+2);
++                            _mm_storeA_pd (z+j+2,_mm_add_pd(_mm_loadA_pd(z+j+2),
+                                                     _mm_mul_pd(S,cast128(B1))));
+-                        _mm_storeu_pd (z+j+n+2,_mm_add_pd(_mm_loadu_pd(z+j+n+2),
++                            _mm_storeA_pd (z+j+n+2,
++                                               _mm_add_pd(_mm_loadA_pd(z+j+n+2),
+                                                     _mm_mul_pd(S,cast128(B2))));
++                            j += 4;
++                        } while (j <= xrows-4);
++                    }
++                    else {
++                        do {
++                            __m128d S;
++                            S = _mm_loadA_pd(xx+j);
++                            _mm_storeA_pd (z+j, _mm_add_pd (_mm_loadA_pd(z+j), 
++                                                    _mm_mul_pd(S,cast128(B1))));
++                            _mm_storeu_pd (z+j+n,_mm_add_pd(_mm_loadu_pd(z+j+n),
++                                                    _mm_mul_pd(S,cast128(B2))));
++                            S = _mm_loadA_pd(xx+j+2);
++                            _mm_storeA_pd (z+j+2,_mm_add_pd(_mm_loadA_pd(z+j+2),
++                                                    _mm_mul_pd(S,cast128(B1))));
++                            _mm_storeu_pd (z+j+n+2,
++                                               _mm_add_pd(_mm_loadu_pd(z+j+n+2),
++                                                    _mm_mul_pd(S,cast128(B2))));
++                            j += 4;
++                        } while (j <= xrows-4);
+                     }
+-#                   endif
+-                    j += 4;
+                 }
++#               endif
+ 
+                 if (j <= xrows-2) {
+                     __m128d S = _mm_loadA_pd(xx+j);

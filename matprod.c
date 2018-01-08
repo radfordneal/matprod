@@ -2053,28 +2053,37 @@ void matprod_outer (double * MATPROD_RESTRICT x,
                            _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
                         i += 2;
 #                   endif
-                    while (i <= n-4) {
-                        _mm256_storeu_pd (z+i, 
-                              _mm256_mul_pd (_mm256_loadA_pd (x+i), T));
-                        i += 4;
+                    if (((uintptr_t)(z+i) & 0x1f) == 0) {  /* z+i aligned */
+                        while (i <= n-4) {
+                            _mm256_store_pd (z+i, 
+                                  _mm256_mul_pd (_mm256_loadA_pd (x+i), T));
+                            i += 4;
+                        }
+                    }
+                    else {
+                        while (i <= n-4) {
+                            _mm256_storeu_pd (z+i, 
+                                  _mm256_mul_pd (_mm256_loadA_pd (x+i), T));
+                            i += 4;
+                        }
                     }
                 }
 #               else  /* CAN_USE_SSE2 */
                 {
-                    if ((1 & n & j)) {  /* z+i won't be 16-byte aligned */
+                    if (((uintptr_t)(z+i) & 0xf) == 0) {  /* z+i aligned */
                         while (i <= n-4) {
-                            _mm_storeu_pd (z+i, 
+                            _mm_store_pd (z+i, 
                                _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
-                            _mm_storeu_pd (z+i+2, 
+                            _mm_store_pd (z+i+2, 
                                _mm_mul_pd (_mm_loadA_pd (x+i+2), cast128(T)));
                             i += 4;
                         }
                     }
-                    else {  /* z+i and z+i+2 are 16-byte aligned if ALIGN>=16 */
+                    else {
                         while (i <= n-4) {
-                            _mm_storeA_pd (z+i, 
+                            _mm_storeu_pd (z+i, 
                                _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
-                            _mm_storeA_pd (z+i+2, 
+                            _mm_storeu_pd (z+i+2, 
                                _mm_mul_pd (_mm_loadA_pd (x+i+2), cast128(T)));
                             i += 4;
                         }
@@ -2270,23 +2279,29 @@ void matprod_outer (double * MATPROD_RESTRICT x,
 #           if CAN_USE_AVX
                 __m256d X = _mm256_set_pd (x[1], x[0], x[1], x[0]);
 #           else  /* CAN_USE_SSE2 */
-                __m128d X = _mm_loadu_pd (x);
+                __m128d X = _mm_loadA_pd (x);
+#           endif
+
+#           if CAN_USE_AVX && ALIGN_FORWARD == 8
+                _mm_storeu_pd (z, _mm_mul_pd (cast128(X), _mm_set1_pd (y[j])));
+                z += 2;
+                j += 1;
 #           endif
 
             while (j <= m-2) {
 #               if CAN_USE_AVX
                     _mm256_storeu_pd (z, _mm256_mul_pd (X,
-                                 _mm256_set_pd (y[j+1], y[j+1], y[j], y[j])));
+                                   _mm256_set_pd (y[j+1], y[j+1], y[j], y[j])));
 #               else  /* CAN_USE_SSE2 */
-                    _mm_storeu_pd (z, _mm_mul_pd(X, _mm_set1_pd (y[j])));
-                    _mm_storeu_pd (z+2, _mm_mul_pd(X, _mm_set1_pd (y[j+1])));
+                    _mm_storeAA_pd (z, _mm_mul_pd(X, _mm_set1_pd (y[j])));
+                    _mm_storeAA_pd (z+2, _mm_mul_pd(X, _mm_set1_pd (y[j+1])));
 #               endif
                 z += 4;
                 j += 2;
             }
+
             if (j < m) {
-                __m128d Y = _mm_set1_pd (y[j]);
-                _mm_storeu_pd (z, _mm_mul_pd (cast128(X), Y));
+                _mm_storeAA_pd (z, _mm_mul_pd (cast128(X), _mm_set1_pd (y[j])));
             }
         }
 
@@ -2730,31 +2745,29 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
 #               endif
 
 #               if CAN_USE_AVX && ALIGN >= 32
-                    if (((uintptr_t)(z+j) & 0x1f) != 0)
-                    {
-                        __m128d S1 = _mm_loadA_pd(xx+j);
-                        __m128d S2 = _mm_loadu_pd(xx+j+n);
-                        _mm_storeA_pd (z+j,
-                                      _mm_add_pd (_mm_add_pd (_mm_loadA_pd(z+j),
+                if (((uintptr_t)(z+j) & 0x1f) != 0)
+                {
+                    __m128d S1 = _mm_loadA_pd(xx+j);
+                    __m128d S2 = _mm_loadu_pd(xx+j+n);
+                    _mm_storeA_pd (z+j,
+                                  _mm_add_pd (_mm_add_pd (_mm_loadA_pd(z+j),
                                                    _mm_mul_pd(S1,cast128(B11))),
                                                   _mm_mul_pd(S2,cast128(B12))));
-                        _mm_storeu_pd (z+j+n,
-                                    _mm_add_pd (_mm_add_pd (_mm_loadu_pd(z+j+n),
+                    _mm_storeu_pd (z+j+n,
+                                _mm_add_pd (_mm_add_pd (_mm_loadu_pd(z+j+n),
                                                   _mm_mul_pd(S1,cast128(B21))),
                                                 _mm_mul_pd(S2,cast128(B22))));
-                        j += 2;
-                    }
+                    j += 2;
+                }
 #               endif
 
                 if (j <= xrows-4)
 #               if CAN_USE_AVX
                 {
-                    __m256d S1, S2;
-
-                    if ((n & 3) == 0) {
+                    if ((n & 3) == 0) {  /* adding n to ptr keeps alignment */
                         do {
-                            S1 = _mm256_loadA_pd(xx+j);
-                            S2 = _mm256_loadA_pd(xx+j+n);
+                            __m256d S1 = _mm256_loadA_pd(xx+j);
+                            __m256d S2 = _mm256_loadA_pd(xx+j+n);
                             _mm256_storeA_pd(z+j, _mm256_add_pd (_mm256_add_pd(
                                     _mm256_loadA_pd(z+j),_mm256_mul_pd(S1,B11)),
                                                        _mm256_mul_pd(S2,B12)));
@@ -2766,8 +2779,8 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                     }
                     else if (((uintptr_t)(xx+j) & 0x1f) == 0) {
                         do {
-                            S1 = _mm256_loadA_pd(xx+j);
-                            S2 = _mm256_loadu_pd(xx+j+n);
+                            __m256d S1 = _mm256_loadA_pd(xx+j);
+                            __m256d S2 = _mm256_loadu_pd(xx+j+n);
                             _mm256_storeA_pd(z+j, _mm256_add_pd (_mm256_add_pd(
                                     _mm256_loadA_pd(z+j),_mm256_mul_pd(S1,B11)),
                                                        _mm256_mul_pd(S2,B12)));
@@ -2779,8 +2792,8 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                     }
                     else {
                         do {
-                            S1 = _mm256_loadu_pd(xx+j);
-                            S2 = _mm256_loadu_pd(xx+j+n);
+                            __m256d S1 = _mm256_loadu_pd(xx+j);
+                            __m256d S2 = _mm256_loadu_pd(xx+j+n);
                             _mm256_storeA_pd(z+j, _mm256_add_pd (_mm256_add_pd(
                                     _mm256_loadA_pd(z+j),_mm256_mul_pd(S1,B11)),
                                                        _mm256_mul_pd(S2,B12)));
@@ -2936,35 +2949,95 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                 }
 #               endif
 
-                while (j <= xrows-4) {
-#                   if CAN_USE_AVX
-                    {
-                        __m256d S;
-                        S = _mm256_loadu_pd(xx+j);
-                        _mm256_storeu_pd (z+j, _mm256_add_pd (
-                                                        _mm256_loadu_pd(z+j), 
+#               if CAN_USE_AVX && ALIGN >= 32
+                if (((uintptr_t)(z+j) & 0x1f) != 0) {
+                    __m128d S = _mm_loadA_pd(xx+j);
+                    _mm_storeA_pd (z+j, _mm_add_pd (_mm_loadA_pd(z+j), 
+                                                    _mm_mul_pd(S,cast128(B1))));
+                    _mm_storeu_pd (z+j+n,_mm_add_pd(_mm_loadu_pd(z+j+n), 
+                                                    _mm_mul_pd(S,cast128(B2))));
+                    j += 2;
+                }
+#               endif
+
+                if (j <= xrows-4)
+#               if CAN_USE_AVX
+                {
+                    if ((n & 3) == 0) {  /* adding n to ptr keeps alignment */
+                        do {
+                            __m256d S = _mm256_loadA_pd(xx+j);
+                            _mm256_storeA_pd (z+j, _mm256_add_pd (
+                                                        _mm256_loadA_pd(z+j), 
                                                         _mm256_mul_pd(S,B1)));
-                        _mm256_storeu_pd (z+j+n, _mm256_add_pd(
+                            _mm256_storeA_pd (z+j+n, _mm256_add_pd(
+                                                        _mm256_loadA_pd(z+j+n), 
+                                                        _mm256_mul_pd(S,B2)));
+                            j += 4;
+                        } while (j <= xrows-4);
+                    }
+                    else if (((uintptr_t)(xx+j) & 0x1f) == 0) {
+                        do {
+                            __m256d S = _mm256_loadA_pd(xx+j);
+                            _mm256_storeA_pd (z+j, _mm256_add_pd (
+                                                        _mm256_loadA_pd(z+j), 
+                                                        _mm256_mul_pd(S,B1)));
+                            _mm256_storeu_pd (z+j+n, _mm256_add_pd(
                                                         _mm256_loadu_pd(z+j+n), 
                                                         _mm256_mul_pd(S,B2)));
+                            j += 4;
+                        } while (j <= xrows-4);
                     }
-#                   else
-                    {
-                        __m128d S;
-                        S = _mm_loadA_pd(xx+j);
-                        _mm_storeA_pd (z+j, _mm_add_pd (_mm_loadA_pd(z+j), 
-                                                    _mm_mul_pd(S,cast128(B1))));
-                        _mm_storeu_pd (z+j+n,_mm_add_pd(_mm_loadu_pd(z+j+n), 
-                                                    _mm_mul_pd(S,cast128(B2))));
-                        S = _mm_loadA_pd(xx+j+2);
-                        _mm_storeA_pd (z+j+2, _mm_add_pd (_mm_loadA_pd(z+j+2), 
-                                                    _mm_mul_pd(S,cast128(B1))));
-                        _mm_storeu_pd (z+j+n+2,_mm_add_pd(_mm_loadu_pd(z+j+n+2),
-                                                    _mm_mul_pd(S,cast128(B2))));
+                    else {
+                        do {
+                            __m256d S = _mm256_loadu_pd(xx+j);
+                            _mm256_storeA_pd (z+j, _mm256_add_pd (
+                                                        _mm256_loadA_pd(z+j), 
+                                                        _mm256_mul_pd(S,B1)));
+                            _mm256_storeu_pd (z+j+n, _mm256_add_pd(
+                                                        _mm256_loadu_pd(z+j+n), 
+                                                        _mm256_mul_pd(S,B2)));
+                            j += 4;
+                        } while (j <= xrows-4);
                     }
-#                   endif
-                    j += 4;
                 }
+#               else  /* CAN_USE_SSE2 */
+                {
+                    if ((n & 1) == 0) {  /* adding n to ptr keeps alignment */
+                        do {
+                            __m128d S;
+                            S = _mm_loadA_pd(xx+j);
+                            _mm_storeA_pd (z+j, _mm_add_pd (_mm_loadA_pd(z+j), 
+                                                    _mm_mul_pd(S,cast128(B1))));
+                            _mm_storeA_pd (z+j+n,_mm_add_pd(_mm_loadA_pd(z+j+n),
+                                                    _mm_mul_pd(S,cast128(B2))));
+                            S = _mm_loadA_pd(xx+j+2);
+                            _mm_storeA_pd (z+j+2,_mm_add_pd(_mm_loadA_pd(z+j+2),
+                                                    _mm_mul_pd(S,cast128(B1))));
+                            _mm_storeA_pd (z+j+n+2,
+                                               _mm_add_pd(_mm_loadA_pd(z+j+n+2),
+                                                    _mm_mul_pd(S,cast128(B2))));
+                            j += 4;
+                        } while (j <= xrows-4);
+                    }
+                    else {
+                        do {
+                            __m128d S;
+                            S = _mm_loadA_pd(xx+j);
+                            _mm_storeA_pd (z+j, _mm_add_pd (_mm_loadA_pd(z+j), 
+                                                    _mm_mul_pd(S,cast128(B1))));
+                            _mm_storeu_pd (z+j+n,_mm_add_pd(_mm_loadu_pd(z+j+n),
+                                                    _mm_mul_pd(S,cast128(B2))));
+                            S = _mm_loadA_pd(xx+j+2);
+                            _mm_storeA_pd (z+j+2,_mm_add_pd(_mm_loadA_pd(z+j+2),
+                                                    _mm_mul_pd(S,cast128(B1))));
+                            _mm_storeu_pd (z+j+n+2,
+                                               _mm_add_pd(_mm_loadu_pd(z+j+n+2),
+                                                    _mm_mul_pd(S,cast128(B2))));
+                            j += 4;
+                        } while (j <= xrows-4);
+                    }
+                }
+#               endif
 
                 if (j <= xrows-2) {
                     __m128d S = _mm_loadA_pd(xx+j);
