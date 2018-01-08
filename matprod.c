@@ -53,7 +53,7 @@
 
 #define ALIGN_FORWARD ((ALIGN - ALIGN_OFFSET) % ALIGN)
 
-#if ALIGN >= 8 && __GNUC__
+#if ALIGN >= 8 && __GNUC__ && !defined(NO_ASSUME_ALIGNED)
 #define CAN_ASSUME_ALIGNED 1
 #define ASSUME_ALIGNED(x,a,o) __builtin_assume_aligned(x,a,o)
 #else
