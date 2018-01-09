@@ -2139,11 +2139,47 @@ void matprod_outer (double * MATPROD_RESTRICT x,
 #       if CAN_USE_AVX
         {
             __m256d X = _mm256_loadu_pd (x);
-            while (j < m) {
-                __m256d Y = _mm256_set1_pd (y[j]);
-                _mm256_storeu_pd (z, _mm256_mul_pd(X,Y));
-                z += 4;
-                j += 1;
+            while (j <= m-2) {
+                _mm256_storeAA_pd (z,  _mm256_mul_pd(X,_mm256_set1_pd(y[j])));
+                _mm256_storeAA_pd (z+4,_mm256_mul_pd(X,_mm256_set1_pd(y[j+1])));
+                z += 8;
+                j += 2;
+            }
+            if (j < m) {
+                _mm256_storeAA_pd (z, _mm256_mul_pd (X,_mm256_set1_pd(y[j])));
+            }
+        }
+
+#       elif CAN_USE_SSE2 && ALIGN_OFFSET == 8
+        {
+            __m128d X0 = _mm_load_sd (x);
+            __m128d X21 = _mm_load_pd (x+1);
+            __m128d X3 = _mm_load_sd (x+3);
+            __m128d X03 = _mm_shuffle_pd (X3, X0, 0);
+            __m128d Y;
+            Y = _mm_set1_pd (y[j]);
+            _mm_store_sd (z, _mm_mul_sd (X0, Y));
+            while (j <= m-3) {
+                _mm_store_pd (z+1, _mm_mul_pd (X21, Y));
+                Y = _mm_loadh_pd (Y, y+j+1);
+                _mm_store_pd (z+3, _mm_mul_pd (X03, Y));
+                Y = _mm_unpackhi_pd (Y, Y);
+                _mm_store_pd (z+5, _mm_mul_pd (X21, Y));
+                Y = _mm_loadh_pd (Y, y+j+2);
+                _mm_store_pd (z+7, _mm_mul_pd (X03, Y));
+                Y = _mm_unpackhi_pd (Y, Y);
+                z += 8;
+                j += 2;
+            }
+            _mm_store_pd (z+1, _mm_mul_pd (X21, Y));
+            _mm_store_sd (z+3, _mm_mul_sd (X3, Y));
+            z += 4;
+            j += 1;
+            if (j < m) {
+                Y = _mm_set1_pd (y[j]);
+                _mm_store_sd (z+0, _mm_mul_sd (X0, Y));
+                _mm_store_pd (z+1, _mm_mul_pd (X21, Y));
+                _mm_store_sd (z+3, _mm_mul_sd (X3, Y));
             }
         }
 
@@ -2151,12 +2187,22 @@ void matprod_outer (double * MATPROD_RESTRICT x,
         {
             __m128d Xa = _mm_loadu_pd (x);
             __m128d Xb = _mm_loadu_pd (x+2);
-            while (j < m) {
-                __m128d Y = _mm_set1_pd (y[j]);
-                _mm_storeu_pd (z, _mm_mul_pd(Xa,Y));
-                _mm_storeu_pd (z+2, _mm_mul_pd(Xb,Y));
-                z += 4;
-                j += 1;
+            while (j <= m-2) {
+                __m128d Y;
+                Y = _mm_set1_pd (y[j]);
+                _mm_storeAA_pd (z, _mm_mul_pd (Xa, Y));
+                _mm_storeAA_pd (z+2, _mm_mul_pd (Xb, Y));
+                Y = _mm_set1_pd (y[j+1]);
+                _mm_storeAA_pd (z+4, _mm_mul_pd (Xa, Y));
+                _mm_storeAA_pd (z+6, _mm_mul_pd (Xb, Y));
+                z += 8;
+                j += 2;
+            }
+            if (j < m) {
+                __m128d Y;
+                Y = _mm_set1_pd (y[j]);
+                _mm_storeAA_pd (z, _mm_mul_pd (Xa, Y));
+                _mm_storeAA_pd (z+2, _mm_mul_pd (Xb, Y));
             }
         }
 
@@ -2185,13 +2231,15 @@ void matprod_outer (double * MATPROD_RESTRICT x,
             __m256d Xa = _mm256_set_pd (x[0], x[2], x[1], x[0]);
             __m128d Xc = _mm_loadu_pd (x+1);
 
-            if (ALIGN_FORWARD & 8) {
+#           if ALIGN_FORWARD & 8
+            {
                 __m128d Y = _mm_set1_pd (y[j]);
                 _mm_store_sd (z, _mm_mul_sd(cast128(Xa),Y));
                 _mm_storeA_pd (z+1, _mm_mul_pd(Xc,Y));
                 z += 3;
                 j += 1;
             }
+#           endif
 
             while (j <= m-2) {
                 __m256d Y0 = _mm256_set1_pd (y[j]);
@@ -2217,13 +2265,15 @@ void matprod_outer (double * MATPROD_RESTRICT x,
             __m128d Xc = _mm_set_pd (x[2], x[1]);
             __m128d Y;
 
-            if (ALIGN_FORWARD & 8) {
+#           if ALIGN_FORWARD & 8
+            {
                 Y = _mm_set1_pd (y[j]);
                 _mm_store_sd (z, _mm_mul_sd(Xa,Y));
                 _mm_storeA_pd (z+1, _mm_mul_pd(Xc,Y));
                 z += 3;
                 j += 1;
             }
+#           endif
 
             while (j <= m-2) {
                 Y = _mm_set1_pd (y[j]);
@@ -2282,7 +2332,7 @@ void matprod_outer (double * MATPROD_RESTRICT x,
                 __m128d X = _mm_loadA_pd (x);
 #           endif
 
-#           if CAN_USE_AVX && ALIGN_FORWARD == 8
+#           if ALIGN_FORWARD == 16
                 _mm_storeu_pd (z, _mm_mul_pd (cast128(X), _mm_set1_pd (y[j])));
                 z += 2;
                 j += 1;
