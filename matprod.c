@@ -2163,23 +2163,22 @@ void matprod_outer (double * MATPROD_RESTRICT x,
                 _mm_store_pd (z+1, _mm_mul_pd (X21, Y));
                 Y = _mm_loadh_pd (Y, y+j+1);
                 _mm_store_pd (z+3, _mm_mul_pd (X03, Y));
-                Y = _mm_unpackhi_pd (Y, Y);
+                Y = _mm_loadl_pd (Y, y+j+1);
                 _mm_store_pd (z+5, _mm_mul_pd (X21, Y));
                 Y = _mm_loadh_pd (Y, y+j+2);
                 _mm_store_pd (z+7, _mm_mul_pd (X03, Y));
-                Y = _mm_unpackhi_pd (Y, Y);
+                Y = _mm_loadl_pd (Y, y+j+2);
                 z += 8;
                 j += 2;
             }
             _mm_store_pd (z+1, _mm_mul_pd (X21, Y));
             _mm_store_sd (z+3, _mm_mul_sd (X3, Y));
-            z += 4;
             j += 1;
             if (j < m) {
                 Y = _mm_set1_pd (y[j]);
-                _mm_store_sd (z+0, _mm_mul_sd (X0, Y));
-                _mm_store_pd (z+1, _mm_mul_pd (X21, Y));
-                _mm_store_sd (z+3, _mm_mul_sd (X3, Y));
+                _mm_store_sd (z+4, _mm_mul_sd (X0, Y));
+                _mm_store_pd (z+5, _mm_mul_pd (X21, Y));
+                _mm_store_sd (z+7, _mm_mul_sd (X3, Y));
             }
         }
 
