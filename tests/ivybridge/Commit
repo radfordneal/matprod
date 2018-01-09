@@ -1,8 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 750c21c2e09e075098a2c1f2eed68bc730685dcf
-Merge: 1f4c10a cdfe29a
+commit a261ae106f1cd2a39bd53b0e9e3f1db9eb4d3c3a
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Jan 7 19:47:32 2018 -0500
+Date:   Tue Jan 9 15:07:37 2018 -0500
 
-    Merge branch 'master' of https://github.com/radfordneal/matprod
+    more performance tweaking
