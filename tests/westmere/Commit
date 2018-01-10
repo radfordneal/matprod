@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit d3a12b468d101c6ab57ea3b30527769d2fc0b883
+commit e629de3f189c27489f56f6a1e85c224312e55c9d
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Jan 7 21:51:04 2018 -0500
+Date:   Wed Jan 10 15:24:07 2018 -0500
 
-    results for ivybridge
+    results for skylake
