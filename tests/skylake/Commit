@@ -1,7 +1,8 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit f7ee25fa1b3f21162932bc011be26bf8b486fb22
+commit aa82f63c705cfa89efc6bb48d0776e6641ebf48d
+Merge: ef2a83f c9b9c07
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Jan 7 19:12:14 2018 -0500
+Date:   Tue Jan 9 17:12:48 2018 -0500
 
-    tweak alignment in matprod_outer
+    Merge branch 'master' of https://github.com/radfordneal/matprod
