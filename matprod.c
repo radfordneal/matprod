@@ -2028,144 +2028,7 @@ void matprod_outer (double * MATPROD_RESTRICT x,
 
         int j = 0;
 
-        while (j <= m-2) {
-
-            int i = 0;
-
-#           if (CAN_USE_SSE2 || CAN_USE_AVX)
-            {
-#               if CAN_USE_AVX
-                    __m256d T0 = _mm256_set1_pd (y[j]);
-                    __m256d T1 = _mm256_set1_pd (y[j+1]);
-#               else
-                    __m128d T0 = _mm_set1_pd (y[j]);
-                    __m128d T1 = _mm_set1_pd (y[j+1]);
-#               endif
-
-#               if ALIGN_FORWARD & 8
-                {
-                    __m128d X = _mm_load_sd (x+i);
-                    _mm_store_sd (z+i,   _mm_mul_sd (X, cast128(T0)));
-                    _mm_store_sd (z+i+n, _mm_mul_sd (X, cast128(T1)));
-                    i += 1;
-                }
-#               endif
-
-#               if CAN_USE_AVX
-                {
-#                   if ALIGN_FORWARD & 16
-                    {
-                        __m128d X = _mm_loadA_pd (x+i);
-                        _mm_storeA_pd (z+i,   _mm_mul_pd (X, cast128(T0)));
-                        _mm_storeu_pd (z+i+n, _mm_mul_pd (X, cast128(T1)));
-                        i += 2;
-                    }
-#                   endif
-                    if (n & 1) {      /* no 32-byte alignment for z+i & z+i+n */
-                        while (i <= n-4) {
-                            __m256d X = _mm256_loadA_pd (x+i);
-                            _mm256_storeu_pd (z+i,   _mm256_mul_pd (X, T0));
-                            _mm256_storeu_pd (z+i+n, _mm256_mul_pd (X, T1));
-                            i += 4;
-                        }
-                    }
-                    else if (n & 2) {        /* z+i aligned if z was at start */
-                        while (i <= n-4) {
-                            __m256d X = _mm256_loadA_pd (x+i);
-                            _mm256_storeA_pd (z+i,   _mm256_mul_pd (X, T0));
-                            _mm256_storeu_pd (z+i+n, _mm256_mul_pd (X, T1));
-                            i += 4;
-                        }
-                    }
-                    else {         /* z+i and z+i+n aligned if z was at start */
-                        while (i <= n-4) {
-                            __m256d X = _mm256_loadA_pd (x+i);
-                            _mm256_storeA_pd (z+i,   _mm256_mul_pd (X, T0));
-                            _mm256_storeA_pd (z+i+n, _mm256_mul_pd (X, T1));
-                            i += 4;
-                        }
-                    }
-                }
-#               else  /* CAN_USE_SSE2 */
-                {
-                    if (n & 1) {  /* z+i+n won't be aligned */
-                        while (i <= n-4) {
-                            __m128d Xa = _mm_loadA_pd (x+i);
-                            __m128d Xb = _mm_loadA_pd (x+i+2);
-                            _mm_storeA_pd(z+i,    _mm_mul_pd (Xa, cast128(T0)));
-                            _mm_storeA_pd(z+i+2,  _mm_mul_pd (Xb, cast128(T0)));
-                            _mm_storeu_pd(z+i+n,  _mm_mul_pd (Xa, cast128(T1)));
-                            _mm_storeu_pd(z+i+n+2,_mm_mul_pd (Xb, cast128(T1)));
-                            i += 4;
-                        }
-                    }
-                    else {  /* z+i+n will be aligned if z+i is */
-                        while (i <= n-4) {
-                            __m128d Xa = _mm_loadA_pd (x+i);
-                            __m128d Xb = _mm_loadA_pd (x+i+2);
-                            _mm_storeA_pd(z+i,    _mm_mul_pd (Xa, cast128(T0)));
-                            _mm_storeA_pd(z+i+2,  _mm_mul_pd (Xb, cast128(T0)));
-                            _mm_storeA_pd(z+i+n,  _mm_mul_pd (Xa, cast128(T1)));
-                            _mm_storeA_pd(z+i+n+2,_mm_mul_pd (Xb, cast128(T1)));
-                            i += 4;
-                        }
-                    }
-                }
-#               endif
-
-                if (i <= n-2) {
-                    __m128d X = _mm_loadA_pd (x+i);
-                    _mm_storeA_pd (z+i,   _mm_mul_pd (X, cast128(T0)));
-                    _mm_storeu_pd (z+i+n, _mm_mul_pd (X, cast128(T1)));
-                    i += 2;
-                }
-
-                if (i < n) {
-                    __m128d X = _mm_load_sd (x+i);
-                    _mm_store_sd (z+i,   _mm_mul_sd (X, cast128(T0)));
-                    _mm_store_sd (z+i+n, _mm_mul_sd (X, cast128(T1)));
-                }
-            }
-
-#           else  /* non-SIMD code */
-            {
-                double t0 = y[j];
-                double t1 = y[j+1];
-
-                while (i <= n-4) {
-                    z[i+0] = x[i+0] * t0;
-                    z[i+1] = x[i+1] * t0;
-                    z[i+2] = x[i+2] * t0;
-                    z[i+3] = x[i+3] * t0;
-                    (z+n)[i+0] = x[i+0] * t1;
-                    (z+n)[i+1] = x[i+1] * t1;
-                    (z+n)[i+2] = x[i+2] * t1;
-                    (z+n)[i+3] = x[i+3] * t1;
-                    i += 4;
-                }
-
-                if (i <= n-2) {
-                    z[i+0] = x[i+0] * t0;
-                    z[i+1] = x[i+1] * t0;
-                    (z+n)[i+0] = x[i+0] * t1;
-                    (z+n)[i+1] = x[i+1] * t1;
-                    i += 2;
-                }
-
-                if (i < n) {
-                    z[i] = x[i] * t0;
-                    (z+n)[i] = x[i] * t1;
-                }
-            }
-#           endif
-
-            z += n; z += n;
-            j += 2;
-        }
-
-        /* Compute last column, if odd number of columns. */
-
-        if (j < m) {
+        while (j < m) {
 
             int i = 0;
 
@@ -2190,16 +2053,17 @@ void matprod_outer (double * MATPROD_RESTRICT x,
                            _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
                         i += 2;
 #                   endif
-                    if (((uintptr_t)(z+i) & 0x1f) == 0) {  /* z+i aligned */
+
+                    if (n & 3) {  /* z+i is not necessarily aligned */
                         while (i <= n-4) {
-                            _mm256_store_pd (z+i, 
+                            _mm256_storeu_pd (z+i, 
                                   _mm256_mul_pd (_mm256_loadA_pd (x+i), T));
                             i += 4;
                         }
                     }
-                    else {
+                    else {  /* z+i is 32-byte aligned, if original z is */
                         while (i <= n-4) {
-                            _mm256_storeu_pd (z+i, 
+                            _mm256_storeA_pd (z+i, 
                                   _mm256_mul_pd (_mm256_loadA_pd (x+i), T));
                             i += 4;
                         }
@@ -2207,20 +2071,20 @@ void matprod_outer (double * MATPROD_RESTRICT x,
                 }
 #               else  /* CAN_USE_SSE2 */
                 {
-                    if (((uintptr_t)(z+i) & 0xf) == 0) {  /* z+i aligned */
-                        while (i <= n-4) {
-                            _mm_store_pd (z+i, 
-                               _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
-                            _mm_store_pd (z+i+2, 
-                               _mm_mul_pd (_mm_loadA_pd (x+i+2), cast128(T)));
-                            i += 4;
-                        }
-                    }
-                    else {
+                    if (n & 1) {  /* z+i is not necessarily aligned */
                         while (i <= n-4) {
                             _mm_storeu_pd (z+i, 
                                _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
                             _mm_storeu_pd (z+i+2, 
+                               _mm_mul_pd (_mm_loadA_pd (x+i+2), cast128(T)));
+                            i += 4;
+                        }
+                    }
+                    else {  /* z+i is 16-byte aligned, if z original is */
+                        while (i <= n-4) {
+                            _mm_storeA_pd (z+i, 
+                               _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
+                            _mm_storeA_pd (z+i+2, 
                                _mm_mul_pd (_mm_loadA_pd (x+i+2), cast128(T)));
                             i += 4;
                         }
@@ -2263,6 +2127,9 @@ void matprod_outer (double * MATPROD_RESTRICT x,
                 }
             }
 #           endif
+
+            z += n;
+            j += 1;
         }
     }
 
