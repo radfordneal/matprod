@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit e51faea3f210e95b440a11337543f83540cc74d2
+commit a11eddc230940c3619f6552fe1ba56441143f9b0
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Wed Jan 10 05:07:59 2018 -0500
+Date:   Wed Jan 10 13:08:08 2018 -0500
 
-    split code by n in matprod_outer
+    undo production of two columns at once in matprod_outer - seems it makes things worse
