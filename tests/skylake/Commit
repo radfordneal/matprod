@@ -1,8 +1,8 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 922da5b60fcad51697a2968718316b9bc5d157e7
-Merge: 9561ca2 ef17a23
+commit e3b5a501ca7b6421c0d1c27a7281b25ff749f7ac
+Merge: c2cec7e 62afba0
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Jan 11 12:30:44 2018 -0500
+Date:   Thu Jan 11 14:28:48 2018 -0500
 
     Merge branch 'master' of https://github.com/radfordneal/matprod
