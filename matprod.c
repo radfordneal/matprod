@@ -90,7 +90,13 @@
 #define CAN_USE_AVX 0
 #endif
 
-#if CAN_USE_SSE2 || CAN_USE_SSE3 || CAN_USE_AVX
+#if __AVX2__ && !defined(DISABLE_SIMD_CODE) && !defined(DISABLE_AVX_CODE)
+#define CAN_USE_AVX2 1
+#else
+#define CAN_USE_AVX2 0
+#endif
+
+#if CAN_USE_SSE2 || CAN_USE_SSE3 || CAN_USE_AVX || CAN_USE_AVX2
 #include <immintrin.h>
 #endif
 
@@ -101,7 +107,7 @@
    The loadAA and storeAA macro do an unalign load/store only if ALIGN
    is suitably large and ALIGN_OFFSET mod the required alignment is
    zero, as is appropriate for an address that is one of the arguments
-   plus a multiple of of ALIGN. */
+   plus a multiple of ALIGN. */
 
 #define _mm_loadA_pd(w) \
    (ALIGN>=16 ? _mm_load_pd(w) : _mm_loadu_pd(w))
@@ -129,13 +135,13 @@
    The cast128a version is for use when the AVX code is enabled only if
    ENABLE_ALL_AVX_CODE is defined. */
 
-#if CAN_USE_AVX
+#if CAN_USE_AVX || CAN_USE_AVX2
 #   define cast128(x) _mm256_castpd256_pd128(x)
 #else
 #   define cast128(x) (x)
 #endif
 
-#if CAN_USE_AVX && ENABLE_ALL_AVX_CODE
+#if (CAN_USE_AVX || CAN_USE_AVX2) && ENABLE_ALL_AVX_CODE
 #   define cast128a(x) _mm256_castpd256_pd128(x)
 #else
 #   define cast128a(x) (x)
@@ -601,7 +607,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
             }
 
             if (i < yrows) {
-                B = _mm256_set_pd (y[i+k+k+k], y[i+k+k], y[i+k], y[i]);
+                B = _mm256_set_pd ((y+k+k+k)[i], (y+k+k)[i], (y+k)[i], y[i]);
                 B = _mm256_mul_pd (_mm256_set1_pd(x[i]), B);
                 S = _mm256_add_pd (B, S);
             }
@@ -633,7 +639,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
             }
 #           endif
 
-            if (k & 1) {  /* second column not aligned if first is */
+            if (ALIGN < 16 || (k & 1)) {  /* no alignment for second column */
                 while (i <= yrows-2) {
                     __m128d T0, T1;
                     __m128d P = _mm_loadA_pd(x+i);
@@ -2054,7 +2060,7 @@ void matprod_outer (double * MATPROD_RESTRICT x,
                         i += 2;
 #                   endif
 
-                    if (n & 3) {  /* z+i is not necessarily aligned */
+                    if (ALIGN < 32 || (n & 3)) {  /* z+i may not be aligned */
                         while (i <= n-4) {
                             _mm256_storeu_pd (z+i, 
                                   _mm256_mul_pd (_mm256_loadA_pd (x+i), T));
@@ -2071,7 +2077,7 @@ void matprod_outer (double * MATPROD_RESTRICT x,
                 }
 #               else  /* CAN_USE_SSE2 */
                 {
-                    if (n & 1) {  /* z+i is not necessarily aligned */
+                    if (ALIGN < 16 || (n & 1)) {  /* z+i may not be aligned */
                         while (i <= n-4) {
                             _mm_storeu_pd (z+i, 
                                _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
@@ -2646,7 +2652,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                 if (j <= xrows-4)
 #               if CAN_USE_AVX
                 {
-                    if ((n & 3) == 0) {  /* adding n to ptr keeps alignment */
+                    if (ALIGN >= 32 && (n & 3) == 0) { /* +n keeps ptr aligned*/
                         do {
                             __m256d S1 = _mm256_loadA_pd(xx+j);
                             __m256d S2 = _mm256_loadA_pd(xx+j+n);
@@ -2675,7 +2681,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                 }
 #               else  /* CAN_USE_SSE2 */
                 {
-                    if ((n & 1) == 0) {  /* adding n to ptr keeps alignment */
+                    if (ALIGN >= 16 && (n & 1) == 0) { /* +n keeps ptr aligned*/
                         do {
                             __m128d S1, S2;
                             S1 = _mm_loadA_pd(xx+j);
@@ -2814,7 +2820,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                 if (j <= xrows-4)
 #               if CAN_USE_AVX
                 {
-                    if ((n & 3) == 0) {  /* adding n to ptr keeps alignment */
+                    if (ALIGN >= 32 && (n & 3) == 0) { /* +n keeps ptr aligned*/
                         do {
                             __m256d S1 = _mm256_loadA_pd(xx+j);
                             __m256d S2 = _mm256_loadA_pd(xx+j+n);
@@ -2827,7 +2833,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                             j += 4;
                         } while (j <= xrows-4);
                     }
-                    else if (((uintptr_t)(xx+j) & 0x1f) == 0) {
+                    else if (ALIGN >= 32 && ((uintptr_t)(xx+j) & 0x1f) == 0) {
                         do {
                             __m256d S1 = _mm256_loadA_pd(xx+j);
                             __m256d S2 = _mm256_loadu_pd(xx+j+n);
@@ -2856,7 +2862,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                 }
 #               else  /* CAN_USE_SSE2 */
                 {
-                    if ((n & 1) == 0) {  /* adding n to ptr keeps alignment */
+                    if (ALIGN >= 16 && (n & 1) == 0) { /* +n keeps ptr aligned*/
                         do {
                             __m128d S1, S2;
                             S1 = _mm_loadA_pd(xx+j);
@@ -3013,7 +3019,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                 if (j <= xrows-4)
 #               if CAN_USE_AVX
                 {
-                    if ((n & 3) == 0) {  /* adding n to ptr keeps alignment */
+                    if (ALIGN >= 32 && (n & 3) == 0) { /* +n keeps ptr aligned*/
                         do {
                             __m256d S = _mm256_loadA_pd(xx+j);
                             _mm256_storeA_pd (z+j, _mm256_add_pd (
@@ -3025,7 +3031,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                             j += 4;
                         } while (j <= xrows-4);
                     }
-                    else if (((uintptr_t)(xx+j) & 0x1f) == 0) {
+                    else if (ALIGN >= 32 && ((uintptr_t)(xx+j) & 0x1f) == 0) {
                         do {
                             __m256d S = _mm256_loadA_pd(xx+j);
                             _mm256_storeA_pd (z+j, _mm256_add_pd (
@@ -3052,7 +3058,7 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                 }
 #               else  /* CAN_USE_SSE2 */
                 {
-                    if ((n & 1) == 0) {  /* adding n to ptr keeps alignment */
+                    if (ALIGN >= 16 && (n & 1) == 0) { /* +n keeps ptr aligned*/
                         do {
                             __m128d S;
                             S = _mm_loadA_pd(xx+j);
@@ -3417,7 +3423,7 @@ static void matprod_mat_mat_n2 (double * MATPROD_RESTRICT x,
         /* Move forward by two to next column of the result and the
            next column of y. */
 
-        y += k; y +=k;  /* not y += 2*k, since 2*k could overflow */
+        y += k; y +=k;
         z += 4;
         m -= 2;
     }

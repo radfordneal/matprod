@@ -78,8 +78,8 @@ Performance.
 
 These routines are written with a fair amount of attention to cache
 performance and other efficiency issues.  Optional code is provided
-that takes advantage of SSE2, SSE3, or AVX instructions on Intel/AMD
-processors.  The routines can also optionally be built with
+that takes advantage of SSE2, SSE3, AVX, or AVX2 instructions on
+Intel/AMD processors.  The routines can also optionally be built with
 assumptions about alignment of arguments that may allow improved
 performance.
 
@@ -150,22 +150,22 @@ These options include the following:
                          argument aliases with an input.
 
 Some special code has been written to take advantage of the SSE2,
-SSE3, or AVX instructions available on some Intel/AMD processors.  It
-is used only if gcc or a gcc look-alike is used, since this code uses
-the builtin intrinsic functions that gcc provides.  This code can be
-disabled by defining the symbol DISABLE_SIMD_CODE.  Just the AVX code
-can be disabled by defining DISABLE_AVX_CODE (in which case SSE2 or
-SSE3 code may still be used).  Some AVX code appears to not be better
-than the corresponding SSE or non-SIMD code; it is disabled unless the
-symbol ENABLE_ALL_AVX_CODE is defined (and DISABLE_AVX_CODE is not
-defined).  The SIMD code sections are automatically disabled when the
-routines are compiled for an architecture without the required
-instructions.
+SSE3, AVX, AVX2 instructions available on some Intel/AMD processors.
+It is used only if gcc or a gcc look-alike is used, since this code
+uses the builtin intrinsic functions that gcc provides.  This SIMD
+code can be disabled by defining the symbol DISABLE_SIMD_CODE.  Just
+the AVX or AVX2 code can be disabled by defining DISABLE_AVX_CODE (in
+which case SSE2 or SSE3 code may still be used).  Some AVX or AVX2
+code appears to not be better than the corresponding SSE2, SSE3, or
+non-SIMD code; it is disabled unless the symbol ENABLE_ALL_AVX_CODE is
+defined (and DISABLE_AVX_CODE is not defined).  The SIMD code sections
+are automatically disabled when the routines are compiled for an
+architecture without the required instructions.
 
 Note that disabling the explicit SIMD code does not prevent the
 compiler from generating SIMD instructions, if this is allowed by the
 compiler options used.  Also note that depending on what architecture
-the compiler is told to generate code for, instrinsics designed for
+the compiler is told to generate code for, intrinsics designed for
 SSE2 may actually generate AVX instructions (and perhaps similarly for
 SSE2/SSE3, SSE3/SSE4.1, AVX/AVX2, etc.).  However, code enabled for
 only SSE2, or SSE3, or AVX should work on a processor having only the
