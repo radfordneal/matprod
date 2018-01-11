@@ -1,7 +1,8 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit e51faea3f210e95b440a11337543f83540cc74d2
+commit e3b5a501ca7b6421c0d1c27a7281b25ff749f7ac
+Merge: c2cec7e 62afba0
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Wed Jan 10 05:07:59 2018 -0500
+Date:   Thu Jan 11 14:28:48 2018 -0500
 
-    split code by n in matprod_outer
+    Merge branch 'master' of https://github.com/radfordneal/matprod
