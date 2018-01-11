@@ -2007,13 +2007,21 @@ static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x,
 /* -------------------------------------------------------------------------- */
 
 /* Outer product - n x 1 matrix x times 1 x m matrix y, with result stored
-   in the n x m matrix z. */
+   in the n x m matrix z. 
 
+   To improve cache performance, if x has more than OUTER_ROWS
+   elements (and hence z has more than OUTER_ROWS rows), the operation
+   is done on successive parts of x, each consisting of at most OUTER_ROWS
+   elements.  The matprod_outer_sub procedure below does one such part.
+
+   Cases where n is four or less are handled specially, storing all of
+   x in local variables rather thna fetching it to compute each column
+   of z. */
 
 static void matprod_outer_sub (double * MATPROD_RESTRICT x, 
                                double * MATPROD_RESTRICT y, 
                                double * MATPROD_RESTRICT z, 
-                               int n, int m, int xrows);
+                               int n, int m, int rows);
 
 static void matprod_outer_n2 (double * MATPROD_RESTRICT x, 
                               double * MATPROD_RESTRICT y, 
@@ -2043,49 +2051,51 @@ void matprod_outer (double * MATPROD_RESTRICT x,
         return;
     }
 
-    if (n > 4) {
-
-#       define OUTER_ROWS (1024+512)
-
-        int xrows = n;
-        while (xrows > 2*OUTER_ROWS) {
-            matprod_outer_sub (x, y, z, n, m, OUTER_ROWS);
-            x += OUTER_ROWS;
-            z += OUTER_ROWS;
-            xrows -= OUTER_ROWS;
-        }
-
-        if (xrows > OUTER_ROWS) {
-            int nr = ((xrows+1)/2) & ~7;
-            matprod_outer_sub (x, y, z, n, m, nr);
-            x += nr;
-            z += nr;
-            xrows -= nr;
-        }
-
-        matprod_outer_sub (x, y, z, n, m, xrows);
+    if (n <= 4) {
+        if (n == 4)
+            matprod_outer_n4 (x, y, z, m);
+        else if (n == 3)
+            matprod_outer_n3 (x, y, z, m);
+        else if (n == 2)
+            matprod_outer_n2 (x, y, z, m);
+        else if (n == 1)
+            matprod_scalar_vec (x[0], y, z, m);
+        return;
     }
 
-    else if (n == 4)
-        matprod_outer_n4 (x, y, z, m);
+    /* The general case with n > 4.  Calls matprod_outer_sub to do
+       parts (only one part if z has fewer than OUTER_ROWS rows).
 
-    else if (n == 3)
-        matprod_outer_n3 (x, y, z, m);
+       The definition of OUTER_ROWS is designed to keep x in an L1
+       cache of 32K bytes or more, given that it and a column of z are
+       accessed within the main loop. */
 
-    else if (n == 2)
-        matprod_outer_n2 (x, y, z, m);
+#   define OUTER_ROWS (2048-128)
 
-    else if (n == 1)
-        matprod_scalar_vec (x[0], y, z, m);
+    int rows = n;
 
-    else
-        ; /* n <= 0, do nothing */
+    while (rows > 2*OUTER_ROWS) {
+        matprod_outer_sub (x, y, z, n, m, OUTER_ROWS);
+        x += OUTER_ROWS;
+        z += OUTER_ROWS;
+        rows -= OUTER_ROWS;
+    }
+
+    if (rows > OUTER_ROWS) {
+        int nr = ((rows+1)/2) & ~7;
+        matprod_outer_sub (x, y, z, n, m, nr);
+        x += nr;
+        z += nr;
+        rows -= nr;
+    }
+
+    matprod_outer_sub (x, y, z, n, m, rows);
 }
 
 static void matprod_outer_sub (double * MATPROD_RESTRICT x,
                                double * MATPROD_RESTRICT y,
                                double * MATPROD_RESTRICT z, 
-                               int n, int m, int xrows)
+                               int n, int m, int rows)
 {
     int j = 0;
 
@@ -2116,14 +2126,14 @@ static void matprod_outer_sub (double * MATPROD_RESTRICT x,
 #               endif
 
                 if (ALIGN < 32 || (n & 3)) {  /* z+i may not be aligned */
-                    while (i <= xrows-4) {
+                    while (i <= rows-4) {
                         _mm256_storeu_pd (z+i, 
                               _mm256_mul_pd (_mm256_loadA_pd (x+i), T));
                         i += 4;
                     }
                 }
                 else {  /* z+i is 32-byte aligned, if original z is */
-                    while (i <= xrows-4) {
+                    while (i <= rows-4) {
                         _mm256_storeA_pd (z+i, 
                               _mm256_mul_pd (_mm256_loadA_pd (x+i), T));
                         i += 4;
@@ -2133,7 +2143,7 @@ static void matprod_outer_sub (double * MATPROD_RESTRICT x,
 #           else  /* CAN_USE_SSE2 */
             {
                 if (ALIGN < 16 || (n & 1)) {  /* z+i may not be aligned */
-                    while (i <= xrows-4) {
+                    while (i <= rows-4) {
                         _mm_storeu_pd (z+i, 
                            _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
                         _mm_storeu_pd (z+i+2, 
@@ -2142,7 +2152,7 @@ static void matprod_outer_sub (double * MATPROD_RESTRICT x,
                     }
                 }
                 else {  /* z+i is 16-byte aligned, if z original is */
-                    while (i <= xrows-4) {
+                    while (i <= rows-4) {
                         _mm_storeA_pd (z+i, 
                            _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
                         _mm_storeA_pd (z+i+2, 
@@ -2153,13 +2163,13 @@ static void matprod_outer_sub (double * MATPROD_RESTRICT x,
             }
 #           endif
 
-            if (i <= xrows-2) {
+            if (i <= rows-2) {
                 _mm_storeu_pd (z+i, 
                    _mm_mul_pd (_mm_loadA_pd (x+i), cast128(T)));
                 i += 2;
             }
 
-            if (i < xrows) {
+            if (i < rows) {
                 _mm_store_sd (z+i,
                    _mm_mul_sd (_mm_load_sd (x+i), cast128(T)));
             }
@@ -2169,7 +2179,7 @@ static void matprod_outer_sub (double * MATPROD_RESTRICT x,
         {
             double t = y[j];
 
-            while (i <= xrows-4) {
+            while (i <= rows-4) {
                 z[i+0] = x[i+0] * t;
                 z[i+1] = x[i+1] * t;
                 z[i+2] = x[i+2] * t;
@@ -2177,13 +2187,13 @@ static void matprod_outer_sub (double * MATPROD_RESTRICT x,
                 i += 4;
             }
 
-            if (i <= xrows-2) {
+            if (i <= rows-2) {
                 z[i+0] = x[i+0] * t;
                 z[i+1] = x[i+1] * t;
                 i += 2;
             }
 
-            if (i < xrows) {
+            if (i < rows) {
                 z[i] = x[i] * t;
             }
         }
