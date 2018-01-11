@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 4f2596e4cb0a3720bbbb0e4c766b9d861261229a
+commit a79b712aa78e15ac760a272c3164aab8e75900c9
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Wed Jan 10 15:47:44 2018 -0500
+Date:   Thu Jan 11 09:30:22 2018 -0500
 
-    results for westmere
+    Add CAN_USE_AVX2, tweaks to avoid surplus code when noalign in effect
