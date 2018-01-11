@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit a11eddc230940c3619f6552fe1ba56441143f9b0
+commit 131cbbed69986e56db228626959b70ba4eaa0492
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Wed Jan 10 13:08:08 2018 -0500
+Date:   Thu Jan 11 10:13:22 2018 -0500
 
-    undo production of two columns at once in matprod_outer - seems it makes things worse
+    results for sandybridge
