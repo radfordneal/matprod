@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit e629de3f189c27489f56f6a1e85c224312e55c9d
+commit 131cbbed69986e56db228626959b70ba4eaa0492
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Wed Jan 10 15:24:07 2018 -0500
+Date:   Thu Jan 11 10:13:22 2018 -0500
 
-    results for skylake
+    results for sandybridge
