@@ -3706,12 +3706,12 @@ static void matprod_trans1_sub_xrows (double * MATPROD_RESTRICT x,
 
     while (xcols > 2*chunk) {
         matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, chunk);
-        x += chunk*k;
+        x += (size_t)chunk*k;
         z += chunk;
         xcols -= chunk;
         if (sym) {
-            y += chunk*k;
-            z += chunk*n;
+            y += (size_t)chunk*k;
+            z += (size_t)chunk*n;
             m -= chunk;
         }
     }
@@ -3719,12 +3719,12 @@ static void matprod_trans1_sub_xrows (double * MATPROD_RESTRICT x,
     if (xcols > chunk) {
         int nc = ((xcols+1)/2) & ~7;  /* keep any alignment of x, z */
         matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, nc);
-        x += nc*k;
+        x += (size_t)nc*k;
         z += nc;
         xcols -= nc;
         if (sym) {
-            y += nc*k;
-            z += nc*n;
+            y += (size_t)nc*k;
+            z += (size_t)nc*n;
             m -= nc;
         }
     }
@@ -3773,17 +3773,17 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                 __m256d S0, /* sums for first two cols of x times 2 cols of y */
                         S1; /* sums for last two cols of x times 2 cols of y */
                 if (add) {
-                    S0 = _mm256_set_pd (z[n+1], z[n], z[1], z[0]);
-                    S1 = _mm256_set_pd (z[n+3], z[n+2], z[3], z[2]);
+                    S0 = _mm256_set_pd ((z+n)[1], (z+n)[0], z[1], z[0]);
+                    S1 = _mm256_set_pd ((z+n)[3], (z+n)[2], z[3], z[2]);
                 }
                 else {
                     S0 = _mm256_setzero_pd();
                     S1 = _mm256_setzero_pd();
                 }
 #               if ALIGN_FORWARD & 8
-                    __m256d Y = _mm256_set_pd (y[k], y[k], y[0], y[0]);
+                    __m256d Y = _mm256_set_pd ((y+k)[0], (y+k)[0], y[0], y[0]);
                     __m256d X;
-                    X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
+                    X = _mm256_set_pd ((r+k)[0], r[0], (r+k)[0], r[0]);
                     S0 = _mm256_add_pd (S0, _mm256_mul_pd(X,Y));
                     X = _mm256_set_pd ((r+k+k+k)[0], (r+k+k)[0], 
                                        (r+k+k+k)[0], (r+k+k)[0]);
@@ -3832,11 +3832,12 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                 }
                 qe = y+xrows;
                 while (q < qe) {
-                    __m256d Q = _mm256_set_pd (q[k], q[k], q[0], q[0]);
+                    __m256d Q = _mm256_set_pd ((q+k)[0], (q+k)[0], q[0], q[0]);
                     __m256d X;
-                    X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
+                    X = _mm256_set_pd ((r+k)[0], r[0], (r+k)[0], r[0]);
                     S0 = _mm256_add_pd (_mm256_mul_pd(X,Q), S0);
-                    X = _mm256_set_pd (r[3*k], r[2*k], r[3*k], r[2*k]);
+                    X = _mm256_set_pd ((r+k+k+k)[0], (r+k+k)[0],
+                                       (r+k+k+k)[0], (r+k+k)[0]);
                     S1 = _mm256_add_pd (_mm256_mul_pd(X,Q), S1);
                     r += 1;
                     q += 1;
@@ -3871,12 +3872,12 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                 }
 #               if ALIGN_FORWARD & 8
                     __m128d X, Y0, Yk;
-                    X = _mm_set_pd (r[k], r[0]);
+                    X = _mm_set_pd ((r+k)[0], r[0]);
                     Y0 = _mm_set_pd (y[0], y[0]);
-                    Yk = _mm_set_pd (y[k], y[k]);
+                    Yk = _mm_set_pd ((y+k)[0], (y+k)[0]);
                     S0 = _mm_add_pd (S0, _mm_mul_pd(X,Y0));
                     S1 = _mm_add_pd (S1, _mm_mul_pd(X,Yk));
-                    X = _mm_set_pd (r[3*k], r[2*k]);
+                    X = _mm_set_pd ((r+k+k+k)[0], (r+k+k)[0]);
                     S2 = _mm_add_pd (S2, _mm_mul_pd(X,Y0));
                     S3 = _mm_add_pd (S3, _mm_mul_pd(X,Yk));
                     r += 1;
@@ -3924,11 +3925,11 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                 if (q < y+xrows) {
                     __m128d X;
                     __m128d Q0 = _mm_set_pd (q[0], q[0]);
-                    __m128d Qk = _mm_set_pd (q[k], q[k]);
-                    X = _mm_set_pd (r[k], r[0]);
+                    __m128d Qk = _mm_set_pd ((q+k)[0], (q+k)[0]);
+                    X = _mm_set_pd ((r+k)[0], r[0]);
                     S0 = _mm_add_pd (_mm_mul_pd(X,Q0), S0);
                     S1 = _mm_add_pd (_mm_mul_pd(X,Qk), S1);
-                    X = _mm_set_pd (r[3*k], r[2*k]);
+                    X = _mm_set_pd ((r+k+k+k)[0], (r+k+k)[0]);
                     S2 = _mm_add_pd (_mm_mul_pd(X,Q0), S2);
                     S3 = _mm_add_pd (_mm_mul_pd(X,Qk), S3);
                     r += 1;
@@ -3946,13 +3947,13 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                 double s[4], s2[4];
                 if (add) {
                     s[0] = z[0];
-                    s[1] = z[n];
+                    s[1] = (z+n)[0];
                     s[2] = z[1];
-                    s[3] = z[n+1];
+                    s[3] = (z+n)[1];
                     s2[0] = z[2];
-                    s2[1] = z[n+2];
+                    s2[1] = (z+n)[2];
                     s2[2] = z[3];
-                    s2[3] = z[n+3];
+                    s2[3] = (z+n)[3];
                 }
                 else {
                     s[0] = s[1] = s[2] = s[3] = 0;
@@ -3963,15 +3964,15 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                 do {
                     double t, t2;
                     double u = q[0];
-                    double u2 = q[k];
+                    double u2 = (q+k)[0];
                     t = r[0];
-                    t2 = r[k];
+                    t2 = (r+k)[0];
                     s[0] += t * u;
                     s[1] += t * u2;
                     s[2] += t2 * u;
                     s[3] += t2 * u2;
-                    t = r[2*k];
-                    t2 = r[3*k];
+                    t = (r+k+k)[0];
+                    t2 = (r+k+k+k)[0];
                     s2[0] += t * u;
                     s2[1] += t * u2;
                     s2[2] += t2 * u;
@@ -3980,18 +3981,18 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                     q += 1;
                 } while (--i > 0);
                 z[0] = s[0];
-                z[n] = s[1];
+                (z+n)[0] = s[1];
                 z[1] = s[2];
-                z[n+1] = s[3];
+                (z+n)[1] = s[3];
                 z[2] = s2[0];
-                z[n+2] = s2[1];
+                (z+n)[2] = s2[1];
                 z[3] = s2[2];
-                z[n+3] = s2[3];
+                (z+n)[3] = s2[3];
             }
 #           endif
 
             z += 4;
-            xs += 4*k;
+            xs += k; xs += k; xs += k; xs += k;
             nn -= 4;
         }
 
@@ -4005,12 +4006,12 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                 double *q, *qe;
                 __m256d S;
                 if (add)
-                    S = _mm256_set_pd (z[n+1], z[n], z[1], z[0]);
+                    S = _mm256_set_pd ((z+n)[1], (z+n)[0], z[1], z[0]);
                 else
                     S = _mm256_setzero_pd();
 #               if ALIGN_FORWARD & 8
-                    __m256d X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
-                    __m256d Y = _mm256_set_pd (y[k], y[k], y[0], y[0]);
+                    __m256d X = _mm256_set_pd ((r+k)[0], r[0], (r+k)[0], r[0]);
+                    __m256d Y = _mm256_set_pd ((y+k)[0], (y+k)[0], y[0], y[0]);
                     S = _mm256_add_pd (S, _mm256_mul_pd(X,Y));
                     r += 1;
                     q = y+1;
@@ -4041,8 +4042,8 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                 }
                 qe = y+xrows;
                 while (q < qe) {
-                    __m256d X = _mm256_set_pd (r[k], r[0], r[k], r[0]);
-                    __m256d Y = _mm256_set_pd (q[k], q[k], q[0], q[0]);
+                    __m256d X = _mm256_set_pd ((r+k)[0], r[0], (r+k)[0], r[0]);
+                    __m256d Y = _mm256_set_pd ((q+k)[0], (q+k)[0], q[0], q[0]);
                     S = _mm256_add_pd (_mm256_mul_pd(X,Y), S);
                     r += 1;
                     q += 1;
@@ -4067,10 +4068,10 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                 }
 #               if ALIGN_FORWARD & 8
                     __m128d X, Y;
-                    X = _mm_set_pd (r[k], r[0]);
+                    X = _mm_set_pd ((r+k)[0], r[0]);
                     Y = _mm_set_pd (y[0], y[0]);
                     S0 = _mm_add_pd (S0, _mm_mul_pd(X,Y));
-                    Y = _mm_set_pd (y[k], y[k]);
+                    Y = _mm_set_pd ((y+k)[0], (y+k)[0]);
                     S1 = _mm_add_pd (S1, _mm_mul_pd(X,Y));
                     r += 1;
                     q = y+1;
@@ -4101,10 +4102,10 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                 }
                 if (q < y+xrows) {
                     __m128d X, Y;
-                    X = _mm_set_pd (r[k], r[0]);
+                    X = _mm_set_pd ((r+k)[0], r[0]);
                     Y = _mm_set_pd (q[0], q[0]);
                     S0 = _mm_add_pd (_mm_mul_pd(X,Y), S0);
-                    Y = _mm_set_pd (q[k], q[k]);
+                    Y = _mm_set_pd ((q+k)[0], (q+k)[0]);
                     S1 = _mm_add_pd (_mm_mul_pd(X,Y), S1);
                     r += 1;
                     q += 1;
@@ -4119,9 +4120,9 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                 double s[4];
                 if (add) {
                     s[0] = z[0];
-                    s[1] = z[n];
+                    s[1] = (z+n)[0];
                     s[2] = z[1];
-                    s[3] = z[n+1];
+                    s[3] = (z+n)[1];
                 }
                 else
                     s[0] = s[1] = s[2] = s[3] = 0;
@@ -4129,9 +4130,9 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                 int i = xrows;
                 do {
                     double t = r[0];
-                    double t2 = r[k];
+                    double t2 = (r+k)[0];
                     double u = q[0];
-                    double u2 = q[k];
+                    double u2 = (q+k)[0];
                     s[0] += t * u;
                     s[1] += t * u2;
                     s[2] += t2 * u;
@@ -4140,9 +4141,9 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                     q += 1;
                 } while (--i > 0);
                 z[0] = s[0];
-                z[n] = s[1];
+                (z+n)[0] = s[1];
                 z[1] = s[2];
-                z[n+1] = s[3];
+                (z+n)[1] = s[3];
             }
 
 #           endif
@@ -4158,7 +4159,7 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
             double *q = y;
             if (add) {
                 s0 = z[0];
-                s1 = z[n];
+                s1 = (z+n)[0];
             }
             else
                 s0 = s1 = 0;
@@ -4166,12 +4167,12 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
             do {
                 double t = r[0];
                 s0 += t * q[0];
-                s1 += t * q[k];
+                s1 += t * (q+k)[0];
                 q += 1;
                 r += 1;
             } while (--i > 0);
             z[0] = s0;
-            z[n] = s1;
+            (z+n)[0] = s1;
             /* z += 1; */
             /* nn -= 1; */
         }
@@ -4179,7 +4180,7 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
         /* Go on to next two columns of y and z. */
 
         if (sym) sym += 2;
-        z = zs + 2*n;
+        z = zs + n + n;
         y += k; y += k;
         j += 2;
     }
@@ -4229,7 +4230,7 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
             do {
                 double t = q[0];
                 s0 += r[0] * t;
-                s1 += r[k] * t;
+                s1 += (r+k)[0] * t;
                 r += 1;
                 q += 1;
             } while (q < f);
@@ -4302,8 +4303,8 @@ static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
 
 #   else  /* non-SIMD code */
     {
-        double *e = y + 2*m;
-        double *f = x + 2*n;
+        double *e = y + m + m;
+        double *f = x + n + n;
         while (y < e) {
             double *p = x;
             while (p < f) {
@@ -4419,7 +4420,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                 xrows -= TRANS2_XROWS;
                 if (sym) {
                     y += TRANS2_XROWS;
-                    zz += TRANS2_XROWS*n;
+                    zz += (size_t)TRANS2_XROWS*n;
                     yrows -= TRANS2_XROWS;
                 }
             }
@@ -4432,7 +4433,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                 xrows -= nr;
                 if (sym) {
                     y += nr;
-                    zz += nr*n;
+                    zz += (size_t)nr*n;
                     yrows -= nr;
                 }
             }
@@ -4471,8 +4472,8 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
     while (xcols > 2*chunk) {
         matprod_trans2_sub_xrowscols (x, y, z, n, k, m,
                                       sym, xrows, yrows, chunk, add);
-        x += chunk*n;
-        y += chunk*m;
+        x += (size_t)chunk*n;
+        y += (size_t)chunk*m;
         xcols -= chunk;
         add = 1;
     }
@@ -4481,8 +4482,8 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
         int nc = ((xcols+1)/2) & ~7;  /* keep any alignment of x */
         matprod_trans2_sub_xrowscols (x, y, z, n, k, m,
                                       sym, xrows, yrows, nc, add);
-        x += nc*n;
-        y += nc*m;
+        x += (size_t)nc*n;
+        y += (size_t)nc*m;
         xcols -= nc;
         add = 1;
     }
@@ -4511,7 +4512,7 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
 
     /* Compute two columns of the result each time around this loop. */
 
-    double *ex = x + n*(xcols-1) + xrows;
+    double *ex = x + (size_t)n*(xcols-1) + xrows;
 
     while (m2 > 1) {
 
@@ -4530,12 +4531,12 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
                 double *t = z;
                 double *r = xs;
                 double b11 = y[0];
-                double b12 = y[m];
+                double b12 = (y+m)[0];
                 double b21 = y[1];
-                double b22 = y[m+1];
+                double b22 = (y+m)[1];
                 do {
                     double s1 = r[0];
-                    double s2 = r[n];
+                    double s2 = (r+n)[0];
                     t[0] = (s1 * b11) + (s2 * b12);
                     t[n] = (s1 * b21) + (s2 * b22);
                     r += 1;
@@ -4561,14 +4562,14 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
             {
 #               if CAN_USE_AVX
                     __m256d B11 = _mm256_set1_pd(q[0]);
-                    __m256d B12 = _mm256_set1_pd(q[m]);
+                    __m256d B12 = _mm256_set1_pd((q+m)[0]);
                     __m256d B21 = _mm256_set1_pd(q[1]);
-                    __m256d B22 = _mm256_set1_pd(q[m+1]);
+                    __m256d B22 = _mm256_set1_pd((q+m)[1]);
 #               else
                     __m128d B11 = _mm_set1_pd(q[0]);
-                    __m128d B12 = _mm_set1_pd(q[m]);
+                    __m128d B12 = _mm_set1_pd((q+m)[0]);
                     __m128d B21 = _mm_set1_pd(q[1]);
-                    __m128d B22 = _mm_set1_pd(q[m+1]);
+                    __m128d B22 = _mm_set1_pd((q+m)[1]);
 #               endif
 
 #               if ALIGN_OFFSET & 8
@@ -4659,31 +4660,31 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
 #           else  /* non-SIMD code */
             {
                 double b11 = q[0];
-                double b12 = q[m];
+                double b12 = (q+m)[0];
                 double b21 = q[1];
-                double b22 = q[m+1];
+                double b22 = (q+m)[1];
                 while (t < ez) {
                     double s11 = r[0];
-                    double s12 = r[n];
+                    double s12 = (r+n)[0];
                     double s21 = r[1];
-                    double s22 = r[n+1];
+                    double s22 = (r+n)[1];
                     t[0] = (t[0] + (s11 * b11)) + (s12 * b12);
                     t[1] = (t[1] + (s21 * b11)) + (s22 * b12);
                     t[n] = (t[n] + (s11 * b21)) + (s12 * b22);
-                    t[n+1] = (t[n+1] + (s21 * b21)) + (s22 * b22);
+                    (t+n)[1] = ((t+n)[1] + (s21 * b21)) + (s22 * b22);
                     t += 2;
                     r += 2;
                 }
                 if (t <= ez) {
                     double s1 = r[0];
-                    double s2 = r[n];
+                    double s2 = (r+n)[0];
                     t[0] = (t[0] + (s1 * b11)) + (s2 * b12);
-                    t[n] = (t[n] + (s1 * b21)) + (s2 * b22);
+                    (t+n)[0] = ((t+n)[0] + (s1 * b21)) + (s2 * b22);
                 }
             }
 #           endif
-            xs += 2*n;
-            q += 2*m;
+            xs += n; xs += n;
+            q += m; q += m;
         }
 
         if (xs < ex) {
@@ -4694,7 +4695,7 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
             do {
                 double s = r[0];
                 t[0] += s * b1;
-                t[n] += s * b2;
+                (t+n)[0] += s * b2;
                 r += 1;
                 t += 1;
             } while (t <= ez);
@@ -4704,7 +4705,7 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
            next row of y. */
 
         if (sym) sym += 2;
-        z += 2*n;
+        z += n; z += n;
         y += 2;
         m2 -= 2;
     }
@@ -4749,19 +4750,19 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
             double *t = z;
             double b1, b2;
             b1 = q[0];
-            b2 = q[m];
+            b2 = (q+m)[0];
             while (t < ez) {
-                t[0] = (t[0] + (r[0] * b1)) + (r[n] * b2);
-                t[1] = (t[1] + (r[1] * b1)) + (r[n+1] * b2);
+                t[0] = (t[0] + (r[0] * b1)) + ((r+n)[0] * b2);
+                t[1] = (t[1] + (r[1] * b1)) + ((r+n)[1] * b2);
                 r += 2;
                 t += 2;
             }
             if (t <= ez) {
-                t[0] = (t[0] + (r[0] * b1)) + (r[n] * b2);
+                t[0] = (t[0] + (r[0] * b1)) + ((r+n)[0] * b2);
                 r += 1;
             }
-            q += 2*m;
-            xs += 2*n;
+            q += m; q += m;
+            xs += n; xs += n;
         }
 
         if (xs < ex) {
@@ -4818,11 +4819,11 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
                 X = _mm_loadAA_pd(r);
                 R = _mm256_insertf128_pd (_mm256_castpd128_pd256(X), X, 1);
                 S = _mm256_add_pd (_mm256_mul_pd(R,Q), S);
-                Q = _mm256_set_pd (q[m+1], q[m+1], q[m], q[m]);
+                Q = _mm256_set_pd ((q+m)[1], (q+m)[1], (q+m)[0], (q+m)[0]);
                 X = _mm_loadAA_pd(r+2);
                 R = _mm256_insertf128_pd (_mm256_castpd128_pd256(X), X, 1);
                 S = _mm256_add_pd (_mm256_mul_pd(R,Q), S);
-                q += 2*m;
+                q += m; q += m;
                 r += 4;
                 k2 -= 2;
             }
@@ -4853,9 +4854,9 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
                 S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[0])), S0);
                 S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[1])), S1);
                 R = _mm_loadAA_pd(r+2);
-                S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[m])), S0);
-                S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd(q[m+1])), S1);
-                q += 2*m;
+                S0 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd((q+m)[0])), S0);
+                S1 = _mm_add_pd (_mm_mul_pd (R, _mm_set1_pd((q+m)[1])), S1);
+                q += m; q += m;
                 r += 4;
                 k2 -= 2;
             }
@@ -4883,13 +4884,13 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
             while (k2 > 1) {
                 double b00 = q[0];
                 double b10 = q[1];
-                double b01 = q[m];
-                double b11 = q[m+1];
+                double b01 = (q+m)[0];
+                double b11 = (q+m)[1];
                 s[0] = (s[0] + (r[0] * b00)) + (r[2] * b01);
                 s[1] = (s[1] + (r[1] * b00)) + (r[3] * b01);
                 s[2] = (s[2] + (r[0] * b10)) + (r[2] * b11);
                 s[3] = (s[3] + (r[1] * b10)) + (r[3] * b11);
-                q += 2*m;
+                q += m; q += m;
                 r += 4;
                 k2 -= 2;
             }
@@ -4940,9 +4941,9 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
             while (k2 > 1) {
                 S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (y[0]),
                                                _mm_loadAA_pd(r)));
-                S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (y[m]),
+                S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd ((y+m)[0]),
                                                _mm_loadAA_pd(r+2)));
-                y += 2*m;
+                y += m; y += m;
                 r += 4;
                 k2 -= 2;
             }
@@ -4966,10 +4967,10 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
 
             while (k2 > 1) {
                 double b1 = y[0];
-                double b2 = y[m];
+                double b2 = (y+m)[0];
                 s[0] = (s[0] + (r[0] * b1)) + (r[2] * b2);
                 s[1] = (s[1] + (r[1] * b1)) + (r[3] * b2);
-                y += 2*m;
+                y += m; y += m;
                 r += 4;
                 k2 -= 2;
             }
