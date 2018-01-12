@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse2 -mfpmath=sse
  
-commit 78ef50fa5f520c29ce9f095127dbd71c20e8ce33
+commit a58934a2d2ed866ea16a67b748a3d072d8e5f427
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Dec 31 22:15:37 2017 -0500
+Date:   Thu Jan 11 15:34:45 2018 -0500
 
-    update Makefile for yonah
+    results for ivybridge
