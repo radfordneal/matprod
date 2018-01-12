@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit db481033974bacfa81e272bf68640bb5af66eeab
+commit 1c2a5d2db4801364b72d81f444375c59c516ee2f
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Jan 5 16:11:03 2018 -0500
+Date:   Thu Jan 11 19:58:37 2018 -0500
 
-    SSE2 performance improvement in matprod_outer
+    results for yonah
