@@ -5002,66 +5002,72 @@ void matprod_fill_lower (double * MATPROD_RESTRICT z, int n)
 
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    /* Note that the first row requires no action, and hence can be
-       done or not as helps alignment. */
+    {  /* Inner block because this is maybe required by "restrict" usage. */
 
-#   if ALIGN_FORWARD & 8
-        double * MATPROD_RESTRICT zz = z + 1;
-        int i = 1;
-#   else
-        double * MATPROD_RESTRICT zz = z;
-        int i = 0;
-#   endif
+        /* Note that the first row requires no action, and hence can be
+           done or not as helps alignment. */
 
-    /* Fill in two rows each time around this loop. */
+#       if ALIGN_FORWARD & 8
+            double * MATPROD_RESTRICT zr = z + 1;
+            double * MATPROD_RESTRICT zc = z + n;
+            int i = 1;
+#       else
+            double * MATPROD_RESTRICT zr = z;
+            double * MATPROD_RESTRICT zc = z;
+            int i = 0;
+#       endif
 
-    while (zz < z+n-1) {
+        /* Fill in two rows each time around this loop. */
 
-        int ii = 0;
-        int jj = i*n;
-        int e = jj+i-1;
-        while (jj < e) {
-#           if CAN_USE_SSE2
-                _mm_storeA_pd (zz+ii, 
-                               _mm_loadh_pd (_mm_load_sd(z+jj), z+jj+n));
-                _mm_storeu_pd (zz+ii+n, 
-                               _mm_loadh_pd (_mm_load_sd(z+jj+1), z+jj+n+1));
-#           else  /* non-SIMD code */
-                zz[ii] = z[jj];
-                zz[ii+1] = z[jj+n];
-                zz[ii+n] = z[jj+1];
-                zz[ii+n+1] = z[jj+n+1];
-#           endif
-            ii += 2*n;
-            jj += 2;
+        while (i <= n-2) {
+
+            double *zp = zr;
+            int j = 0;
+
+            while (j <= i-2) {
+#               if CAN_USE_SSE2
+                    _mm_storeA_pd (zp, 
+                                  _mm_loadh_pd (_mm_load_sd(zc+j), zc+j+n));
+                    _mm_storeu_pd (zp+n, 
+                                  _mm_loadh_pd (_mm_load_sd(zc+j+1), zc+j+n+1));
+#               else  /* non-SIMD code */
+                    zp[0] = zc[j];
+                    zp[1] = (zc+n)[j];
+                    (zp+n)[0] = zc[j+1];
+                    (zp+n)[1] = (zc+n)[j+1];
+#               endif
+                zp += n; zp += n;
+                j += 2;
+            }
+
+            if (j < i) {
+#               if CAN_USE_SSE2
+                    _mm_storeA_pd (zp,
+                                  _mm_loadh_pd (_mm_load_sd(zc+j), zc+j+n));
+#               else  /* non-SIMD code */
+                    zp[0] = zc[j];
+                    zp[1] = (zc+n)[j];
+#               endif
+                zp += n;
+            }
+
+            zp[1] = (zc+n)[i];
+
+            zc += n; zc += n;
+            zr += 2;
+            i += 2;
         }
-        if (jj <= e) {
-#           if CAN_USE_SSE2
-                _mm_storeA_pd (zz+ii,
-                               _mm_loadh_pd (_mm_load_sd(z+jj), z+jj+n));
-#           else  /* non-SIMD code */
-                zz[ii] = z[jj];
-                zz[ii+1] = z[jj+n];
-#           endif
-            ii += n;
-            jj += 1;
-        }
-        zz[ii+1] = z[jj+n];
 
-        zz += 2;
-        i += 2;
-    }
+        /* Fill in the last row, if not done above. */
 
-    /* Fill in the last row, if not done above. */
-
-    if (zz < z+n) {
-        int ii = 0;
-        int jj = i*n;
-        int e = jj+i;
-        while (jj < e) {
-            zz[ii] = z[jj];
-            ii += n;
-            jj += 1;
+        if (i < n) {
+            double *zp = zr;
+            int j = 0;
+            while (j < i) {
+                zp[0] = zc[j];
+                zp += n;
+                j += 1;
+            }
         }
     }
 }
