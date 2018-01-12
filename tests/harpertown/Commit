@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit a261ae106f1cd2a39bd53b0e9e3f1db9eb4d3c3a
+commit a58934a2d2ed866ea16a67b748a3d072d8e5f427
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Tue Jan 9 15:07:37 2018 -0500
+Date:   Thu Jan 11 15:34:45 2018 -0500
 
-    more performance tweaking
+    results for ivybridge
