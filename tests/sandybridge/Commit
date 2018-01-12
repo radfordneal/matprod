@@ -1,7 +1,8 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit a79b712aa78e15ac760a272c3164aab8e75900c9
+commit 66f8ef3062c7373ba36fce07ca252f03b1a1412b
+Merge: 645b9c5 92e6ed4
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Jan 11 09:30:22 2018 -0500
+Date:   Fri Jan 12 04:31:00 2018 -0500
 
-    Add CAN_USE_AVX2, tweaks to avoid surplus code when noalign in effect
+    Merge branch 'master' of https://github.com/radfordneal/matprod
