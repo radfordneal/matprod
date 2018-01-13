@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit f42082eeadd65700bc8e42fea8bb1c473ec56215
+commit 568a05be0d127d060fa3083614facbffc4ec8b48
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Jan 12 19:11:03 2018 -0500
+Date:   Fri Jan 12 20:49:52 2018 -0500
 
-    results for harpertown
+    revisions to y/z column splitting
