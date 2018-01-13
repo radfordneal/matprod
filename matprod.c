@@ -148,6 +148,12 @@
 #endif
 
 
+/* Constant given the number of doubles that are assumed to fit in the
+   last-level cache (with some extra to spare). */
+
+#define DOUBLES_IN_LLC 100000
+
+
 /* Set vector z of length n to all zeros.  This is a degenerate special
    case of other operations. */
 
@@ -2539,32 +2545,34 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
        If y is large, and rows of x will be split, the columns of y
        are done in groups, whose size is designed to keep these
        columns of y and z in a last-level cache that can hold
-       MAT_MAT_LLC doubles. */
+       DOUBLES_IN_LLC doubles. */
 
 #   define MAT_MAT_XROWS (1024-64) /* be multiple of 8 to keep any alignment  */
 #   define MAT_MAT_XCOLS 32        /* be multiple of 8 to keep any alignment  */
-#   define MAT_MAT_LLC 100000      /* doubles assumed fit in last-level cache */
 
     if (n <= MAT_MAT_XROWS && k <= MAT_MAT_XCOLS) { /* do small cases quickly */
         matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m, n, k, 0);
         return;
     }
 
-    int cachable_yzcols = n <= MAT_MAT_XROWS ? m :
-      (int) (MAT_MAT_LLC / ((double)k + (n<MAT_MAT_XROWS ? n : MAT_MAT_XROWS)));
+    int cachable = n <= MAT_MAT_XROWS 
+                   ? m : 1 + (int) (DOUBLES_IN_LLC / (MAT_MAT_XROWS+(double)k));
 
     int mm = m;
 
     for (;;) {
+
         double *xx = x;
         double *zz = z;
+        int xrows = n;
         int m1 = mm;
-        if (m1 > cachable_yzcols) {
-            m1 = mm < 2*cachable_yzcols ? mm/2 : cachable_yzcols;
+
+        if (m1 > cachable) {
+            m1 = mm < 2*cachable ? mm/2 : cachable;
             m1 = (m1 + 7) & ~7;
             if (m1 > mm) m1 = mm;
         }
-        int xrows = n;
+
         if (xrows > MAT_MAT_XROWS && k > 2) {
             while (xrows >= 2*MAT_MAT_XROWS) {
                 matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1, MAT_MAT_XROWS);
@@ -2580,12 +2588,15 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
                 xrows -= nr;
             }
         }
+
         matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1, xrows);
+
         mm -= m1;
         if (mm == 0)
             break;
-        y += m1*k;
-        z += m1*n;
+
+        y += (size_t)m1*k;
+        z += (size_t)m1*n;
     }
 }
 
@@ -3634,14 +3645,25 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
         return;
     }
 
-    /* The definiton of TRANS1_XROWS is designed to keep two columns of y 
-       in an L1 cache of 32K bytes or more, given that two columns of y 
-       and four columns of x (all of length TRANS1_XROWS) are accessed
-       within the main loop.
+    /* The general case with k > 2.
+
+       The definiton of TRANS1_XROWS is designed to keep two columns
+       of y in an L1 cache of 32K bytes or more, given that two
+       columns of y and four columns of x (all of length TRANS1_XROWS)
+       are accessed within the main loop.
 
        The definiton of TRANS1_XCOLS is designed to keep the submatrix
-       of x with TRANS1_XROWS and TRANS1_XCOLS in an L2 cache of a least
-       256K bytes, while it is multiplied repeatedly by columns of y. */
+       of x with TRANS1_XROWS and TRANS1_XCOLS in an L2 cache of a
+       least 256K bytes, while it is multiplied repeatedly by pairs of
+       columns of y.
+
+       If y is large, and rows of x will be split, the columns of y
+       are done in groups, whose size is designed to keep these
+       columns of y and z in a last-level cache that can hold
+       DOUBLES_IN_LLC doubles.  (But this is not done for the
+       symmetric case, for which only part of z is computed at this
+       point.) */
+
 
 #   define TRANS1_XROWS 512        /* be multiple of 8 to keep any alignment */
 #   define TRANS1_XCOLS 48         /* be multiple of 8 to keep any alignment */
@@ -3651,34 +3673,59 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
 
     if (k <= TRANS1_XROWS && n <= TRANS1_XCOLS) {   /* do small cases quickly */
         matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, 0, k, n);
+        goto fill;
     }
-    else {
 
+    int cachable = sym || n <= TRANS1_XCOLS || n <= TRANS1_XCOLS*TRANS1_XROWS/k
+                   ? m : 1 + (DOUBLES_IN_LLC / (TRANS1_XROWS + TRANS1_XCOLS));
+
+    int mm = m;
+
+    for (;;) {
+
+        double *xx = x;
+        double *yy = y;
         int xrows = k;
         int add = 0;
+        int m1 = mm;
+
+        if (m1 > cachable) {
+            m1 = mm < 2*cachable ? mm/2 : cachable;
+            m1 = (m1 + 7) & ~7;
+            if (m1 > mm) m1 = mm;
+        }
 
         if (xrows > TRANS1_XROWS && n > 2) {
             while (xrows >= 2*TRANS1_XROWS) {
-                matprod_trans1_sub_xrows (x, y, z, n, k, m,
+                matprod_trans1_sub_xrows (xx, yy, z, n, k, m1,
                                           sym, add, TRANS1_XROWS);
-                x += TRANS1_XROWS;
-                y += TRANS1_XROWS;
+                xx += TRANS1_XROWS;
+                yy += TRANS1_XROWS;
                 xrows -= TRANS1_XROWS;
                 add = 1;
             }
             if (xrows > TRANS1_XROWS) {
                 int nr = ((xrows+1)/2) & ~7;  /* keep any alignment of x */
-                matprod_trans1_sub_xrows (x, y, z, n, k, m,
+                matprod_trans1_sub_xrows (xx, yy, z, n, k, m1,
                                           sym, add, nr);
-                x += nr;
-                y += nr;
+                xx += nr;
+                yy += nr;
                 xrows -= nr;
                 add = 1;
             }
         }
-        matprod_trans1_sub_xrows (x, y, z, n, k, m, sym, add, xrows);
+
+        matprod_trans1_sub_xrows (xx, yy, z, n, k, m1, sym, add, xrows);
+
+        mm -= m1;
+        if (mm == 0)
+            break;
+
+        y += (size_t)m1*k;
+        z += (size_t)m1*n;
     }
 
+  fill:
     if (sym)
         matprod_fill_lower (z, n);
 }
@@ -4403,15 +4450,24 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
 
     if (n <= TRANS2_XROWS && k <= TRANS2_XCOLS) {  /* do small cases quickly */
         matprod_trans2_sub_xrowscols (x, y, z, n, k, m, sym, n, m, k, 0);
+        goto fill;
     }
 
-    else {
+    int cachable = n <= TRANS2_XROWS 
+                   ? m : 1 + (int) (DOUBLES_IN_LLC / (TRANS2_XROWS+(double)k));
+
+    int mm = m;
+
+    for (;;) {
+
+        int m1 = mm;  /* do them all, for now */
 
         double *zz = z;
         int xrows = n;
         int yrows = m;
 
         if (xrows > TRANS2_XROWS && k > 2) {
+
             while (xrows >= 2*TRANS2_XROWS) {
                 matprod_trans2_sub_xrows (x, y, zz, n, k, m,
                                           sym, TRANS2_XROWS, yrows);
@@ -4424,6 +4480,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                     yrows -= TRANS2_XROWS;
                 }
             }
+
             if (xrows > TRANS2_XROWS) {
                 int nr = ((xrows+1)/2) & ~7;  /* keep any alignment of x, z */
                 matprod_trans2_sub_xrows (x, y, zz, n, k, m,
@@ -4438,9 +4495,18 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
                 }
             }
         }
+
         matprod_trans2_sub_xrows (x, y, zz, n, k, m, sym, xrows, yrows);
+
+        mm -= m1;
+        if (mm == 0)
+            break;
+
+        y += m1;
+        z += (size_t)m1*n;
     }
 
+  fill:
     if (sym)
         matprod_fill_lower (z, n);
 }
