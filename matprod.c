@@ -29,6 +29,15 @@
 #include "matprod.h"
 
 
+/* Define SCOPE as nothing (ie, global) if not already defined.  Another
+   .c file can define SCOPE as static and then include this .c file, in
+   order to get local versions of the routines. */
+
+#ifndef SCOPE
+#define SCOPE
+#endif
+
+
 /* Set up alignment definitions. */
 
 #ifndef ALIGN
@@ -169,8 +178,8 @@ static void set_to_zeros (double * MATPROD_RESTRICT z, size_t s)
 
 /* Multiply vector y of length m by scalar x, storing result in vector z. */
 
-void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
-                                   double * MATPROD_RESTRICT z, int m)
+SCOPE void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
+                                         double * MATPROD_RESTRICT z, int m)
 {
     CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -245,8 +254,11 @@ void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
 /* Dot product of vectors x and y of length k, with result returned as the
    function value. */
 
-double matprod_vec_vec (double * MATPROD_RESTRICT x, 
-                        double * MATPROD_RESTRICT y, int k)
+static double matprod_vec_vec_sub(double * MATPROD_RESTRICT x, 
+                                  double * MATPROD_RESTRICT y, int k, double s);
+
+SCOPE double matprod_vec_vec (double * MATPROD_RESTRICT x, 
+                              double * MATPROD_RESTRICT y, int k)
 {
     CHK_ALIGN(x); CHK_ALIGN(y);
 
@@ -264,7 +276,12 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
             return 0.0;
     }
 
-    double s;
+    return matprod_vec_vec_sub (x, y, k, 0.0);
+}
+
+static double matprod_vec_vec_sub (double * MATPROD_RESTRICT x, 
+                                   double * MATPROD_RESTRICT y, int k, double s)
+{
     int i = 0;
 
     /* Use an unrolled loop to add most products, perhaps using SSE2
@@ -274,11 +291,11 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
     {
         __m128d S, A;
 
+        S = _mm_set_sd(s);
+
 #       if (ALIGN_FORWARD & 8)
-            S = _mm_mul_sd (_mm_load_sd(x), _mm_load_sd(y));
+            S = _mm_add_sd (S, _mm_mul_sd (_mm_load_sd(x), _mm_load_sd(y)));
             i += 1;
-#       else
-            S = _mm_setzero_pd();
 #       endif
 
 #       if (ALIGN_FORWARD & 16)
@@ -367,10 +384,8 @@ double matprod_vec_vec (double * MATPROD_RESTRICT x,
 #   else  /* non-SIMD code */
     {
 #       if (ALIGN_FORWARD & 8)
-            s = x[0] * y[0];
+            s += x[0] * y[0];
             i += 1;
-#       else
-            s = 0.0;
 #       endif
 
 #       if (ALIGN_FORWARD & 16)
@@ -428,9 +443,9 @@ static void matprod_vec_mat_k2 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y, 
                                 double * MATPROD_RESTRICT z, int m);
 
-void matprod_vec_mat (double * MATPROD_RESTRICT x, 
-                      double * MATPROD_RESTRICT y, 
-                      double * MATPROD_RESTRICT z, int k, int m)
+SCOPE void matprod_vec_mat (double * MATPROD_RESTRICT x, 
+                            double * MATPROD_RESTRICT y, 
+                            double * MATPROD_RESTRICT z, int k, int m)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -1313,9 +1328,9 @@ static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y, 
                                 double * MATPROD_RESTRICT z, int k);
 
-void matprod_mat_vec (double * MATPROD_RESTRICT x, 
-                      double * MATPROD_RESTRICT y, 
-                      double * MATPROD_RESTRICT z, int n, int k)
+SCOPE void matprod_mat_vec (double * MATPROD_RESTRICT x, 
+                            double * MATPROD_RESTRICT y, 
+                            double * MATPROD_RESTRICT z, int n, int k)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -2041,9 +2056,9 @@ static void matprod_outer_n4 (double * MATPROD_RESTRICT x,
                               double * MATPROD_RESTRICT y, 
                               double * MATPROD_RESTRICT z, int m);
 
-void matprod_outer (double * MATPROD_RESTRICT x, 
-                    double * MATPROD_RESTRICT y, 
-                    double * MATPROD_RESTRICT z, int n, int m)
+SCOPE void matprod_outer (double * MATPROD_RESTRICT x, 
+                          double * MATPROD_RESTRICT y, 
+                          double * MATPROD_RESTRICT z, int n, int m)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -2497,9 +2512,9 @@ static void matprod_mat_mat_n2 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT z, 
                                 int k, int m);
 
-void matprod_mat_mat (double * MATPROD_RESTRICT x, 
-                      double * MATPROD_RESTRICT y, 
-                      double * MATPROD_RESTRICT z, int n, int k, int m)
+SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x, 
+                            double * MATPROD_RESTRICT y, 
+                            double * MATPROD_RESTRICT z, int n, int k, int m)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -3614,9 +3629,9 @@ static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
                                double * MATPROD_RESTRICT z,
                                int n, int m);
 
-void matprod_trans1 (double * MATPROD_RESTRICT x, 
-                     double * MATPROD_RESTRICT y, 
-                     double * MATPROD_RESTRICT z, int n, int k, int m)
+SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x, 
+                           double * MATPROD_RESTRICT y, 
+                           double * MATPROD_RESTRICT z, int n, int k, int m)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -4397,9 +4412,9 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
                                double * MATPROD_RESTRICT z,
                                int k, int m);
 
-void matprod_trans2 (double * MATPROD_RESTRICT x, 
-                     double * MATPROD_RESTRICT y, 
-                     double * MATPROD_RESTRICT z, int n, int k, int m)
+SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x, 
+                           double * MATPROD_RESTRICT y, 
+                           double * MATPROD_RESTRICT z, int n, int k, int m)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -5069,7 +5084,7 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
 /* Fill the lower triangle of an n-by-n matrix from the upper
    triangle. Fills two rows at once to improve cache performance. */
 
-void matprod_fill_lower (double * MATPROD_RESTRICT z, int n)
+SCOPE void matprod_fill_lower (double * MATPROD_RESTRICT z, int n)
 {
     CHK_ALIGN(z);
 
