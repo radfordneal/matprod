@@ -1,7 +1,57 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 568a05be0d127d060fa3083614facbffc4ec8b48
+commit 44fac5a02a6e5d3fb5755dbd149756dfbc43370f
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Jan 12 20:49:52 2018 -0500
+Date:   Fri Jan 12 23:24:58 2018 -0500
 
-    revisions to y/z column splitting
+    results for haswell
+diff --git a/matprod.c b/matprod.c
+index 173492a..68c4d06 100644
+--- a/matprod.c
++++ b/matprod.c
+@@ -154,13 +154,13 @@
+ #define DOUBLES_IN_LLC 100000
+ 
+ 
+-/* Set vector z of length n to all zeros.  This is a degenerate special
+-   case of other operations. */
++/* Set vector/matrix z with s elements to all zeros.  This is a
++   degenerate special case of other operations. */
+ 
+-static void set_to_zeros (double * MATPROD_RESTRICT z, int n)
++static void set_to_zeros (double * MATPROD_RESTRICT z, size_t s)
+ {
+-    int i;
+-    for (i = 0; i < n; i++) {
++    size_t i;
++    for (i = 0; i < s; i++) {
+         z[i] = 0.0;
+     }
+ }
+@@ -2511,7 +2511,7 @@ void matprod_mat_mat (double * MATPROD_RESTRICT x,
+         if (k == 1)
+             matprod_outer (x, y, z, n, m);
+         else
+-            set_to_zeros (z, n*m);
++            set_to_zeros (z, (size_t)n*m);
+         return;
+     }
+ 
+@@ -3641,7 +3641,7 @@ void matprod_trans1 (double * MATPROD_RESTRICT x,
+         else if (k == 1)
+             matprod_outer (x, y, z, n, m);
+         else
+-            set_to_zeros (z, n*m);
++            set_to_zeros (z, (size_t)n*m);
+         return;
+     }
+ 
+@@ -4411,7 +4411,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
+         if (k == 1)
+             matprod_outer (x, y, z, n, m);
+         else
+-            set_to_zeros (z, n*m);
++            set_to_zeros (z, (size_t)n*m);
+         return;
+     }
+ 
