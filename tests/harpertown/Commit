@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit a58934a2d2ed866ea16a67b748a3d072d8e5f427
+commit f4af7313d0c2b446517165538986b3fdda2cc96e
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Jan 11 15:34:45 2018 -0500
+Date:   Fri Jan 12 19:10:37 2018 -0500
 
-    results for ivybridge
+    more work on splitting over y/z columns
