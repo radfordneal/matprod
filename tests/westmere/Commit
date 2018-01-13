@@ -1,8 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit e3b5a501ca7b6421c0d1c27a7281b25ff749f7ac
-Merge: c2cec7e 62afba0
+commit 568a05be0d127d060fa3083614facbffc4ec8b48
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Jan 11 14:28:48 2018 -0500
+Date:   Fri Jan 12 20:49:52 2018 -0500
 
-    Merge branch 'master' of https://github.com/radfordneal/matprod
+    revisions to y/z column splitting
