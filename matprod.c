@@ -4453,25 +4453,32 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
         goto fill;
     }
 
-    int cachable = n <= TRANS2_XROWS 
+    int cachable = sym || n <= TRANS2_XROWS 
                    ? m : 1 + (int) (DOUBLES_IN_LLC / (TRANS2_XROWS+(double)k));
 
     int mm = m;
 
     for (;;) {
 
-        int m1 = mm;  /* do them all, for now */
+        int m1 = mm;
 
+        if (m1 > cachable) {
+            m1 = mm < 2*cachable ? mm/2 : cachable;
+            m1 = (m1 + 7) & ~7;
+            if (m1 > mm) m1 = mm;
+        }
+
+        double *xx = x;
         double *zz = z;
         int xrows = n;
-        int yrows = m;
+        int yrows = m1;
 
         if (xrows > TRANS2_XROWS && k > 2) {
 
             while (xrows >= 2*TRANS2_XROWS) {
-                matprod_trans2_sub_xrows (x, y, zz, n, k, m,
+                matprod_trans2_sub_xrows (xx, y, zz, n, k, m,
                                           sym, TRANS2_XROWS, yrows);
-                x += TRANS2_XROWS;
+                xx += TRANS2_XROWS;
                 zz += TRANS2_XROWS;
                 xrows -= TRANS2_XROWS;
                 if (sym) {
@@ -4483,9 +4490,9 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
 
             if (xrows > TRANS2_XROWS) {
                 int nr = ((xrows+1)/2) & ~7;  /* keep any alignment of x, z */
-                matprod_trans2_sub_xrows (x, y, zz, n, k, m,
+                matprod_trans2_sub_xrows (xx, y, zz, n, k, m,
                                           sym, nr, yrows);
-                x += nr;
+                xx += nr;
                 zz += nr;
                 xrows -= nr;
                 if (sym) {
@@ -4496,7 +4503,7 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
             }
         }
 
-        matprod_trans2_sub_xrows (x, y, zz, n, k, m, sym, xrows, yrows);
+        matprod_trans2_sub_xrows (xx, y, zz, n, k, m, sym, xrows, yrows);
 
         mm -= m1;
         if (mm == 0)
