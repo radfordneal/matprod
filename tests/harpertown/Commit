@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit f4af7313d0c2b446517165538986b3fdda2cc96e
+commit 11870140046df1eed7447a14fba04757cd7b2889
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Jan 12 19:10:37 2018 -0500
+Date:   Fri Jan 12 21:33:49 2018 -0500
 
-    more work on splitting over y/z columns
+    results for skylake
