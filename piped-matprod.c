@@ -30,11 +30,7 @@
 #include "matprod.c"
 
 
-/* Dot product of two vectors, with pipelining of input y.
-
-   The loop is unrolled to do two pairs of elements each iteration, with 
-   the sum initialized either to zero or to the result from the first pair, 
-   if the number of pairs is odd. */
+/* Dot product of two vectors, with pipelining of input y. */
 
 void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz, 
                                  helpers_var_ptr sx, helpers_var_ptr sy)
@@ -43,37 +39,15 @@ void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
     double * MATPROD_RESTRICT y = REAL(sy);
 
     helpers_size_t k, a;
-    double *ox = x;
     double s;
 
     k = LENGTH(sx);
+    a = 0;
+    s = 0;
 
-    /* If k is odd, initialize sum to the first product, and adjust x and
-       y to account for this.  If k is even, just initialize sum to zero. */
-
-    if (k & 1) {
-        HELPERS_WAIT_IN2 (a, 0, k);
-        s = *x++ * *y++;
-    }
-    else {
-        s = 0.0;
-        a = 0;
-    }
-
-    /* Add two products each time around the inner loop, adjusting x, y, 
-       and i as we go. */
-
-    for (;;) {
-        helpers_size_t need_more_than = x - ox + 1;
-        if (need_more_than >= k)
-            break; 
-        if (need_more_than >= a)
-            HELPERS_WAIT_IN2 (a, need_more_than, k);
-        double *ex = ox - 1 + a;
-        do {
-            s += *x++ * *y++;
-            s += *x++ * *y++;
-        } while (x < ex);
+    while (a < k) {
+        HELPERS_WAIT_IN2 (a, a, k);
+        s = matprod_vec_vec_sub (x, y, k, s);
     }
 
     *REAL(sz) = s;
