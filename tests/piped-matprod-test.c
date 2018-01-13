@@ -108,4 +108,8 @@ void helpers_master (void)
   }  
 
   print_result();
+
+  if (do_check)
+  { check_results();
+  }
 }

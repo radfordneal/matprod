@@ -26,6 +26,8 @@
 
 #define MAX_MATRICES 10
 
+EXTERN int do_check;                 /* 1 if check should be done */
+
 EXTERN int nmat;                     /* Number of matrices used */
 
 EXTERN double *matrix[MAX_MATRICES]; /* Pointers to storage for matrices */
@@ -45,3 +47,4 @@ extern char *prog_name;              /* Name of test program (for usage msg) */
 
 extern void do_test(int);            /* Procedure to do the test (repeatedly) */
 extern void print_result (void);     /* Print part of final result matrix */
+extern void check_results (void);    /* Check that results are correct */

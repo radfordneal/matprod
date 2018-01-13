@@ -22,19 +22,24 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+
+/* Define SCOPE as nothing (ie, global) if not already defined.  Another
+   .c file can define SCOPE as static and then include this .c file, in
+   order to get local versions of the routines. 
+
+   Also, matprod.h and perhaps matprod-app.h are included only if
+   SCOPE is not defined. */
+
+#ifndef SCOPE
+
 #ifdef MATPROD_APP_INCLUDED
 #include "matprod-app.h"
 #endif
 
 #include "matprod.h"
 
-
-/* Define SCOPE as nothing (ie, global) if not already defined.  Another
-   .c file can define SCOPE as static and then include this .c file, in
-   order to get local versions of the routines. */
-
-#ifndef SCOPE
 #define SCOPE
+
 #endif
 
 
@@ -171,6 +176,87 @@ static void set_to_zeros (double * MATPROD_RESTRICT z, size_t s)
     size_t i;
     for (i = 0; i < s; i++) {
         z[i] = 0.0;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+
+/* Fill the lower triangle of an n-by-n matrix from the upper
+   triangle. Fills two rows at once to improve cache performance. */
+
+SCOPE void matprod_fill_lower (double * MATPROD_RESTRICT z, int n)
+{
+    CHK_ALIGN(z);
+
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    {  /* Inner block because this is maybe required by "restrict" usage. */
+
+        /* Note that the first row requires no action, and hence can be
+           done or not as helps alignment. */
+
+#       if ALIGN_FORWARD & 8
+            double * MATPROD_RESTRICT zr = z + 1;
+            double * MATPROD_RESTRICT zc = z + n;
+            int i = 1;
+#       else
+            double * MATPROD_RESTRICT zr = z;
+            double * MATPROD_RESTRICT zc = z;
+            int i = 0;
+#       endif
+
+        /* Fill in two rows each time around this loop. */
+
+        while (i <= n-2) {
+
+            double *zp = zr;
+            int j = 0;
+
+            while (j <= i-2) {
+#               if CAN_USE_SSE2
+                    _mm_storeA_pd (zp, 
+                                  _mm_loadh_pd (_mm_load_sd(zc+j), zc+j+n));
+                    _mm_storeu_pd (zp+n, 
+                                  _mm_loadh_pd (_mm_load_sd(zc+j+1), zc+j+n+1));
+#               else  /* non-SIMD code */
+                    zp[0] = zc[j];
+                    zp[1] = (zc+n)[j];
+                    (zp+n)[0] = zc[j+1];
+                    (zp+n)[1] = (zc+n)[j+1];
+#               endif
+                zp += n; zp += n;
+                j += 2;
+            }
+
+            if (j < i) {
+#               if CAN_USE_SSE2
+                    _mm_storeA_pd (zp,
+                                  _mm_loadh_pd (_mm_load_sd(zc+j), zc+j+n));
+#               else  /* non-SIMD code */
+                    zp[0] = zc[j];
+                    zp[1] = (zc+n)[j];
+#               endif
+                zp += n;
+            }
+
+            zp[1] = (zc+n)[i];
+
+            zc += n; zc += n;
+            zr += 2;
+            i += 2;
+        }
+
+        /* Fill in the last row, if not done above. */
+
+        if (i < n) {
+            double *zp = zr;
+            int j = 0;
+            while (j < i) {
+                zp[0] = zc[j];
+                zp += n;
+                j += 1;
+            }
+        }
     }
 }
 
@@ -5076,86 +5162,5 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
             z[1] = s[1];
         }
 #       endif
-    }
-}
-
-/* -------------------------------------------------------------------------- */
-
-/* Fill the lower triangle of an n-by-n matrix from the upper
-   triangle. Fills two rows at once to improve cache performance. */
-
-SCOPE void matprod_fill_lower (double * MATPROD_RESTRICT z, int n)
-{
-    CHK_ALIGN(z);
-
-    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
-
-    {  /* Inner block because this is maybe required by "restrict" usage. */
-
-        /* Note that the first row requires no action, and hence can be
-           done or not as helps alignment. */
-
-#       if ALIGN_FORWARD & 8
-            double * MATPROD_RESTRICT zr = z + 1;
-            double * MATPROD_RESTRICT zc = z + n;
-            int i = 1;
-#       else
-            double * MATPROD_RESTRICT zr = z;
-            double * MATPROD_RESTRICT zc = z;
-            int i = 0;
-#       endif
-
-        /* Fill in two rows each time around this loop. */
-
-        while (i <= n-2) {
-
-            double *zp = zr;
-            int j = 0;
-
-            while (j <= i-2) {
-#               if CAN_USE_SSE2
-                    _mm_storeA_pd (zp, 
-                                  _mm_loadh_pd (_mm_load_sd(zc+j), zc+j+n));
-                    _mm_storeu_pd (zp+n, 
-                                  _mm_loadh_pd (_mm_load_sd(zc+j+1), zc+j+n+1));
-#               else  /* non-SIMD code */
-                    zp[0] = zc[j];
-                    zp[1] = (zc+n)[j];
-                    (zp+n)[0] = zc[j+1];
-                    (zp+n)[1] = (zc+n)[j+1];
-#               endif
-                zp += n; zp += n;
-                j += 2;
-            }
-
-            if (j < i) {
-#               if CAN_USE_SSE2
-                    _mm_storeA_pd (zp,
-                                  _mm_loadh_pd (_mm_load_sd(zc+j), zc+j+n));
-#               else  /* non-SIMD code */
-                    zp[0] = zc[j];
-                    zp[1] = (zc+n)[j];
-#               endif
-                zp += n;
-            }
-
-            zp[1] = (zc+n)[i];
-
-            zc += n; zc += n;
-            zr += 2;
-            i += 2;
-        }
-
-        /* Fill in the last row, if not done above. */
-
-        if (i < n) {
-            double *zp = zr;
-            int j = 0;
-            while (j < i) {
-                zp[0] = zc[j];
-                zp += n;
-                j += 1;
-            }
-        }
     }
 }

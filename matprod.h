@@ -77,4 +77,3 @@ void matprod_trans2 (double * MATPROD_RESTRICT x,
           int m);
 
 void matprod_fill_lower (double * MATPROD_RESTRICT z, int n);
-

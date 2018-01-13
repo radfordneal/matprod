@@ -26,9 +26,8 @@
 #include "helpers-app.h"
 #include "piped-matprod.h"
 
-#ifndef ALIGN_OFFSET
-#define ALIGN_OFFSET 0
-#endif
+#define SCOPE static
+#include "matprod.c"
 
 
 /* Dot product of two vectors, with pipelining of input y.

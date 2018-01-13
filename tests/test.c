@@ -90,7 +90,7 @@ void print_result (void)
 
 static double *product_check[MAX_MATRICES]; /* Pointers to storage for checks */
 
-static void check_results (void)
+void check_results (void)
 {
   int i, v;
   
@@ -167,7 +167,6 @@ int main (int argc, char **argv)
 {
   int rep;     /* Number of times to repeat test */
   char junk;   /* Junk variable for use in sscanf */
-  int do_check;  /* 1 if check should be done */
   int i, j, k;
 
   /* Process arguments. */
