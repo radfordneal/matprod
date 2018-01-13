@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 1c2a5d2db4801364b72d81f444375c59c516ee2f
+commit 161e3417b85f151061fc1685e7abe62440d70ab3
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Jan 11 19:58:37 2018 -0500
+Date:   Fri Jan 12 22:10:48 2018 -0500
 
-    results for yonah
+    results for harpertown
