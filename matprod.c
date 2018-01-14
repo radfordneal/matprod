@@ -23,9 +23,11 @@
 #include <stdint.h>
 
 
-/* Define SCOPE as nothing (ie, global) if not already defined.  Another
-   .c file can define SCOPE as static and then include this .c file, in
-   order to get local versions of the routines. 
+/* Setup to facilitate inclusion and use in piped-matprod.c. */
+
+/* Define SCOPE as nothing (ie, global) if not already defined;
+   piped-matprod.c can instead define it as static, in order to get
+   local versions of the matprod routines.
 
    Also, matprod.h and perhaps matprod-app.h are included only if
    SCOPE is not defined. */
@@ -40,6 +42,20 @@
 
 #define SCOPE
 
+#endif
+
+/* Define AMTOUT(c) as nothing; piped-matprod.c can define it so as to
+   signal that c columns have been computed. */
+
+#ifndef AMTOUT
+#define AMTOUT(c) do {} while (0)
+#endif
+
+/* Define EXTRA as nothing; piped-matprod.c can define it as ,arg-decl
+   to add an extra argument needed by AMTOUT to some procedures. */
+
+#ifndef EXTRA
+#define EXTRA
 #endif
 
 
