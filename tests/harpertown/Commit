@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit 11870140046df1eed7447a14fba04757cd7b2889
+commit 80e0439a34cc00be85617482b662d7570c255abd
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Jan 12 21:33:49 2018 -0500
+Date:   Sat Jan 13 19:47:24 2018 -0500
 
-    results for skylake
+    change piped-matprod tasks procedures to use matprod procedures, but so far only vec_vec does pipelining
