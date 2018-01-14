@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit ffd645a2380c2d3095ffc2a405f748472206c1cd
+commit d4db5400ceab4a6dfc0788ca940f27d4bcc19d0a
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Jan 12 21:29:45 2018 -0500
+Date:   Sat Jan 13 20:18:56 2018 -0500
 
-    results for westmere
+    more setup for piped-matprod in matprod.c
