@@ -27,6 +27,20 @@
 #include "piped-matprod.h"
 
 #define SCOPE static
+
+#define EXTRAC ,
+#define EXTRAD double *start_z, double *last_z, int threshold
+#define EXTRAZ 0, 0, 0
+#define EXTRAN start_z, last_z, threshold
+
+#define AMTOUT(_z_) do { \
+    if (start_z != 0 && (_z_) - last_z >= threshold) { \
+        helpers_amount_out ((_z_) - start_z); \
+        last_z = (_z_); \
+    } \
+} while (0)
+
+
 #include "matprod.c"
 
 
@@ -81,7 +95,7 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
     }
 
-    matprod_vec_mat (x, y, z, k, m);
+    matprod_vec_mat (x, y, z, k, m, z, z, 64);
 }
 
 
@@ -126,7 +140,7 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
         HELPERS_WAIT_IN2 (a, m-1, m);
     }
 
-    matprod_outer (x, y, z, n, m);
+    matprod_outer (x, y, z, n, m, z, z, 64);
 }
 
 
@@ -152,7 +166,7 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
     }
 
-    matprod_mat_mat (x, y, z, n, k, m);
+    matprod_mat_mat (x, y, z, n, k, m, z, z, 64);
 }
 
 
@@ -179,7 +193,7 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
     }
 
-    matprod_trans1 (x, y, z, n, k, m);
+    matprod_trans1 (x, y, z, n, k, m, z, z, 64);
 }
 
 
@@ -205,5 +219,5 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
     }
 
-    matprod_trans2 (x, y, z, n, k, m);
+    matprod_trans2 (x, y, z, n, k, m, z, z, 64);
 }
