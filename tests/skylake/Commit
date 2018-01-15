@@ -1,7 +1,647 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 4853fc84459634dbc3cc66b6ee21a7b548e6484f
+commit ae1ce36efc08cfa0f38bf7d51759981fb66644b8
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Jan 13 21:57:36 2018 -0500
+Date:   Sat Jan 13 22:55:16 2018 -0500
 
-    results for ivybridge
+    results for skylake
+diff --git a/matprod.c b/matprod.c
+index fb3b260..bdb2754 100644
+--- a/matprod.c
++++ b/matprod.c
+@@ -44,18 +44,24 @@
+ 
+ #endif
+ 
+-/* Define AMTOUT(c) as nothing; piped-matprod.c can define it so as to
+-   signal that c columns have been computed. */
++/* Define AMTOUT(z) as nothing if not already defined; piped-matprod.c
++   can define it so as to signal that data up to z has been computed. */
+ 
+ #ifndef AMTOUT
+-#define AMTOUT(c) do {} while (0)
++#define AMTOUT(z) do {} while (0)
+ #endif
+ 
+-/* Define EXTRA as nothing; piped-matprod.c can define it as ,arg-decl
+-   to add an extra argument needed by AMTOUT to some procedures. */
+-
+-#ifndef EXTRA
+-#define EXTRA
++/* Define EXTRAC, EXTRAD, EXTRAZ, and EXTRAN as nothing if EXTRAC is
++   not already defined; piped-matprod.c can define them as ",", one or
++   more parameter declarations, one or more "null" values, and the
++   names of one or more arguments to pass on.  The argument(s) may be
++   used by the AMTOUT macro. */
++
++#ifndef EXTRAC
++#define EXTRAC
++#define EXTRAD
++#define EXTRAZ
++#define EXTRAN
+ #endif
+ 
+ 
+@@ -539,7 +545,8 @@ static double matprod_vec_vec_sub (double * MATPROD_RESTRICT x,
+ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
+                                        double * MATPROD_RESTRICT y,
+                                        double * MATPROD_RESTRICT z,
+-                                       int k, int m, int yrows, int add);
++                                       int k, int m, int yrows, int add
++                                       EXTRAC EXTRAD);
+ 
+ static void matprod_vec_mat_k2 (double * MATPROD_RESTRICT x, 
+                                 double * MATPROD_RESTRICT y, 
+@@ -547,7 +554,8 @@ static void matprod_vec_mat_k2 (double * MATPROD_RESTRICT x,
+ 
+ SCOPE void matprod_vec_mat (double * MATPROD_RESTRICT x, 
+                             double * MATPROD_RESTRICT y, 
+-                            double * MATPROD_RESTRICT z, int k, int m)
++                            double * MATPROD_RESTRICT z, int k, int m 
++                            EXTRAC EXTRAD)
+ {
+     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+ 
+@@ -590,7 +598,8 @@ SCOPE void matprod_vec_mat (double * MATPROD_RESTRICT x,
+ 
+     if (yrows > VEC_MAT_YROWS && m > 4) {
+         while (yrows >= 2*VEC_MAT_YROWS) {
+-            matprod_vec_mat_sub_yrows (x, y, z, k, m, VEC_MAT_YROWS, add);
++            matprod_vec_mat_sub_yrows (x, y, z, k, m, VEC_MAT_YROWS, add
++                                       EXTRAC EXTRAZ);
+             x += VEC_MAT_YROWS;
+             y += VEC_MAT_YROWS;
+             yrows -= VEC_MAT_YROWS;
+@@ -598,14 +607,16 @@ SCOPE void matprod_vec_mat (double * MATPROD_RESTRICT x,
+         }
+         if (yrows > VEC_MAT_YROWS) {
+             int nr = ((yrows+1)/2) & ~7; /* keep any alignment of x, y */
+-            matprod_vec_mat_sub_yrows (x, y, z, k, m, nr, add);
++            matprod_vec_mat_sub_yrows (x, y, z, k, m, nr, add
++                                       EXTRAC EXTRAZ);
+             x += nr;
+             y += nr;
+             yrows -= nr;
+             add = 1;
+         }
+     }
+-    matprod_vec_mat_sub_yrows (x, y, z, k, m, yrows, add);
++    matprod_vec_mat_sub_yrows (x, y, z, k, m, yrows, add
++                               EXTRAC EXTRAN);
+ }
+ 
+ 
+@@ -625,7 +636,8 @@ SCOPE void matprod_vec_mat (double * MATPROD_RESTRICT x,
+ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
+                                        double * MATPROD_RESTRICT y,
+                                        double * MATPROD_RESTRICT z,
+-                                       int k, int m, int yrows, int add)
++                                       int k, int m, int yrows, int add
++                                       EXTRAC EXTRAD)
+ {
+     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+ 
+@@ -848,6 +860,8 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
+         y += k; y += k; y += k; y += k;
+         z += 4;
+         m -= 4;
++
++        AMTOUT(z);
+     }
+ 
+     /* Compute the final few dot products left over from the loop above. */
+@@ -2160,7 +2174,8 @@ static void matprod_outer_n4 (double * MATPROD_RESTRICT x,
+ 
+ SCOPE void matprod_outer (double * MATPROD_RESTRICT x, 
+                           double * MATPROD_RESTRICT y, 
+-                          double * MATPROD_RESTRICT z, int n, int m)
++                          double * MATPROD_RESTRICT z, int n, int m
++                          EXTRAC EXTRAD)
+ {
+     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+ 
+@@ -2600,14 +2615,15 @@ static void matprod_outer_n2 (double * MATPROD_RESTRICT x,
+ static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x, 
+                                        double * MATPROD_RESTRICT y, 
+                                        double * MATPROD_RESTRICT z,
+-                                       int n, int k, int m, 
+-                                       int xrows);
++                                       int n, int k, int m, int xrows
++                                       EXTRAC EXTRAD);
+ 
+ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x, 
+                                  double * MATPROD_RESTRICT y, 
+                                  double * MATPROD_RESTRICT z,
+                                  int n, int k, int m, 
+-                                 int xrows, int xcols, int add);
++                                 int xrows, int xcols, int add
++                                 EXTRAC EXTRAD);
+ 
+ static void matprod_mat_mat_n2 (double * MATPROD_RESTRICT x, 
+                                 double * MATPROD_RESTRICT y, 
+@@ -2616,7 +2632,8 @@ static void matprod_mat_mat_n2 (double * MATPROD_RESTRICT x,
+ 
+ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x, 
+                             double * MATPROD_RESTRICT y, 
+-                            double * MATPROD_RESTRICT z, int n, int k, int m)
++                            double * MATPROD_RESTRICT z, int n, int k, int m
++                            EXTRAC EXTRAD)
+ {
+     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+ 
+@@ -2626,7 +2643,7 @@ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x,
+ 
+     if (k <= 1) {
+         if (k == 1)
+-            matprod_outer (x, y, z, n, m);
++            matprod_outer (x, y, z, n, m EXTRAC EXTRAN);
+         else
+             set_to_zeros (z, (size_t)n*m);
+         return;
+@@ -2636,7 +2653,7 @@ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x,
+         if (n == 2)
+             matprod_mat_mat_n2 (x, y, z, k, m);
+         else if (n == 1)
+-            matprod_vec_mat (x, y, z, k, m);
++            matprod_vec_mat (x, y, z, k, m EXTRAC EXTRAN);
+         return;
+     }
+     if (m <= 1) {
+@@ -2668,7 +2685,8 @@ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x,
+ #   define MAT_MAT_XCOLS 32        /* be multiple of 8 to keep any alignment  */
+ 
+     if (n <= MAT_MAT_XROWS && k <= MAT_MAT_XCOLS) { /* do small cases quickly */
+-        matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m, n, k, 0);
++        matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m, n, k, 0
++                                       EXTRAC EXTRAN);
+         return;
+     }
+ 
+@@ -2692,21 +2710,24 @@ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x,
+ 
+         if (xrows > MAT_MAT_XROWS && k > 2) {
+             while (xrows >= 2*MAT_MAT_XROWS) {
+-                matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1, MAT_MAT_XROWS);
++                matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1, MAT_MAT_XROWS
++                                           EXTRAC EXTRAZ);
+                 xx += MAT_MAT_XROWS;
+                 zz += MAT_MAT_XROWS;
+                 xrows -= MAT_MAT_XROWS;
+             }
+             if (xrows > MAT_MAT_XROWS) {
+                 int nr = ((xrows+1)/2) & ~7; /* keep any alignment of x, z */
+-                matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1, nr);
++                matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1, nr
++                                           EXTRAC EXTRAZ);
+                 xx += nr;
+                 zz += nr;
+                 xrows -= nr;
+             }
+         }
+ 
+-        matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1, xrows);
++        matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1, xrows
++                                   EXTRAC EXTRAN);
+ 
+         mm -= m1;
+         if (mm == 0)
+@@ -2720,7 +2741,8 @@ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x,
+ static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x, 
+                                        double * MATPROD_RESTRICT y, 
+                                        double * MATPROD_RESTRICT z,
+-                                       int n, int k, int m, int xrows)
++                                       int n, int k, int m, int xrows
++                                       EXTRAC EXTRAD)
+ {
+     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+ 
+@@ -2732,7 +2754,8 @@ static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x,
+ 
+     if (k <= MAT_MAT_XCOLS 
+      || k <= (chunk = (MAT_MAT_XCOLS*MAT_MAT_XROWS/xrows) & ~7)) {
+-        matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m, xrows, k, 0);
++        matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m, xrows, k, 0
++                                       EXTRAC EXTRAN);
+         return;
+     }
+ 
+@@ -2740,7 +2763,8 @@ static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x,
+     int add = 0;
+ 
+     while (xcols > 2*chunk) {
+-        matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m, xrows, chunk, add);
++        matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m, xrows, chunk, add
++                                       EXTRAC EXTRAZ);
+         x += chunk*n;
+         y += chunk;
+         xcols -= chunk;
+@@ -2749,14 +2773,16 @@ static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x,
+ 
+     if (xcols > chunk) {
+         int nc = ((xcols+1)/2) & ~7;  /* keep any alignment of x */
+-        matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m, xrows, nc, add);
++        matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m, xrows, nc, add
++                                       EXTRAC EXTRAZ);
+         x += nc*n;
+         y += nc;
+         xcols -= nc;
+         add = 1;
+     }
+ 
+-    matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m, xrows, xcols, add);    
++    matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m, xrows, xcols, add
++                                   EXTRAC EXTRAN);
+ }
+ 
+ /* Multiply the first 'xrows' rows and 'xcols' columns of x with the m
+@@ -2782,7 +2808,8 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
+                                            double * MATPROD_RESTRICT y, 
+                                            double * MATPROD_RESTRICT z,
+                                            int n, int k, int m, 
+-                                           int xrows, int xcols, int add)
++                                           int xrows, int xcols, int add
++                                           EXTRAC EXTRAD)
+ {
+ /*  printf("- %p %p %p - %d %d %d - %d %d %d\n",
+                x, y, z,   n, k, m,  xrows, xcols, add);  */
+@@ -3339,6 +3366,8 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
+         z += n; z += n;
+         y += k; y += k;
+         m -= 2;
++
++        AMTOUT(z);
+     }
+ 
+     /* If m is odd, compute the last column of the result. */
+@@ -3717,14 +3746,16 @@ static void matprod_trans1_sub_xrows (double * MATPROD_RESTRICT x,
+                                       double * MATPROD_RESTRICT y, 
+                                       double * MATPROD_RESTRICT z,
+                                       int n, int k, int m,
+-                                      int sym, int add, int xrows);
++                                      int sym, int add, int xrows
++                                      EXTRAC EXTRAD);
+ 
+ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
+                                           double * MATPROD_RESTRICT y,
+                                           double * MATPROD_RESTRICT z,
+                                           int n, int k, int m,
+                                           int sym, int add,
+-                                          int xrows, int xcols);
++                                          int xrows, int xcols
++                                          EXTRAC EXTRAD);
+ 
+ static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
+                                double * MATPROD_RESTRICT y,
+@@ -3733,7 +3764,8 @@ static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
+ 
+ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x, 
+                            double * MATPROD_RESTRICT y, 
+-                           double * MATPROD_RESTRICT z, int n, int k, int m)
++                           double * MATPROD_RESTRICT z, int n, int k, int m
++                           EXTRAC EXTRAD)
+ {
+     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+ 
+@@ -3743,12 +3775,12 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
+ 
+     if (n <= 1) {
+         if (n == 1)
+-            matprod_vec_mat (x, y, z, k, m);
++            matprod_vec_mat (x, y, z, k, m EXTRAC EXTRAN);
+         return;
+     }
+     if (m <= 1) {
+         if (m == 1)
+-            matprod_vec_mat (y, x, z, k, n);
++            matprod_vec_mat (y, x, z, k, n EXTRAC EXTRAN);
+         return;
+     }
+ 
+@@ -3756,7 +3788,7 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
+         if (k == 2)
+             matprod_trans1_k2 (x, y, z, n, m);
+         else if (k == 1)
+-            matprod_outer (x, y, z, n, m);
++            matprod_outer (x, y, z, n, m EXTRAC EXTRAN);
+         else
+             set_to_zeros (z, (size_t)n*m);
+         return;
+@@ -3789,7 +3821,8 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
+               && (n>8 || k>8);    /*    but faster to ignore if n & k small */
+ 
+     if (k <= TRANS1_XROWS && n <= TRANS1_XCOLS) {   /* do small cases quickly */
+-        matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, 0, k, n);
++        matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, 0, k, n
++                                      EXTRAC EXTRAN);
+         goto fill;
+     }
+ 
+@@ -3815,7 +3848,7 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
+         if (xrows > TRANS1_XROWS && n > 2) {
+             while (xrows >= 2*TRANS1_XROWS) {
+                 matprod_trans1_sub_xrows (xx, yy, z, n, k, m1,
+-                                          sym, add, TRANS1_XROWS);
++                                          sym, add, TRANS1_XROWS EXTRAC EXTRAZ);
+                 xx += TRANS1_XROWS;
+                 yy += TRANS1_XROWS;
+                 xrows -= TRANS1_XROWS;
+@@ -3824,7 +3857,7 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
+             if (xrows > TRANS1_XROWS) {
+                 int nr = ((xrows+1)/2) & ~7;  /* keep any alignment of x */
+                 matprod_trans1_sub_xrows (xx, yy, z, n, k, m1,
+-                                          sym, add, nr);
++                                          sym, add, nr EXTRAC EXTRAZ);
+                 xx += nr;
+                 yy += nr;
+                 xrows -= nr;
+@@ -3832,7 +3865,8 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
+             }
+         }
+ 
+-        matprod_trans1_sub_xrows (xx, yy, z, n, k, m1, sym, add, xrows);
++        matprod_trans1_sub_xrows (xx, yy, z, n, k, m1, sym, add, xrows
++                                  EXTRAC EXTRAN);
+ 
+         mm -= m1;
+         if (mm == 0)
+@@ -3851,7 +3885,8 @@ static void matprod_trans1_sub_xrows (double * MATPROD_RESTRICT x,
+                                       double * MATPROD_RESTRICT y, 
+                                       double * MATPROD_RESTRICT z,
+                                       int n, int k, int m,
+-                                      int sym, int add, int xrows)
++                                      int sym, int add, int xrows
++                                      EXTRAC EXTRAD)
+ {
+     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+ 
+@@ -3864,12 +3899,14 @@ static void matprod_trans1_sub_xrows (double * MATPROD_RESTRICT x,
+ 
+     if (xcols <= TRANS1_XCOLS 
+      || xcols <= (chunk = (TRANS1_XCOLS*TRANS1_XROWS/xrows) & ~7)) {
+-        matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, xcols);
++        matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, xcols
++                                      EXTRAC EXTRAN);
+         return;
+     }
+ 
+     while (xcols > 2*chunk) {
+-        matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, chunk);
++        matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, chunk
++                                      EXTRAC EXTRAZ);
+         x += (size_t)chunk*k;
+         z += chunk;
+         xcols -= chunk;
+@@ -3882,7 +3919,8 @@ static void matprod_trans1_sub_xrows (double * MATPROD_RESTRICT x,
+ 
+     if (xcols > chunk) {
+         int nc = ((xcols+1)/2) & ~7;  /* keep any alignment of x, z */
+-        matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, nc);
++        matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, nc
++                                      EXTRAC EXTRAZ);
+         x += (size_t)nc*k;
+         z += nc;
+         xcols -= nc;
+@@ -3893,7 +3931,8 @@ static void matprod_trans1_sub_xrows (double * MATPROD_RESTRICT x,
+         }
+     }
+ 
+-    matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, xcols);
++    matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, xcols
++                                  EXTRAC EXTRAN);
+ }
+ 
+ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
+@@ -3901,7 +3940,8 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
+                                           double * MATPROD_RESTRICT z,
+                                           int n, int k, int m,
+                                           int sym, int add,
+-                                          int xrows, int xcols)
++                                          int xrows, int xcols
++                                          EXTRAC EXTRAD)
+ {
+ /*  printf("- %p %p %p - %d %d %d - %d %d %d %d\n",
+                x, y, z,   n, k, m,  sym, add, xrows, xcols);  */
+@@ -4158,6 +4198,8 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
+             z += 4;
+             xs += k; xs += k; xs += k; xs += k;
+             nn -= 4;
++
++            if (!sym) AMTOUT(z);
+         }
+ 
+         /* Compute the remaining elements of the columns here. */
+@@ -4500,14 +4542,16 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
+                                       double * MATPROD_RESTRICT y,
+                                       double * MATPROD_RESTRICT z,
+                                       int n, int k, int m,
+-                                      int sym, int xrows, int yrows);
++                                      int sym, int xrows, int yrows
++                                      EXTRAC EXTRAD);
+ 
+ static void matprod_trans2_sub_xrowscols(double * MATPROD_RESTRICT x,
+                                double * MATPROD_RESTRICT y,
+                                double * MATPROD_RESTRICT z,
+                                int n, int k, int m,
+                                int sym, int xrows, int yrows,
+-                               int xcols, int add);
++                               int xcols, int add
++                               EXTRAC EXTRAD);
+ 
+ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
+                                double * MATPROD_RESTRICT y,
+@@ -4516,7 +4560,8 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
+ 
+ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x, 
+                            double * MATPROD_RESTRICT y, 
+-                           double * MATPROD_RESTRICT z, int n, int k, int m)
++                           double * MATPROD_RESTRICT z, int n, int k, int m
++                           EXTRAC EXTRAD)
+ {
+     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+ 
+@@ -4526,7 +4571,7 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
+ 
+     if (k <= 1) {
+         if (k == 1)
+-            matprod_outer (x, y, z, n, m);
++            matprod_outer (x, y, z, n, m EXTRAC EXTRAN);
+         else
+             set_to_zeros (z, (size_t)n*m);
+         return;
+@@ -4566,7 +4611,8 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
+               && (n>8 || k>8);    /*    but faster to ignore if n & k small */
+ 
+     if (n <= TRANS2_XROWS && k <= TRANS2_XCOLS) {  /* do small cases quickly */
+-        matprod_trans2_sub_xrowscols (x, y, z, n, k, m, sym, n, m, k, 0);
++        matprod_trans2_sub_xrowscols (x, y, z, n, k, m, sym, n, m, k, 0
++                                      EXTRAC EXTRAN);
+         goto fill;
+     }
+ 
+@@ -4594,7 +4640,8 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
+ 
+             while (xrows >= 2*TRANS2_XROWS) {
+                 matprod_trans2_sub_xrows (xx, y, zz, n, k, m,
+-                                          sym, TRANS2_XROWS, yrows);
++                                          sym, TRANS2_XROWS, yrows
++                                          EXTRAC EXTRAZ);
+                 xx += TRANS2_XROWS;
+                 zz += TRANS2_XROWS;
+                 xrows -= TRANS2_XROWS;
+@@ -4608,7 +4655,8 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
+             if (xrows > TRANS2_XROWS) {
+                 int nr = ((xrows+1)/2) & ~7;  /* keep any alignment of x, z */
+                 matprod_trans2_sub_xrows (xx, y, zz, n, k, m,
+-                                          sym, nr, yrows);
++                                          sym, nr, yrows
++                                          EXTRAC EXTRAZ);
+                 xx += nr;
+                 zz += nr;
+                 xrows -= nr;
+@@ -4620,7 +4668,8 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
+             }
+         }
+ 
+-        matprod_trans2_sub_xrows (xx, y, zz, n, k, m, sym, xrows, yrows);
++        matprod_trans2_sub_xrows (xx, y, zz, n, k, m, sym, xrows, yrows
++                                  EXTRAC EXTRAN);
+ 
+         mm -= m1;
+         if (mm == 0)
+@@ -4639,7 +4688,8 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
+                                       double * MATPROD_RESTRICT y,
+                                       double * MATPROD_RESTRICT z,
+                                       int n, int k, int m,
+-                                      int sym, int xrows, int yrows)
++                                      int sym, int xrows, int yrows
++                                      EXTRAC EXTRAD)
+ {
+     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+ 
+@@ -4652,7 +4702,8 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
+     if (k <= TRANS2_XCOLS
+      || k <= (chunk = (TRANS2_XCOLS*TRANS2_XROWS/xrows) & ~7)) {
+         matprod_trans2_sub_xrowscols (x, y, z, n, k, m,
+-                                      sym, xrows, yrows, k, 0);
++                                      sym, xrows, yrows, k, 0
++                                      EXTRAC EXTRAZ);
+         return;
+     }
+ 
+@@ -4661,7 +4712,8 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
+ 
+     while (xcols > 2*chunk) {
+         matprod_trans2_sub_xrowscols (x, y, z, n, k, m,
+-                                      sym, xrows, yrows, chunk, add);
++                                      sym, xrows, yrows, chunk, add
++                                      EXTRAC EXTRAZ);
+         x += (size_t)chunk*n;
+         y += (size_t)chunk*m;
+         xcols -= chunk;
+@@ -4671,7 +4723,8 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
+     if (xcols > chunk) {
+         int nc = ((xcols+1)/2) & ~7;  /* keep any alignment of x */
+         matprod_trans2_sub_xrowscols (x, y, z, n, k, m,
+-                                      sym, xrows, yrows, nc, add);
++                                      sym, xrows, yrows, nc, add
++                                      EXTRAC EXTRAZ);
+         x += (size_t)nc*n;
+         y += (size_t)nc*m;
+         xcols -= nc;
+@@ -4679,7 +4732,8 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
+     }
+ 
+     matprod_trans2_sub_xrowscols (x, y, z, n, k, m, 
+-                                  sym, xrows, yrows, xcols, add);
++                                  sym, xrows, yrows, xcols, add
++                                  EXTRAC EXTRAN);
+ }
+ 
+ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
+@@ -4687,7 +4741,8 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
+                                           double * MATPROD_RESTRICT z,
+                                           int n, int k, int m,
+                                           int sym, int xrows, int yrows,
+-                                          int xcols, int add)
++                                          int xcols, int add
++                                          EXTRAC EXTRAD)
+ {
+ /*  printf("- %p %p %p - %d %d %d - %d %d %d %d %d\n",
+                x, y, z,   n, k, m,  sym, xrows, yrows, xcols, add);  */
+@@ -4898,6 +4953,8 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
+         z += n; z += n;
+         y += 2;
+         m2 -= 2;
++
++        if (!sym) AMTOUT(z);
+     }
+ 
+     /* If yrows is odd, compute the last column of the result. */
+diff --git a/piped-matprod.c b/piped-matprod.c
+index fe8d9b5..91e615f 100644
+--- a/piped-matprod.c
++++ b/piped-matprod.c
+@@ -27,6 +27,20 @@
+ #include "piped-matprod.h"
+ 
+ #define SCOPE static
++
++#define EXTRAC ,
++#define EXTRAD double *start_z, double *last_z, int threshold
++#define EXTRAZ 0, 0, 0
++#define EXTRAN start_z, last_z, threshold
++
++#define AMTOUT(_z_) do { \
++    if (start_z != 0 && (_z_) - last_z >= threshold) { \
++        helpers_amount_out ((_z_) - start_z); \
++        last_z = (_z_); \
++    } \
++} while (0)
++
++
+ #include "matprod.c"
+ 
+ 
+@@ -81,7 +95,7 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
+         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
+     }
+ 
+-    matprod_vec_mat (x, y, z, k, m);
++    matprod_vec_mat (x, y, z, k, m, z, z, 64);
+ }
+ 
+ 
+@@ -126,7 +140,7 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
+         HELPERS_WAIT_IN2 (a, m-1, m);
+     }
+ 
+-    matprod_outer (x, y, z, n, m);
++    matprod_outer (x, y, z, n, m, z, z, 64);
+ }
+ 
+ 
+@@ -152,7 +166,7 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
+         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
+     }
+ 
+-    matprod_mat_mat (x, y, z, n, k, m);
++    matprod_mat_mat (x, y, z, n, k, m, z, z, 64);
+ }
+ 
+ 
+@@ -179,7 +193,7 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
+         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
+     }
+ 
+-    matprod_trans1 (x, y, z, n, k, m);
++    matprod_trans1 (x, y, z, n, k, m, z, z, 64);
+ }
+ 
+ 
+@@ -205,5 +219,5 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
+         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
+     }
+ 
+-    matprod_trans2 (x, y, z, n, k, m);
++    matprod_trans2 (x, y, z, n, k, m, z, z, 64);
+ }
