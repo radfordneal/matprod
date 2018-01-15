@@ -1,7 +1,7 @@
 /* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
              Task Procedures for Matrix Multiplication With Pipelining
 
-   Copyright (c) 2013, 2014, 2017 Radford M. Neal.
+   Copyright (c) 2013, 2014, 2017, 2018 Radford M. Neal.
 
    The matprod library is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -26,12 +26,14 @@
 #include "helpers-app.h"
 #include "piped-matprod.h"
 
+
+#define PIPED_MATPROD  /* Tell matprod.c it's being included from here */
+
 #define SCOPE static
 
-#define EXTRAC ,
-#define EXTRAD double *start_z, double *last_z, int threshold
-#define EXTRAZ 0, 0, 0
-#define EXTRAN start_z, last_z, threshold
+#define EXTRAD , double *start_z, double *last_z, int threshold
+#define EXTRAZ , 0, 0, 0
+#define EXTRAN , start_z, last_z, threshold
 
 #define AMTOUT(_z_) do { \
     if (start_z != 0 && (_z_) - last_z >= threshold) { \
