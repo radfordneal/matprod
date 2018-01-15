@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Run piped-matprod tests with helpers.
+
+for hlp in $@; do
+  export HELPERS=$hlp
+  echo RUNNING TESTS WITH $HELPERS HELPERS
+  ../run-tests piped-matprod >& piped-matprod-$HELPERS.out
+  ../tim piped-matprod-$HELPERS
+done
