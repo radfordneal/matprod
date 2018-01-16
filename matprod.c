@@ -2132,10 +2132,10 @@ static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x,
         while (k > 1) {
             __m128d B0 = _mm_set1_pd (y[0]);
             __m128d B1 = _mm_set1_pd (y[1]);
-            S0 = _mm_add_pd (S0, _mm_mul_pd (_mm_loadA_pd (x), B0));
-            S1 = _mm_add_pd (S1, _mm_mul_pd (_mm_loadA_pd (x+2), B0));
-            S0 = _mm_add_pd (S0, _mm_mul_pd (_mm_loadA_pd (x+4), B1));
-            S1 = _mm_add_pd (S1, _mm_mul_pd (_mm_loadA_pd (x+6), B1));
+            S0 = _mm_add_pd (S0, _mm_mul_pd (_mm_loadAA_pd (x), B0));
+            S1 = _mm_add_pd (S1, _mm_mul_pd (_mm_loadAA_pd (x+2), B0));
+            S0 = _mm_add_pd (S0, _mm_mul_pd (_mm_loadAA_pd (x+4), B1));
+            S1 = _mm_add_pd (S1, _mm_mul_pd (_mm_loadAA_pd (x+6), B1));
             x += 8;
             y += 2;
             k -= 2;
@@ -2143,8 +2143,8 @@ static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x,
 
         if (k >= 1) {
             __m128d B0 = _mm_set1_pd (y[0]);
-            S0 = _mm_add_pd (S0, _mm_mul_pd (_mm_loadA_pd (x), B0));
-            S1 = _mm_add_pd (S1, _mm_mul_pd (_mm_loadA_pd (x+2), B0));
+            S0 = _mm_add_pd (S0, _mm_mul_pd (_mm_loadAA_pd (x), B0));
+            S1 = _mm_add_pd (S1, _mm_mul_pd (_mm_loadAA_pd (x+2), B0));
         }
 
         _mm_storeAA_pd (z, S0);
