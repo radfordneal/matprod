@@ -1404,22 +1404,30 @@ static void matprod_vec_mat_k2 (double * MATPROD_RESTRICT x,
    Cases where k is 0 or 1 and cases where n is 2, 3, or 4 are handled
    specially. */
 
+static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x, 
+                                 double * MATPROD_RESTRICT y, 
+                                 double * MATPROD_RESTRICT z, 
+                                 int n, int k, int add);
+
 static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x, 
                                        double * MATPROD_RESTRICT y, 
                                        double * MATPROD_RESTRICT z, 
-                                       int n, int k, int xrows);
+                                       int n, int k, int xrows, int add);
 
 static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x, 
                                 double * MATPROD_RESTRICT y, 
-                                double * MATPROD_RESTRICT z, int k);
+                                double * MATPROD_RESTRICT z,
+                                int k, int add);
 
 static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x, 
                                 double * MATPROD_RESTRICT y, 
-                                double * MATPROD_RESTRICT z, int k);
+                                double * MATPROD_RESTRICT z,
+                                int k, int add);
 
 static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x, 
                                 double * MATPROD_RESTRICT y, 
-                                double * MATPROD_RESTRICT z, int k);
+                                double * MATPROD_RESTRICT z,
+                                int k, int add);
 
 SCOPE void matprod_mat_vec (double * MATPROD_RESTRICT x, 
                             double * MATPROD_RESTRICT y, 
@@ -1431,7 +1439,25 @@ SCOPE void matprod_mat_vec (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    /* Specially handle scalar times row vector and matrix with zero rows. */
+    matprod_mat_vec_sub (x, y, z, n, k, 0);
+}
+
+/* Matrix-vector product, with result stored or added to z according to
+   add.  Adding is allowed only if k>1. */
+
+static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x, 
+                                 double * MATPROD_RESTRICT y, 
+                                 double * MATPROD_RESTRICT z, 
+                                 int n, int k, int add)
+{
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    /* Specially handle cases of scalar times row vector and of matrix
+       with zero rows. */
 
     if (k <= 1) {
         if (k == 1)
@@ -1445,13 +1471,13 @@ SCOPE void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
     if (n <= 4) {
         if (n == 4)
-            matprod_mat_vec_n4 (x, y, z, k);
+            matprod_mat_vec_n4 (x, y, z, k, add);
         else if (n == 3)
-            matprod_mat_vec_n3 (x, y, z, k);
+            matprod_mat_vec_n3 (x, y, z, k, add);
         else if (n == 2)
-            matprod_mat_vec_n2 (x, y, z, k);
+            matprod_mat_vec_n2 (x, y, z, k, add);
         else if (n == 1)
-            z[0] = matprod_vec_vec (x, y, k);
+            z[0] = matprod_vec_vec_sub (x, y, k, add);
         return;
     }
 
@@ -1470,20 +1496,21 @@ SCOPE void matprod_mat_vec (double * MATPROD_RESTRICT x,
 
     if (xrows > MAT_VEC_XROWS && k > 2) {
         while (xrows >= 2*MAT_VEC_XROWS) {
-            matprod_mat_vec_sub_xrows (x, y, z, n, k, MAT_VEC_XROWS);
+            matprod_mat_vec_sub_xrows (x, y, z, n, k, MAT_VEC_XROWS, add);
             x += MAT_VEC_XROWS;
             z += MAT_VEC_XROWS;
             xrows -= MAT_VEC_XROWS;
         }
         if (xrows > MAT_VEC_XROWS) {
             int nr = ((xrows+1)/2) & ~7; /* keep any alignment of x, z */
-            matprod_mat_vec_sub_xrows (x, y, z, n, k, nr);
+            matprod_mat_vec_sub_xrows (x, y, z, n, k, nr, add);
             x += nr;
             z += nr;
             xrows -= nr;
         }
     }
-    matprod_mat_vec_sub_xrows (x, y, z, n, k, xrows);
+
+    matprod_mat_vec_sub_xrows (x, y, z, n, k, xrows, add);
 }
 
 
@@ -1502,7 +1529,7 @@ SCOPE void matprod_mat_vec (double * MATPROD_RESTRICT x,
 static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x, 
                                        double * MATPROD_RESTRICT y, 
                                        double * MATPROD_RESTRICT z,
-                                       int n, int k, int xrows)
+                                       int n, int k, int xrows, int add)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -1512,107 +1539,110 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
 
     int i;   /* index for x and z */
 
-    /* To start, set the result, z, to the sum from the first two
-       columns of x times elements of y.  A few initial products may
-       be done to help alignment, before the main loop. 
+    /* To start, if we're not adding to z, set z to the sum from the
+       first two columns of x times elements of y.  A few initial
+       products may be done to help alignment, before the main loop.
 
        Here, and later, x and y are advanced, and k decremented, as
        columns are computed. */
 
-    i = 0;
+    if (!add) {
 
-#   if CAN_USE_AVX || CAN_USE_SSE2
-    {
-#       if CAN_USE_AVX
-            __m256d Y0 = _mm256_set1_pd(y[0]);
-            __m256d Y1 = _mm256_set1_pd(y[1]);
-#       else  /* CAN_USE_SSE2 */
-            __m128d Y0 = _mm_set1_pd(y[0]);
-            __m128d Y1 = _mm_set1_pd(y[1]);
-#       endif
+        i = 0;
 
-#       if ALIGN_FORWARD & 8
+#       if CAN_USE_AVX || CAN_USE_SSE2
         {
-            __m128d X0 = _mm_mul_sd (_mm_load_sd(x+i), cast128(Y0));
-            __m128d X1 = _mm_mul_sd (_mm_load_sd(x+i+n), cast128(Y1));
-            _mm_store_sd (z+i, _mm_add_sd (X0, X1));
-            i += 1;
-        }
-#       endif
-
-#       if CAN_USE_AVX && (ALIGN_FORWARD & 16)
-        {
-            __m128d X0 = _mm_mul_pd (_mm_loadA_pd(x+i), cast128(Y0));
-            __m128d X1 = _mm_mul_pd (_mm_loadu_pd(x+i+n), cast128(Y1));
-            _mm_storeA_pd (z+i, _mm_add_pd (X0, X1));
-            i += 2;
-        }
-#       endif
-
-        while (i <= xrows-4) { 
 #           if CAN_USE_AVX
-            {
-                __m256d X0 = _mm256_mul_pd (_mm256_loadA_pd(x+i), Y0);
-                __m256d X1 = _mm256_mul_pd (_mm256_loadu_pd(x+i+n), Y1);
-                _mm256_storeA_pd (z+i, _mm256_add_pd (X0, X1));
-            }
+                __m256d Y0 = _mm256_set1_pd(y[0]);
+                __m256d Y1 = _mm256_set1_pd(y[1]);
 #           else  /* CAN_USE_SSE2 */
+                __m128d Y0 = _mm_set1_pd(y[0]);
+                __m128d Y1 = _mm_set1_pd(y[1]);
+#           endif
+
+#           if ALIGN_FORWARD & 8
             {
-                __m128d X0, X1;
-                X0 = _mm_mul_pd (_mm_loadA_pd(x+i), Y0);
-                X1 = _mm_mul_pd (_mm_loadu_pd(x+i+n), Y1);
-                _mm_storeA_pd (z+i, _mm_add_pd (X0, X1));
-                X0 = _mm_mul_pd (_mm_loadA_pd(x+i+2), Y0);
-                X1 = _mm_mul_pd (_mm_loadu_pd(x+i+n+2), Y1);
-                _mm_storeA_pd (z+i+2, _mm_add_pd (X0, X1));
+                __m128d X0 = _mm_mul_sd (_mm_load_sd(x+i), cast128(Y0));
+                __m128d X1 = _mm_mul_sd (_mm_load_sd(x+i+n), cast128(Y1));
+                _mm_store_sd (z+i, _mm_add_sd (X0, X1));
+                i += 1;
             }
 #           endif
-            i += 4;
+
+#           if CAN_USE_AVX && (ALIGN_FORWARD & 16)
+            {
+                __m128d X0 = _mm_mul_pd (_mm_loadA_pd(x+i), cast128(Y0));
+                __m128d X1 = _mm_mul_pd (_mm_loadu_pd(x+i+n), cast128(Y1));
+                _mm_storeA_pd (z+i, _mm_add_pd (X0, X1));
+                i += 2;
+            }
+#           endif
+
+            while (i <= xrows-4) { 
+#               if CAN_USE_AVX
+                {
+                    __m256d X0 = _mm256_mul_pd (_mm256_loadA_pd(x+i), Y0);
+                    __m256d X1 = _mm256_mul_pd (_mm256_loadu_pd(x+i+n), Y1);
+                    _mm256_storeA_pd (z+i, _mm256_add_pd (X0, X1));
+                }
+#               else  /* CAN_USE_SSE2 */
+                {
+                    __m128d X0, X1;
+                    X0 = _mm_mul_pd (_mm_loadA_pd(x+i), Y0);
+                    X1 = _mm_mul_pd (_mm_loadu_pd(x+i+n), Y1);
+                    _mm_storeA_pd (z+i, _mm_add_pd (X0, X1));
+                    X0 = _mm_mul_pd (_mm_loadA_pd(x+i+2), Y0);
+                    X1 = _mm_mul_pd (_mm_loadu_pd(x+i+n+2), Y1);
+                    _mm_storeA_pd (z+i+2, _mm_add_pd (X0, X1));
+                }
+#               endif
+                i += 4;
+            }
+
+            if (i <= xrows-2) {
+                __m128d X0 = _mm_mul_pd (_mm_loadA_pd(x+i), cast128(Y0));
+                __m128d X1 = _mm_mul_pd (_mm_loadu_pd(x+i+n), cast128(Y1));
+                _mm_storeA_pd (z+i, _mm_add_pd (X0, X1));
+                i += 2;
+            }
+
+            if (i < xrows) {
+                __m128d X0 = _mm_mul_sd (_mm_load_sd(x+i), cast128(Y0));
+                __m128d X1 = _mm_mul_sd (_mm_load_sd(x+i+n), cast128(Y1));
+                _mm_store_sd (z+i, _mm_add_sd (X0, X1));
+            }
         }
 
-        if (i <= xrows-2) {
-            __m128d X0 = _mm_mul_pd (_mm_loadA_pd(x+i), cast128(Y0));
-            __m128d X1 = _mm_mul_pd (_mm_loadu_pd(x+i+n), cast128(Y1));
-            _mm_storeA_pd (z+i, _mm_add_pd (X0, X1));
-            i += 2;
-        }
+#       else  /* non-SIMD code */
+        {
+#           if ALIGN_FORWARD & 8
+                z[i] = x[i] * y[0] + (x+n)[i] * y[1];
+                i += 1;
+#           endif
 
-        if (i < xrows) {
-            __m128d X0 = _mm_mul_sd (_mm_load_sd(x+i), cast128(Y0));
-            __m128d X1 = _mm_mul_sd (_mm_load_sd(x+i+n), cast128(Y1));
-            _mm_store_sd (z+i, _mm_add_sd (X0, X1));
-        }
-    }
+            while (i <= xrows-4) { 
+                z[i+0] = x[i+0] * y[0] + (x+n)[i+0] * y[1];
+                z[i+1] = x[i+1] * y[0] + (x+n)[i+1] * y[1];
+                z[i+2] = x[i+2] * y[0] + (x+n)[i+2] * y[1];
+                z[i+3] = x[i+3] * y[0] + (x+n)[i+3] * y[1];
+                i += 4;
+            }
+            if (i <= xrows-2) {
+                z[i+0] = x[i+0] * y[0] + (x+n)[i+0] * y[1];
+                z[i+1] = x[i+1] * y[0] + (x+n)[i+1] * y[1];
+                i += 2;
+            }
 
-#   else  /* non-SIMD code */
-    {
-#       if ALIGN_FORWARD & 8
-            z[i] = x[i] * y[0] + (x+n)[i] * y[1];
-            i += 1;
+            if (i < xrows) {
+                z[i] = x[i] * y[0] + (x+n)[i] * y[1];
+            }
+        }
 #       endif
 
-        while (i <= xrows-4) { 
-            z[i+0] = x[i+0] * y[0] + (x+n)[i+0] * y[1];
-            z[i+1] = x[i+1] * y[0] + (x+n)[i+1] * y[1];
-            z[i+2] = x[i+2] * y[0] + (x+n)[i+2] * y[1];
-            z[i+3] = x[i+3] * y[0] + (x+n)[i+3] * y[1];
-            i += 4;
-        }
-        if (i <= xrows-2) {
-            z[i+0] = x[i+0] * y[0] + (x+n)[i+0] * y[1];
-            z[i+1] = x[i+1] * y[0] + (x+n)[i+1] * y[1];
-            i += 2;
-        }
-
-        if (i < xrows) {
-            z[i] = x[i] * y[0] + (x+n)[i] * y[1];
-        }
+        x += n; x += n;
+        y += 2;
+        k -= 2;
     }
-#   endif
-
-    x += n; x += n;
-    y += 2;
-    k -= 2;
 
     /* Each time around this loop, add the products of two columns of
        x with two elements of y to the result vector, z.  Adjust x, y,
@@ -1833,7 +1863,8 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
 
 static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x, 
                                 double * MATPROD_RESTRICT y, 
-                                double * MATPROD_RESTRICT z, int k)
+                                double * MATPROD_RESTRICT z,
+                                int k, int add)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -1850,7 +1881,7 @@ static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x,
            of x with two elements of y to S.  Adjust x and y to
            account for this. */
 
-        S = _mm_setzero_pd (); 
+        S = add ? _mm_load_pd(z) : _mm_setzero_pd(); 
 
         while (k > 1) {
             A = _mm_mul_pd (_mm_load_pd(x), _mm_set1_pd(y[0]));
@@ -1869,7 +1900,7 @@ static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x,
 
         /* Store the two sums in S in the result vector. */
 
-        _mm_storeu_pd (z, S);
+        _mm_store_pd (z, S);
 
 #   elif CAN_USE_SSE2 && ALIGN >= 16 && ALIGN_OFFSET%16 == 8
 
@@ -1882,6 +1913,9 @@ static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x,
         S = _mm_mul_sd (_mm_load_sd(x), A);
         S = _mm_shuffle_pd (_mm_setzero_pd(), S, 0);
         y += 1;
+
+        if (add)
+            S = _mm_add_pd (_mm_set_pd (z[0], z[1]), S);
 
         /* Each time around this loop, do two additions to S of
            products with the last element in a column of x and the
@@ -1914,7 +1948,14 @@ static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x,
 
 #   else  /* non-SIMD code */
 
-        double s[2] = { 0, 0 };  /* sums for the two values in the result */
+        double s[2];  /* sums for the two values in the result */
+
+        if (add) {
+            s[0] = z[0];
+            s[1] = z[1];
+        }
+        else
+            s[0] = s[1] = 0;
 
         /* Each time around this loop, add the products of two columns
            of x with two elements of y to s[0] and s[1].  Adjust x and
@@ -1943,7 +1984,8 @@ static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x,
 
 static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x, 
                                 double * MATPROD_RESTRICT y, 
-                                double * MATPROD_RESTRICT z, int k)
+                                double * MATPROD_RESTRICT z,
+                                int k, int add)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -1962,15 +2004,27 @@ static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x,
 #       if (ALIGN_FORWARD & 8)
         {
             __m128d B0 = _mm_set1_pd (y[0]);
-            S = _mm_mul_pd (_mm_loadA_pd (x), B0);
+            S = _mm_mul_pd (_mm_loadu_pd (x), B0);
             S2 = _mm_mul_sd (_mm_load_sd (x+2), B0);
             x += 3;
             y += 1;
             k -= 1;
+            if (add) {
+                S = _mm_add_pd (_mm_loadu_pd (z), S);
+                S2 = _mm_add_sd (_mm_load_sd (z+2), S2);
+            }
         }
 #       else
-            S = _mm_setzero_pd();
-            S2 = _mm_setzero_pd();
+        {
+            if (add) {
+                S = _mm_loadAA_pd (z);
+                S2 = _mm_load_sd (z+2);
+            }
+            else {
+                S = _mm_setzero_pd();
+                S2 = _mm_setzero_pd();
+            }
+        }
 #       endif
 
         while (k > 1) {
@@ -1993,13 +2047,21 @@ static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x,
             S2 = _mm_add_sd (S2, _mm_mul_sd (_mm_load_sd(x+2), B0));
         }
 
-        _mm_storeu_pd (z, S);
+        _mm_storeAA_pd (z, S);
         _mm_store_sd (z+2, S2);
     }
 
 #   else  /* non-SIMD code */
     {
-        double s[3] = { 0, 0, 0 }; /* sums for the three values in the result */
+        double s[3];  /* sums for the three values in the result */
+
+        if (add) {
+            s[0] = z[0];
+            s[1] = z[1];
+            s[2] = z[2];
+        }
+        else
+            s[0] = s[1] = s[2] = 0;
 
         while (k > 1) {
             s[0] = (s[0] + (x[0] * y[0])) + (x[3] * y[1]);
@@ -2027,7 +2089,8 @@ static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x,
 
 static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x, 
                                 double * MATPROD_RESTRICT y, 
-                                double * MATPROD_RESTRICT z, int k)
+                                double * MATPROD_RESTRICT z,
+                                int k, int add)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -2040,7 +2103,7 @@ static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x,
 
 #   if CAN_USE_AVX && ENABLE_ALL_AVX_CODE
     {
-        __m256d S = _mm256_setzero_pd();
+        __m256d S = add ? _mm256_loadAA_pd(z) : _mm256_setzero_pd();
 
         while (k > 1) {
             __m256d B0 = _mm256_set1_pd (y[0]);
@@ -2063,8 +2126,8 @@ static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x,
     }
 #   elif CAN_USE_SSE2 && ALIGN >= 16 || CAN_USE_AVX
     {
-        __m128d S0 = _mm_setzero_pd();   /* first two sums */
-        __m128d S1 = _mm_setzero_pd();   /* last two sums */
+        __m128d S0 = add ? _mm_loadAA_pd(z) : _mm_setzero_pd(); /* 1st 2 sums */
+        __m128d S1 = add ? _mm_loadAA_pd(z+2) : _mm_setzero_pd();   /* last 2 */
 
         while (k > 1) {
             __m128d B0 = _mm_set1_pd (y[0]);
@@ -2089,7 +2152,16 @@ static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x,
     }
 #   else
     {
-        double s[4] = { 0, 0, 0, 0 }; /* sums for the four values in result */
+        double s[4];  /* sums for the four values in result */
+
+        if (add) {
+            s[0] = z[0];
+            s[1] = z[1];
+            s[2] = z[2];
+            s[3] = z[3];
+        }
+        else
+            s[0] = s[1] = s[2] = s[3] = 0;
 
         while (k > 1) {
             s[0] = (s[0] + (x[0] * y[0])) + (x[4] * y[1]);
