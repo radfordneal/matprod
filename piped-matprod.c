@@ -46,6 +46,9 @@
 #include "matprod.c"
 
 
+#define OP_K(op) (op & 0x7fffffff)
+
+
 /* Dot product of two vectors, with pipelining of input y. */
 
 void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz, 
@@ -66,10 +69,12 @@ void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
     double s = 0.0;
 
     while (a < k) {
+
         helpers_size_t oa = a;
-        helpers_size_t na = k-a > 3 ? a+3  : k-1;
+        helpers_size_t na = k-a < 4 ? k-1 : a+3;
         HELPERS_WAIT_IN2 (a, na, k);
         if (a < k) a &= ~3;
+
         s = matprod_vec_vec_sub (x+oa, y+oa, a-oa, s);
     }
 
@@ -114,13 +119,24 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t k = LENGTH(sy);
     helpers_size_t n = LENGTH(sz);
 
-    helpers_size_t a = 0;
-
-    if (k != 0) {
-        HELPERS_WAIT_IN2 (a, k-1, k);
+    if (k == 0) {
+        matprod_mat_vec (x, y, z, n, k);
+        return;
     }
 
-    matprod_mat_vec (x, y, z, n, k);
+    helpers_size_t a = 0;
+    int add = 0;
+
+    while (a < k) {
+
+        helpers_size_t oa = a;
+        helpers_size_t na = k-a < 4 ? k-1 : a+3;
+        HELPERS_WAIT_IN2 (a, na-1, k);
+        if (a < k) a &= ~3;
+
+        matprod_mat_vec_sub (x+oa*n, y+oa, z, n, a-oa, add);
+        add = 1;
+    }
 }
 
 /* Product of an n x 1 matrix (x) and a 1 x m matrix (y) with result stored 
@@ -156,7 +172,7 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
     double * MATPROD_RESTRICT y = REAL(sy);
     double * MATPROD_RESTRICT z = REAL(sz);
 
-    helpers_size_t k = op;
+    helpers_size_t k = OP_K(op);
     helpers_size_t n_times_k = LENGTH(sx);
     helpers_size_t k_times_m = LENGTH(sy);
     helpers_size_t n = n_times_k / k;
@@ -183,7 +199,7 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
     double * MATPROD_RESTRICT y = REAL(sy);
     double * MATPROD_RESTRICT z = REAL(sz);
 
-    helpers_size_t k = op;
+    helpers_size_t k = OP_K(op);
     helpers_size_t n_times_k = LENGTH(sx);
     helpers_size_t k_times_m = LENGTH(sy);
     helpers_size_t n = n_times_k / k;
@@ -209,7 +225,7 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     double * MATPROD_RESTRICT y = REAL(sy);
     double * MATPROD_RESTRICT z = REAL(sz);
 
-    helpers_size_t k = op;
+    helpers_size_t k = OP_K(op);
     helpers_size_t n_times_k = LENGTH(sx);
     helpers_size_t k_times_m = LENGTH(sy);
     helpers_size_t n = n_times_k / k;
