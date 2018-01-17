@@ -42,6 +42,8 @@
     } \
 } while (0)
 
+#define THRESH 64
+
 
 #include "matprod.c"
 
@@ -71,9 +73,11 @@ void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
     while (a < k) {
 
         helpers_size_t oa = a;
-        helpers_size_t na = k-a < 4 ? k-1 : a+3;
-        HELPERS_WAIT_IN2 (a, na, k);
+        helpers_size_t na = k-a <= 4 ? k : a+4;
+        HELPERS_WAIT_IN2 (a, na-1, k);
         if (a < k) a &= ~3;
+
+        if (a == oa) continue;
 
         s = matprod_vec_vec_sub (x+oa, y+oa, a-oa, s);
     }
@@ -96,13 +100,27 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t k = LENGTH(sx);
     helpers_size_t m = LENGTH(sz);
 
-    helpers_size_t a = 0;
-
-    if (k_times_m != 0) {
-        HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
+    if (k_times_m == 0) {
+        matprod_vec_mat (x, y, z, k, m, z, z, THRESH);
+        return;
     }
 
-    matprod_vec_mat (x, y, z, k, m, z, z, 64);
+    helpers_size_t a = 0;
+    helpers_size_t d = 0;
+
+    while (d < m) {
+
+        helpers_size_t oa = a;
+        helpers_size_t od = d;
+        helpers_size_t na = m-d <= 4 ? k_times_m : k*(d+4);
+        HELPERS_WAIT_IN2 (a, na-1, k_times_m);
+        d = a/k;
+        if (d < m) d &= ~3;
+
+        if (d == od) continue;
+
+        matprod_vec_mat (x, y+od*k, z+od*k, k, d-od, z, z+od*k, THRESH);
+    }
 }
 
 
@@ -130,7 +148,7 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
     while (a < k) {
 
         helpers_size_t oa = a;
-        helpers_size_t na = k-a < 4 ? k-1 : a+3;
+        helpers_size_t na = k-a <= 4 ? k : a+4;
         HELPERS_WAIT_IN2 (a, na-1, k);
         if (a < k) a &= ~3;
 
@@ -158,7 +176,7 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
         HELPERS_WAIT_IN2 (a, m-1, m);
     }
 
-    matprod_outer (x, y, z, n, m, z, z, 64);
+    matprod_outer (x, y, z, n, m, z, z, THRESH);
 }
 
 
@@ -184,7 +202,7 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
     }
 
-    matprod_mat_mat (x, y, z, n, k, m, z, z, 64);
+    matprod_mat_mat (x, y, z, n, k, m, z, z, THRESH);
 }
 
 
@@ -211,7 +229,7 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
     }
 
-    matprod_trans1 (x, y, z, n, k, m, z, z, 64);
+    matprod_trans1 (x, y, z, n, k, m, z, z, THRESH);
 }
 
 
@@ -237,5 +255,5 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
     }
 
-    matprod_trans2 (x, y, z, n, k, m, z, z, 64);
+    matprod_trans2 (x, y, z, n, k, m, z, z, THRESH);
 }
