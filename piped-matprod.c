@@ -19,6 +19,8 @@
 */
 
 
+#include <stdint.h>
+
 #ifdef MATPROD_APP_INCLUDED
 #include "matprod-app.h"
 #endif
@@ -49,6 +51,11 @@
 
 
 #define OP_K(op) (op & 0x7fffffff)
+#define OP_S(op) ((op >> 32) & 0xff)
+#define OP_W(op) (op >> 40)
+
+#define ALIGNED8(z) ((((uintptr_t)(z))&7) == 0)
+#define CACHE_ALIGN(z) ((double *) (((uintptr_t)(z)+0x18) & ~0x3f))
 
 
 /* Dot product of two vectors, with pipelining of input y. */
@@ -137,24 +144,69 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t k = LENGTH(sy);
     helpers_size_t n = LENGTH(sz);
 
-    if (k == 0) {
-        matprod_mat_vec (x, y, z, n, k);
+    int s = OP_S(op);
+    int w = OP_W(op);
+
+    if (k <= 1) {
+        if (w == 0)  /* do in only one thread */
+            matprod_mat_vec (x, y, z, n, k);
         return;
     }
 
-    helpers_size_t a = 0;
-    int add = 0;
+    if (s != 0 && n > 16) {  /* do in more than one thread */
 
-    while (a < k) {
+        if (s+1 > (n+15)/16) s = (n+15)/16 - 1;
 
-        helpers_size_t oa = a;
-        helpers_size_t na = k-a <= 4 ? k : a+4;
-        HELPERS_WAIT_IN2 (a, na-1, k);
-        if (a < k) a &= ~3;
+        if (w <= s) {
 
-        matprod_mat_vec_sub (x+oa*n, y+oa, z, n, a-oa, add);
-        add = 1;
+            double *z0 = z + n*w / (s+1);
+            double *z1 = z + n*(w+1) / (s+1);
+
+            if (ALIGNED8(z)) {
+                if (w != 0) z0 = CACHE_ALIGN(z0);
+                if (w != s) z1 = CACHE_ALIGN(z1);
+            }
+
+            int xrows = z1 - z0;
+            x += z0 - z;
+            z += z0 - z;
+
+            helpers_size_t a = 0;
+            int add = 0;
+
+            while (a < k) {
+
+                helpers_size_t oa = a;
+                helpers_size_t na = k-a <= 4 ? k : a+4;
+                HELPERS_WAIT_IN2 (a, na-1, k);
+                if (a < k) a &= ~3;
+
+                matprod_mat_vec_sub_xrows0 (x+oa*n, y+oa, z0, 
+                                            n, a-oa, xrows, add);
+                add = 1;
+            }
+        }
     }
+
+    else if (w == 0) {  /* either no split, or better done in only one thread */
+
+        helpers_size_t a = 0;
+        int add = 0;
+
+        while (a < k) {
+
+            helpers_size_t oa = a;
+            helpers_size_t na = k-a <= 4 ? k : a+4;
+            HELPERS_WAIT_IN2 (a, na-1, k);
+            if (a < k) a &= ~3;
+
+            matprod_mat_vec_sub (x+oa*n, y+oa, z, n, a-oa, add);
+            add = 1;
+        }
+    }
+
+    if (w != 0) 
+        while (! helpers_avail0 (1)) ;  /* wait until earlier threads finish */
 }
 
 /* Product of an n x 1 matrix (x) and a 1 x m matrix (y) with result stored 

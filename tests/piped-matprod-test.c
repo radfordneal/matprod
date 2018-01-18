@@ -33,12 +33,15 @@ char * my_var_name (helpers_var_ptr v)
 }  
 
 static int repeat;
+static int split;
 
 void do_test (int rep)
 {
   char *h = getenv("HELPERS");
   char *t = getenv("TRACE");
+  char *s = getenv("SPLIT");
   repeat = rep;
+  split = s==0 ? 0 : atoi(s);
   helpers_trace (t!=0);
   helpers_startup (h==0 ? 0 : atoi(h));
 }
@@ -78,30 +81,49 @@ void helpers_master (void)
 
     v = vec[nmat];
     for (i = nmat-2; i>=0; i--)
-    { v |= vec[i+1];
+    { int n = matrows[i];
+      int k = matcols[i];
+      int w;
+      v |= vec[i+1];
       if (vec[i] && v && matrows[i]==1 && matcols[nmat-1]==1) 
       { helpers_do_task (HELPERS_PIPE_IN2, task_piped_matprod_vec_vec,
                          0, -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
       }
       else if (v && matcols[nmat-1]==1)
-      { helpers_do_task (HELPERS_PIPE_IN2, task_piped_matprod_mat_vec,
-                         0, -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
+      { int s = split;
+        if (s > n) s = n;
+        if (s <= 1) s = 0;
+        if (s > 0)
+        { for (w = 0; w < s; w++)
+          { helpers_do_task (
+                    w == 0 ? HELPERS_PIPE_IN2_OUT 
+                      : w < s-1 ? HELPERS_PIPE_IN02_OUT 
+                      : HELPERS_PIPE_IN02,
+                    task_piped_matprod_mat_vec,
+                    k | ((helpers_op_t)(s-1) << 32) | ((helpers_op_t)w << 40),
+                    -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
+          }
+        }
+        else
+        { helpers_do_task (HELPERS_PIPE_IN2, task_piped_matprod_mat_vec, 0,
+                           -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
+        }
       }
       else if (vec[i] && matrows[i]==1)
-      { helpers_do_task (HELPERS_PIPE_IN2_OUT, task_piped_matprod_vec_mat,
-                         0, -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
+      { helpers_do_task (HELPERS_PIPE_IN2_OUT, task_piped_matprod_vec_mat, 0,
+                         -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
       }
       else if (i==0 && trans1)
       { helpers_do_task (HELPERS_PIPE_IN2_OUT, task_piped_matprod_trans1, 
-                         matcols[i], -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
+                         k, -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
       }
       else if (i==nmat-2 && trans2)
       { helpers_do_task (HELPERS_PIPE_OUT, task_piped_matprod_trans2, 
-                         matcols[i], -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
+                         k, -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
       }
       else
       { helpers_do_task (HELPERS_PIPE_IN2_OUT, task_piped_matprod_mat_mat,
-                         matcols[i], -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
+                         k, -(i+1), i+1, i+2==nmat ? nmat : -(i+2));
       }
     }
     helpers_wait_for_all();

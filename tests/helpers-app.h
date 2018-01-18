@@ -1,7 +1,7 @@
 /* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
              Application Helpers Header File for Test Program with Pipelining
 
-   Copyright (c) 2013, 2014 Radford M. Neal.
+   Copyright (c) 2013, 2014, 2018 Radford M. Neal.
 
    The matprod library is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -19,9 +19,17 @@
 */
 
 
-/* The task operand type and vector length type are both unsigned int. */
+#include <stdint.h>
 
-typedef unsigned int helpers_op_t;
+
+/* The task operator type is uint64_t, enough room for both k and split
+   indicators. */
+
+typedef uint64_t helpers_op_t;
+
+
+/* The vector length type is an unsigned int. */
+
 typedef unsigned int helpers_size_t;
 
 

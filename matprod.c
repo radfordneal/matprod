@@ -1409,6 +1409,11 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
                                  double * MATPROD_RESTRICT z, 
                                  int n, int k, int add);
 
+static void matprod_mat_vec_sub_xrows0 (double * MATPROD_RESTRICT x, 
+                                        double * MATPROD_RESTRICT y, 
+                                        double * MATPROD_RESTRICT z, 
+                                        int n, int k, int xrows, int add);
+
 static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x, 
                                        double * MATPROD_RESTRICT y, 
                                        double * MATPROD_RESTRICT z, 
@@ -1481,6 +1486,16 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
         return;
     }
 
+    /* The general case with n > 4. */
+
+    matprod_mat_vec_sub_xrows0 (x, y, z, n, k, n, 0);
+}
+
+static void matprod_mat_vec_sub_xrows0 (double * MATPROD_RESTRICT x, 
+                                        double * MATPROD_RESTRICT y, 
+                                        double * MATPROD_RESTRICT z,
+                                        int n, int k, int xrows, int add)
+{
     /* The general case with n > 4.  Calls matprod_mat_vec_sub_xrows
        to do parts (only one part for a matrix with fewer than
        MAT_VEC_XROWS rows).
@@ -1491,8 +1506,6 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
        the main loop. */
 
 #   define MAT_VEC_XROWS 1024  /* be multiple of 8 to keep any alignment */
-
-    int xrows = n;
 
     if (xrows > MAT_VEC_XROWS && k > 2) {
         while (xrows >= 2*MAT_VEC_XROWS) {
