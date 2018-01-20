@@ -38,3 +38,24 @@ helpers_task_proc task_piped_matprod_mat_mat;
 helpers_task_proc task_piped_matprod_outer;
 helpers_task_proc task_piped_matprod_trans1;
 helpers_task_proc task_piped_matprod_trans2;
+
+void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x, 
+                          helpers_var_ptr y, int split);
+
+void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x, 
+                          helpers_var_ptr y, int split);
+
+void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x, 
+                          helpers_var_ptr y, int split);
+
+void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x, 
+                        helpers_var_ptr y, int split);
+
+void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x, 
+                          helpers_var_ptr y, int k, int split);
+
+void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x, 
+                         helpers_var_ptr y, int k, int split);
+
+void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x, 
+                         helpers_var_ptr y, int k, int split);

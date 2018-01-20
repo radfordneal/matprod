@@ -4,7 +4,8 @@
 
 for hlp in $@; do
   export HELPERS=$hlp
-  echo RUNNING TESTS WITH $HELPERS HELPERS
+  export SPLIT=`expr $hlp + 1`
+  echo RUNNING TESTS WITH $HELPERS HELPERS, SPLIT BY $SPLIT
   ../run-tests piped-matprod >& piped-matprod-$HELPERS.out
   ../tim piped-matprod-$HELPERS
 done

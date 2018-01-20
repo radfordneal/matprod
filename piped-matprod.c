@@ -126,7 +126,7 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
 
         if (d == od) continue;
 
-        matprod_vec_mat (x, y+od*k, z+od*k, k, d-od, z, z+od*k, THRESH);
+        matprod_vec_mat (x, y+od*k, z+od, k, d-od, z, z+od, THRESH);
     }
 }
 
@@ -308,4 +308,80 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     }
 
     matprod_trans2 (x, y, z, n, k, m, z, z, THRESH);
+}
+
+#define MAKE_OP(w,s,k) (((helpers_op_t)(w)<<40) | ((helpers_op_t)(s)<<32) | k)
+
+void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x, 
+                          helpers_var_ptr y, int split)
+{
+    helpers_do_task (HELPERS_PIPE_IN2,
+                     task_piped_matprod_vec_vec,
+                     0, z, x, y);
+}
+
+void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x, 
+                          helpers_var_ptr y, int split)
+{
+    helpers_do_task (HELPERS_PIPE_IN2_OUT,
+                     task_piped_matprod_vec_mat,
+                     0, z, x, y);
+}
+
+void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x, 
+                          helpers_var_ptr y, int split)
+{
+    helpers_size_t n = LENGTH(z);
+
+    int s = split;
+    if (s > n) s = n;
+    if (s < 1) s = 1;
+
+    if (s > 1) {
+        int w;
+        for (w = 0; w < s; w++) {
+            helpers_do_task (w == 0  ? HELPERS_PIPE_IN2_OUT :
+                             w < s-1 ? HELPERS_PIPE_IN02_OUT :
+                                       HELPERS_PIPE_IN02,
+                             task_piped_matprod_mat_vec,
+                             MAKE_OP(w,s-1,0), z, x, y);
+        }
+    }
+    else {
+        helpers_do_task (HELPERS_PIPE_IN2, 
+                         task_piped_matprod_mat_vec,
+                         0, z, x, y);
+    }
+}
+
+void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x, 
+                        helpers_var_ptr y, int split)
+{
+    helpers_do_task (HELPERS_PIPE_IN2_OUT,
+                     task_piped_matprod_outer,
+                     0, z, x, y);
+}
+
+void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x, 
+                          helpers_var_ptr y, int k, int split)
+{
+    helpers_do_task (HELPERS_PIPE_IN2_OUT,
+                     task_piped_matprod_mat_mat,
+                     k, z, x, y);
+}
+
+void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x, 
+                         helpers_var_ptr y, int k, int split)
+{
+    helpers_do_task (HELPERS_PIPE_IN2_OUT,
+                     task_piped_matprod_trans1,
+                     k, z, x, y);
+}
+
+void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x, 
+                         helpers_var_ptr y, int k, int split)
+{
+    helpers_do_task (HELPERS_PIPE_IN2_OUT,
+                     task_piped_matprod_trans2,
+                     k, z, x, y);
 }
