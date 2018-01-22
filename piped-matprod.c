@@ -313,7 +313,7 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
     if (k_times_m != 0) {
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
     }
-printf("-- %p %d %d %d\n",z,(int)n,(int)k,(int)m);
+
     matprod_mat_mat (x, y, z, n, k, m, z, z, w, THRESH);
 }
 
