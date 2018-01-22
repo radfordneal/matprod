@@ -41,6 +41,7 @@
     if (start_z == 0) break; \
     if (input_first) { \
         helpers_size_t a = helpers_avail0 (last_z - start_z); \
+        if (a == 0) break; \
         helpers_amount_out(a); \
         if (a < last_z - start_z) break; \
         input_first = 0; \
@@ -66,6 +67,11 @@
 #define ALIGNED8(z) ((((uintptr_t)(z))&7) == 0)
 #define CACHE_ALIGN(z) ((double *) (((uintptr_t)(z)+0x18) & ~0x3f))
 
+#define WAIT_FOR_EARLIER_TASKS(sz) \
+    do { \
+        ; /* Wait for tasks doing earlier portions to complete. */ \
+    } while (helpers_avail0(LENGTH(sz)) < LENGTH(sz))
+
 
 /* Dot product of two vectors, with pipelining of input y. */
 
@@ -77,6 +83,8 @@ void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
     double * MATPROD_RESTRICT z = REAL(sz);
 
     helpers_size_t k = LENGTH(sx);
+
+    if (op && OP_W(op)!=OP_S(op)-1) return;  /* return if mistakenly split */
 
     if (k == 0) {
         z[0] = 0;
@@ -150,8 +158,6 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
                 if (d == od) continue;
 
                 matprod_vec_mat (x, y+od*k, z+od, k, d-od, z, z+od, w, THRESH);
-
-                helpers_amount_out(d);
             }
         }
     }
@@ -176,8 +182,7 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
         }
     }
 
-    if (w != 0) 
-        while (helpers_avail0(m) < m) ;  /* wait until earlier threads finish */
+    if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
 }
 
 
@@ -255,8 +260,7 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
         }
     }
 
-    if (w != 0) 
-        while (! helpers_avail0 (1)) ;  /* wait until earlier threads finish */
+    if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
 }
 
 /* Product of an n x 1 matrix (x) and a 1 x m matrix (y) with result stored 
@@ -274,11 +278,14 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
 
     helpers_size_t a = 0;
 
+    int s = OP_S(op);
+    int w = OP_W(op);
+
     if (m != 0) {
         HELPERS_WAIT_IN2 (a, m-1, m);
     }
 
-    matprod_outer (x, y, z, n, m, z, z, 1, THRESH);
+    matprod_outer (x, y, z, n, m, z, z, w, THRESH);
 }
 
 
@@ -300,11 +307,14 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
 
     helpers_size_t a = 0;
 
+    int s = OP_S(op);
+    int w = OP_W(op);
+
     if (k_times_m != 0) {
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
     }
-
-    matprod_mat_mat (x, y, z, n, k, m, z, z, 1, THRESH);
+printf("-- %p %d %d %d\n",z,(int)n,(int)k,(int)m);
+    matprod_mat_mat (x, y, z, n, k, m, z, z, w, THRESH);
 }
 
 
@@ -362,8 +372,6 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
 
                 matprod_trans1 (x, y+od*k, z+od*n, n, k, d-od, 
                                 z, z+od*n, w, THRESH);
-
-                helpers_amount_out(d*k);
             }
         }
     }
@@ -389,8 +397,7 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
         }
     }
 
-    if (w != 0)
-        while (helpers_avail0(k_times_m) < k_times_m) ;  /* for earlier ones */
+    if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
 }
 
 
@@ -412,12 +419,16 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
 
     helpers_size_t a = 0;
 
+    int s = OP_S(op);
+    int w = OP_W(op);
+
     if (k_times_m != 0) {
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
     }
 
-    matprod_trans2 (x, y, z, n, k, m, z, z, 1, THRESH);
+    matprod_trans2 (x, y, z, n, k, m, z, z, w, THRESH);
 }
+
 
 #define SPLIT_LIMIT(s,u) ((s) > (u) ? (u) : (s) < 1 ? 1 : (s))
 
@@ -499,6 +510,10 @@ void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
     helpers_size_t m = LENGTH(y) / k;
 
     int s = SPLIT_LIMIT(split,m);
+
+    if (REAL(x) == REAL(y) && LENGTH(x) == LENGTH(y)) {
+        s = 1;  /* Don't split for the symmetric case */
+    }
 
     if (s > 1) {
         int w;
