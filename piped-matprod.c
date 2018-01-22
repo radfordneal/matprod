@@ -62,7 +62,8 @@
 #define OP_S(op) (1 + ((op >> 32) & 0xff))
 #define OP_W(op) (op >> 40)
 
-#define MAKE_OP(w,s,k) (((helpers_op_t)(w)<<40) | ((helpers_op_t)(s)<<32) | k)
+#define MAKE_OP(w,s,k) \
+    (((helpers_op_t)(w)<<40) | ((helpers_op_t)((s)-1)<<32) | k)
 
 #define ALIGNED8(z) ((((uintptr_t)(z))&7) == 0)
 #define CACHE_ALIGN(z) ((double *) (((uintptr_t)(z)+0x18) & ~0x3f))
@@ -365,10 +366,11 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
                 helpers_size_t oa = a;
                 helpers_size_t na = d1-d <= 4 ? a1 : k*(d+4);
                 HELPERS_WAIT_IN2 (a, na-1, a1);
+
                 d = a/k;
                 if (d < m) d &= ~3;
-
                 if (d == od) continue;
+                if (d > d1) d = d1;
 
                 matprod_trans1 (x, y+od*k, z+od*n, n, k, d-od, 
                                 z, z+od*n, w, THRESH);
@@ -454,7 +456,7 @@ void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x,
             helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT : 
                                       HELPERS_PIPE_IN02_OUT,
                              task_piped_matprod_vec_mat,
-                             MAKE_OP(w,s-1,0), z, x, y);
+                             MAKE_OP(w,s,0), z, x, y);
         }
     }
     else {
@@ -478,7 +480,7 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
                              w < s-1 ? HELPERS_PIPE_IN02_OUT :
                                        HELPERS_PIPE_IN02,
                              task_piped_matprod_mat_vec,
-                             MAKE_OP(w,s-1,0), z, x, y);
+                             MAKE_OP(w,s,0), z, x, y);
         }
     }
     else {
@@ -521,7 +523,7 @@ void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
             helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT : 
                                       HELPERS_PIPE_IN02_OUT,
                              task_piped_matprod_trans1,
-                             MAKE_OP(w,s-1,k), z, x, y);
+                             MAKE_OP(w,s,k), z, x, y);
         }
     }
     else {
