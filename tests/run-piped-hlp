@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Run piped-matprod tests with helpers.
+# Run piped-matprod tests with helpers, but not splitting operations.
 
 for hlp in $@; do
   export HELPERS=$hlp
-  export SPLIT=`expr $hlp + 1`
-  echo RUNNING TESTS WITH $HELPERS HELPERS, SPLIT BY $SPLIT
-  ../run-tests piped-matprod >& piped-matprod-$HELPERS.out
-  ../tim piped-matprod-$HELPERS
+  unset SPLIT
+  echo RUNNING TESTS WITH $HELPERS HELPERS, NOT SPLIT
+  ../run-tests piped-matprod >& piped-matprod-hlp$HELPERS.out
+  ../tim piped-matprod-hlp$HELPERS
 done
