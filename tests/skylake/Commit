@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit f117b6ef6f81be5da95d5252e4c86b50db542a7d
+commit 73fa63449aeb02480f79eaa70da421608ffe02a0
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Jan 21 10:42:06 2018 -0500
+Date:   Mon Jan 22 18:13:28 2018 -0500
 
-    piped/parallel implementation for vec_mat
+    Bug fix, cleanup.
