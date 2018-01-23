@@ -249,6 +249,10 @@ int main (int argc, char **argv)
     { fprintf(stderr,"Couldn't allocate space for product matrix\n");
       exit(2);
     }
+    size_t h;
+    for (h = 0; h < prodlen[i]; h++)
+    { product[i][h] = -7.234-h;    /* junk shouldn't affect result, but might */
+    }
     product[i][prodlen[i]] = 1.1;  /* for check that it doesn't get wiped out */
   }
 

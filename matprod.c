@@ -3413,13 +3413,13 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
 #           endif
         }
 
+        AMTOUT(z+n+xrows);
+
         /* Move to the next pairs of y and z columns. */
 
         z += n; z += n;
         y += k; y += k;
         m -= 2;
-
-        AMTOUT(z);
     }
 
     /* If m is odd, compute the last column of the result. */
@@ -4245,7 +4245,7 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
             xs += k; xs += k; xs += k; xs += k;
             nn -= 4;
 
-            if (!sym) AMTOUT(z);
+            /* if (!sym) AMTOUT(z); */
         }
 
         /* Compute the remaining elements of the columns here. */
@@ -4988,7 +4988,7 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
         y += 2;
         m2 -= 2;
 
-        if (!sym) AMTOUT(z);
+        /* if (!sym) AMTOUT(z); */
     }
 
     /* If yrows is odd, compute the last column of the result. */
