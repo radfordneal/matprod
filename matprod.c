@@ -4507,8 +4507,8 @@ static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
 
 #   if CAN_USE_AVX || CAN_USE_SSE3
     {
-        double *e = y + 2*m;
-        double *f = x + 2*(n-3);
+        double *e = y + m + m;
+        double *f = x + (n-3) + (n-3);
         while (y < e) {
 #           if CAN_USE_AVX
                 __m256d Y = _mm256_set_pd (y[1], y[0], y[1], y[0]);
@@ -4584,6 +4584,12 @@ static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
    two local variables rather than in a column of the result, and then
    storing them in the result column at the end. */
 
+static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
+                                double * MATPROD_RESTRICT y,
+                                double * MATPROD_RESTRICT z,
+                                int n, int k, int m,
+                                int yrows EXTRAD);
+
 static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
                                       double * MATPROD_RESTRICT y,
                                       double * MATPROD_RESTRICT z,
@@ -4635,34 +4641,53 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
         return;
     }
 
-    /* The general case with n > 2.  Calls matprod_trans2_sub_xrows to
-       do parts (only one part for a matrix with fewer than
-       TRANS2_XROWS xrows and fewer than TRANS2_XCOLS columns).
+    matprod_trans2_sub (x, y, z, n, k, m, m EXTRAN);
+}
 
-       The definition of TRANS2_XROWS is designed to keep two columns
-       of z in an L1 cache of 32K bytes or more, given that two
-       columns of z and two columns of x (all of length TRANS2_XROWS)
-       are accessed within the main loop.
+/* The general case with n > 2.  Calls matprod_trans2_sub_xrows to do
+   parts (only one part for a matrix with fewer than TRANS2_XROWS
+   xrows and fewer than TRANS2_XCOLS columns).
 
-       The definition of TRANS2_XCOLS is designed to keep the submatrix
-       of x with TRANS2_XROWS and TRANS2_XCOLS in an L2 cache of a
-       least 256K bytes, while it is multiplied repeatedly by rows of y. */
+   The definition of TRANS2_XROWS is designed to keep two columns of z
+   in an L1 cache of 32K bytes or more, given that two columns of z
+   and two columns of x (all of length TRANS2_XROWS) are accessed
+   within the main loop.
 
-#   define TRANS2_XROWS (1024-64)  /* be multiple of 8 to keep any alignment */
-#   define TRANS2_XCOLS 32         /* be multiple of 8 to keep any alignment */
+   The definition of TRANS2_XCOLS is designed to keep the submatrix of
+   x with TRANS2_XROWS and TRANS2_XCOLS in an L2 cache of a least 256K
+   bytes, while it is multiplied repeatedly by rows of y. */
+
+#define TRANS2_XROWS (1024-64)  /* be multiple of 8 to keep any alignment */
+#define TRANS2_XCOLS 32         /* be multiple of 8 to keep any alignment */
+
+static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
+                                double * MATPROD_RESTRICT y,
+                                double * MATPROD_RESTRICT z,
+                                int n, int k, int m,
+                                int yrows EXTRAD)
+{
+/*  printf("^ %p %p %p - %d %d %d - %d\n",
+               x, y, z,   n, k, m,  yrows);  */
+
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
     int sym = x==y && n==m        /* if operands same, result is symmetric, */
               && (n>8 || k>8);    /*    but faster to ignore if n & k small */
 
     if (n <= TRANS2_XROWS && k <= TRANS2_XCOLS) {  /* do small cases quickly */
-        matprod_trans2_sub_xrowscols (x, y, z, n, k, m, sym, n, m, k, 0 EXTRAN);
+        matprod_trans2_sub_xrowscols (x, y, z, n, k, m, 
+                                      sym, n, yrows, k, 0 EXTRAN);
         goto fill;
     }
 
-    int cachable = sym || n <= TRANS2_XROWS 
-                   ? m : 1 + (int) (DOUBLES_IN_LLC / (TRANS2_XROWS+(double)k));
+    int cachable = sym || n <= TRANS2_XROWS ? yrows 
+                 : 1 + (int) (DOUBLES_IN_LLC / (TRANS2_XROWS+(double)k));
 
-    int mm = m;
+    int mm = yrows;
 
     for (;;) {
 
@@ -4677,39 +4702,39 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
         double *xx = x;
         double *zz = z;
         int xrows = n;
-        int yrows = m1;
+        int yr = m1;
 
         if (xrows > TRANS2_XROWS && k > 2) {
 
             while (xrows >= 2*TRANS2_XROWS) {
                 matprod_trans2_sub_xrows (xx, y, zz, n, k, m,
-                                          sym, TRANS2_XROWS, yrows EXTRAZ);
+                                          sym, TRANS2_XROWS, yr EXTRAZ);
                 xx += TRANS2_XROWS;
                 zz += TRANS2_XROWS;
                 xrows -= TRANS2_XROWS;
                 if (sym) {
                     y += TRANS2_XROWS;
                     zz += (size_t)TRANS2_XROWS*n;
-                    yrows -= TRANS2_XROWS;
+                    yr -= TRANS2_XROWS;
                 }
             }
 
             if (xrows > TRANS2_XROWS) {
                 int nr = ((xrows+1)/2) & ~7;  /* keep any alignment of x, z */
                 matprod_trans2_sub_xrows (xx, y, zz, n, k, m,
-                                          sym, nr, yrows EXTRAZ);
+                                          sym, nr, yr EXTRAZ);
                 xx += nr;
                 zz += nr;
                 xrows -= nr;
                 if (sym) {
                     y += nr;
                     zz += (size_t)nr*n;
-                    yrows -= nr;
+                    yr -= nr;
                 }
             }
         }
 
-        matprod_trans2_sub_xrows (xx, y, zz, n, k, m, sym, xrows, yrows EXTRAN);
+        matprod_trans2_sub_xrows (xx, y, zz, n, k, m, sym, xrows, yr EXTRAN);
 
         mm -= m1;
         if (mm == 0)
@@ -4730,6 +4755,9 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
                                       int n, int k, int m,
                                       int sym, int xrows, int yrows EXTRAD)
 {
+/*  printf("^ %p %p %p - %d %d %d - %d %d %d\n",
+               x, y, z,   n, k, m,  sym, xrows, yrows);  */
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -4817,12 +4845,12 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
                     double s1 = r[0];
                     double s2 = (r+n)[0];
                     t[0] = (s1 * b11) + (s2 * b12);
-                    t[n] = (s1 * b21) + (s2 * b22);
+                    (t+n)[0] = (s1 * b21) + (s2 * b22);
                     r += 1;
                     t += 1;
                 } while (t <= ez);
-                xs += 2*n;
-                q += 2*m;
+                xs += n; xs += n;
+                q += m; q += m;
             }
 #           endif
         }
