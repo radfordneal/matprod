@@ -1,7 +1,8 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit d4db5400ceab4a6dfc0788ca940f27d4bcc19d0a
+commit 57fb7d80f394ad5bc261c2cf1da14429f994e941
+Merge: 9c5d169 2c27761
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Jan 13 20:18:56 2018 -0500
+Date:   Thu Jan 25 17:03:52 2018 -0500
 
-    more setup for piped-matprod in matprod.c
+    Merge branch 'master' of https://github.com/radfordneal/matprod
