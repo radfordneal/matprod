@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit a39a32aa26a5fded7d6320a23fac857569dee7cb
+commit a8d38deaccceb920b3a99d4926713f0846cea875
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Jan 7 11:09:03 2018 -0500
+Date:   Mon Jan 22 20:20:23 2018 -0500
 
-    results for westmere
+    new schemed for piped tests with helpers, results for skylake with new scheme

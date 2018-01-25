@@ -298,11 +298,15 @@ schedule the appropriate tasks.  The operands for the par_matprod
 procedures are of type helpers_var_t (not direct pointers to the
 matrices).  The procedures all take a "split" argument, which is the
 desired number of tasks to split the operation into.  The actual
-number of tasks used might be less than this, but only if that degree
+number of tasks used might be less than split, but only if that degree
 of splitting is not possible (given implementation constraints); it is
 up to the application to decide how much splitting is likely to
 improve performance.  The tasks are scheduled to use pipelining if
 possible.
+
+A value of zero for "split" indicates that the corresponding matprod
+procedure should be called immediately without scheduling a task.  The
+arguments in this case must not have their computation still pending.
 
 The following procedures for scheduling parallel operations are
 available (none are provided for fill_lower or scalar_vec):
