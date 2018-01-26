@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit a8d38deaccceb920b3a99d4926713f0846cea875
+commit 8daf7ad7f8613f47448d4abd27c0f8a76ef963d1
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Jan 22 20:20:23 2018 -0500
+Date:   Fri Jan 26 11:40:09 2018 -0500
 
-    new schemed for piped tests with helpers, results for skylake with new scheme
+    allow negative split to avoid heuristics, implment heuristics in par_, not just piped_
