@@ -2220,7 +2220,7 @@ static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x,
 static void matprod_outer_sub (double * MATPROD_RESTRICT x, 
                                double * MATPROD_RESTRICT y, 
                                double * MATPROD_RESTRICT z, 
-                               int n, int m, int rows);
+                               int n, int m, int rows EXTRAD);
 
 static void matprod_outer_n2 (double * MATPROD_RESTRICT x, 
                               double * MATPROD_RESTRICT y, 
@@ -2274,7 +2274,7 @@ SCOPE void matprod_outer (double * MATPROD_RESTRICT x,
     int rows = n;
 
     while (rows > 2*OUTER_ROWS) {
-        matprod_outer_sub (x, y, z, n, m, OUTER_ROWS);
+        matprod_outer_sub (x, y, z, n, m, OUTER_ROWS EXTRAN);
         x += OUTER_ROWS;
         z += OUTER_ROWS;
         rows -= OUTER_ROWS;
@@ -2282,19 +2282,19 @@ SCOPE void matprod_outer (double * MATPROD_RESTRICT x,
 
     if (rows > OUTER_ROWS) {
         int nr = ((rows+1)/2) & ~7;
-        matprod_outer_sub (x, y, z, n, m, nr);
+        matprod_outer_sub (x, y, z, n, m, nr EXTRAN);
         x += nr;
         z += nr;
         rows -= nr;
     }
 
-    matprod_outer_sub (x, y, z, n, m, rows);
+    matprod_outer_sub (x, y, z, n, m, rows EXTRAN);
 }
 
 static void matprod_outer_sub (double * MATPROD_RESTRICT x,
                                double * MATPROD_RESTRICT y,
                                double * MATPROD_RESTRICT z, 
-                               int n, int m, int rows)
+                               int n, int m, int rows EXTRAD)
 {
     int j = 0;
 
@@ -2397,6 +2397,8 @@ static void matprod_outer_sub (double * MATPROD_RESTRICT x,
             }
         }
 #       endif
+
+        AMTOUT(z+n);
 
         z += n;
         j += 1;
