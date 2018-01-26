@@ -20,6 +20,7 @@
 
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #ifdef MATPROD_APP_INCLUDED
 #include "matprod-app.h"
@@ -28,6 +29,7 @@
 #include "helpers-app.h"
 #include "piped-matprod.h"
 
+/* -------------------------------------------------------------------------- */
 
 #define PIPED_MATPROD  /* Tell matprod.c it's being included from here */
 
@@ -54,9 +56,9 @@
 
 #define THRESH 64
 
-
 #include "matprod.c"
 
+/* -------------------------------------------------------------------------- */
 
 #define OP_K(op) (op & 0x7fffffff)
 #define OP_S(op) (1 + ((op >> 32) & 0xff))
@@ -551,8 +553,22 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
 }
 
+/* -------------------------------------------------------------------------- */
 
-#define SPLIT_LIMIT(s,u) ((s) > (u) ? (u) : (s) < 1 ? 1 : (s))
+static inline int find_split (int split, int size)
+{
+    int s;
+
+    if (split < 0)
+        s = -split > size ? size : -split;
+    else {
+        s = split;
+        while (4*s > size) s -= 1;
+    }
+
+    return s;
+}
+
 
 void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x, 
                           helpers_var_ptr y, int split)
@@ -569,6 +585,7 @@ void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x,
                      0, z, x, y);
 }
 
+
 void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x, 
                           helpers_var_ptr y, int split)
 {
@@ -580,7 +597,7 @@ void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    int s = SPLIT_LIMIT(split,m);
+    int s = find_split(split,m);
 
     if (s > 1) {
         int w;
@@ -598,6 +615,7 @@ void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x,
     }
 }
 
+
 void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x, 
                           helpers_var_ptr y, int split)
 {
@@ -609,7 +627,7 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    int s = SPLIT_LIMIT(split,n);
+    int s = find_split(split,n);
 
     if (s > 1) {
         int w;
@@ -628,6 +646,7 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
     }
 }
 
+
 void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x, 
                         helpers_var_ptr y, int split)
 {
@@ -639,7 +658,7 @@ void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    int s = SPLIT_LIMIT(split,m);
+    int s = find_split(split,m);
 
     if (s > 1) {
         int w;
@@ -657,6 +676,7 @@ void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x,
     }
 }
 
+
 void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x, 
                           helpers_var_ptr y, int k, int split)
 {
@@ -668,7 +688,7 @@ void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    int s = SPLIT_LIMIT(split,m);
+    int s = find_split(split,m);
 
     if (s > 1) {
         int w;
@@ -686,6 +706,7 @@ void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x,
     }
 }
 
+
 void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x, 
                          helpers_var_ptr y, int k, int split)
 {
@@ -697,7 +718,7 @@ void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    int s = SPLIT_LIMIT(split,m);
+    int s = find_split(split,m);
 
     if (REAL(x) == REAL(y) && LENGTH(x) == LENGTH(y)) {
         s = 1;  /* Don't split for the symmetric case */
@@ -719,6 +740,7 @@ void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
     }
 }
 
+
 void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x, 
                          helpers_var_ptr y, int k, int split)
 {
@@ -730,7 +752,7 @@ void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    int s = SPLIT_LIMIT(split,m);
+    int s = find_split(split,m);
 
     if (REAL(x) == REAL(y) && LENGTH(x) == LENGTH(y)) {
         s = 1;  /* Don't split for the symmetric case */

@@ -292,21 +292,24 @@ the "helpers" package (eg, helpers_wait_until_not_being_computed) to
 determine when the result of an operation is available.
 
 The task procedures can be scheduled to run by the application, as
-described below, or the par_matprod procedures below (also defined in
-piped-matprod.c and declared in piped-matprod.h) can be used to
-schedule the appropriate tasks.  The operands for the par_matprod
-procedures are of type helpers_var_t (not direct pointers to the
-matrices).  The procedures all take a "split" argument, which is the
-desired number of tasks to split the operation into.  The actual
-number of tasks used might be less than split, but only if that degree
-of splitting is not possible (given implementation constraints); it is
-up to the application to decide how much splitting is likely to
-improve performance.  The tasks are scheduled to use pipelining if
-possible.
+described below, or the par_matprod procedures described below (also
+defined in piped-matprod.c and declared in piped-matprod.h) can be
+used to schedule the appropriate tasks.
 
-A value of zero for "split" indicates that the corresponding matprod
-procedure should be called immediately without scheduling a task.  The
-arguments in this case must not have their computation still pending.
+The operands for the par_matprod procedures are of type helpers_var_t
+(not direct pointers to the matrices).  The procedures all take a
+"split" argument, which is the desired number of tasks to split the
+operation into.  The actual number of tasks used might be less than
+"split", if it seems that this will give better performance.  A
+negative value can be used for "split", in which case the negative of
+"split" will be used, with this value reduced only if that degree of
+splitting is not possible (given implementation constraints).  A value
+of zero for "split" indicates that the corresponding matprod procedure
+should be called immediately without scheduling a task.  The arguments
+in this case must not have their computation still pending.  
+
+The tasks scheduled by the par_matprod procedures use pipelining if
+possible.
 
 The following procedures for scheduling parallel operations are
 available (none are provided for fill_lower or scalar_vec):
