@@ -75,7 +75,7 @@ void helpers_master (void)
 
   for (r = 0; r<repeat; r++)
   { 
-    if (last_V)
+    if (vec[nmat])
     { helpers_do_task (HELPERS_PIPE_OUT, task_output_vector, 0, nmat, 0, 0);
     }
 

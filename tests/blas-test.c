@@ -1,7 +1,7 @@
 /* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
              Test Program for BLAS Matrix Multiplication Routines
 
-   Copyright (c) 2013 Radford M. Neal.
+   Copyright (c) 2013, 2018 Radford M. Neal.
 
    The matprod library is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -101,12 +101,12 @@ void do_test (int rep)
       else
       { int t1 = trans[i];
         int t2 = trans[i+1];
-        if (t1 && matrix[i]==product[i+1])
+        if (t1 && !t2 && matrix[i]==product[i+1])
         { dsyrk_("U", "T", &matrows[i], &matcols[i], &one, matrix[i],
                  &matcols[i], &zero, product[i], &matrows[i]);
           fill_lower(product[i],matrows[i]);
         }
-        else if (t2 && matrix[i]==product[i+1])
+        else if (t2 && !t1 && matrix[i]==product[i+1])
         { dsyrk_("U", "N", &matrows[i], &matcols[i], &one, matrix[i],
                  &matrows[i], &zero, product[i], &matrows[i]);
           fill_lower(product[i],matrows[i]);

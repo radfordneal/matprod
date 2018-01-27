@@ -38,7 +38,6 @@ EXTERN int trans[MAX_MATRICES+1];    /* 1 if matrix stored as its transpose */
 
 EXTERN int dim[MAX_MATRICES+1];      /* Dimensions of matrices */
 EXTERN int vec[MAX_MATRICES+1];      /* Indicator to treat as a vector */
-EXTERN int last_V;                   /* Whether last argument is "V" */
 
 EXTERN double *product[MAX_MATRICES];/* Pointers to storage for products */
 EXTERN size_t prodlen[MAX_MATRICES]; /* Length of each product matrix */

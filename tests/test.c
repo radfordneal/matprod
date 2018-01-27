@@ -179,8 +179,8 @@ int main (int argc, char **argv)
   for (i = 2; i<argc; i++)
   { int d, v;
     if (strcmp(argv[i],"t")==0 || strcmp(argv[i],"T")==0)
-    { if (i >= argc-2 || trans[nmat]!=0) usage();
-      trans[nmat] = 1 + (strcmp(argv[i],"T")==0);
+    { if (i >= argc-2 || trans[ndim]!=0) usage();
+      trans[ndim] = 1 + (strcmp(argv[i],"T")==0);
       continue;
     }
     if (strcmp(argv[i],"v")==0 || strcmp(argv[i],"V")==0)
@@ -196,6 +196,7 @@ int main (int argc, char **argv)
       exit(1);
     }
     dim[ndim] = d;
+    vec[ndim] = v;
     ndim += 1;
   }
 
@@ -203,7 +204,6 @@ int main (int argc, char **argv)
   if (trans[nmat-2] && trans[nmat-1]) usage();
 
   nmat = ndim-1;
-  last_V = vec[ndim-1]>1;
 
   do_check = getenv("CHECK") != NULL;
 
