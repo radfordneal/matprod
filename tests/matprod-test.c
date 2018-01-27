@@ -1,7 +1,7 @@
 /* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
              Test Program for Matrix Multiplicaton Without Pipelining
 
-   Copyright (c) 2013, 2014 Radford M. Neal.
+   Copyright (c) 2013, 2014, 2018 Radford M. Neal.
 
    The matprod library is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -33,7 +33,11 @@ void do_test (int rep)
   for (r = 0; r<rep; r++)
   { v = vec[nmat];
     for (i = nmat-2; i>=0; i--)
-    { v |= vec[i+1];
+    { if (trans[i] && trans[i+1])
+      { fprintf(stderr,"Transposing both operands is not allowed\n");
+        exit(1);
+      }
+      v |= vec[i+1];
       if (vec[i] && v && matrows[i]==1 && matcols[nmat-1]==1) 
       { *product[i] = matprod_vec_vec (matrix[i], product[i+1], matcols[i]);
       }
@@ -45,11 +49,11 @@ void do_test (int rep)
       { matprod_vec_mat (matrix[i], product[i+1], product[i],
                          matcols[i], matcols[nmat-1]);
       }
-      else if (i==0 && trans1)
+      else if (trans[i])
       { matprod_trans1 (matrix[i], product[i+1], product[i],
                         matrows[i], matcols[i], matcols[nmat-1]);
       }
-      else if (i==nmat-2 && trans2)
+      else if (i==nmat-2 && trans[i+1])
       { matprod_trans2 (matrix[i], product[i+1], product[i],
                         matrows[i], matcols[i], matcols[nmat-1]);
       }

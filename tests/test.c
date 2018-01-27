@@ -1,7 +1,7 @@
 /* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
              Common Portion of Test Programs
 
-   Copyright (c) 2013 Radford M. Neal.
+   Copyright (c) 2013, 2018 Radford M. Neal.
 
    The matprod library is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -57,9 +57,7 @@ static inline double *ALLOC (size_t n)
 
 static void usage(void)
 { 
-  fprintf (stderr, 
-    "Usage: %s rep [ \"t\" | \"T\" ] dim dim dim { dim } [ \"t\" | \"T\" ]\n", 
-    prog_name);
+  fprintf (stderr, "Usage: %s rep dim dim dim { dim }\n", prog_name);
   exit(1);
 }
 
@@ -125,7 +123,7 @@ void check_results (void)
         z[l] = s;
       }
     }
-    else if (i==0 && trans1)          /* t(mat) X mat */
+    else if (trans[i])                /* t(mat) X mat */
     { for (j = 0; j < N; j++)
       { for (l = 0; l < M; l++)
         { s = 0;
@@ -134,7 +132,7 @@ void check_results (void)
         }
       }
     }
-    else if (i==nmat-2 && trans2)     /* mat X t(mat) */
+    else if (i==nmat-2 && trans[i+1]) /* mat X t(mat) */
     { for (j = 0; j < N; j++)
       { for (l = 0; l < M; l++)
         { s = 0;
@@ -165,8 +163,9 @@ void check_results (void)
 
 int main (int argc, char **argv)
 {
-  int rep;     /* Number of times to repeat test */
-  char junk;   /* Junk variable for use in sscanf */
+  int rep;                  /* Number of times to repeat test */
+  char junk;                /* Junk variable for use in sscanf */
+  int ndim;                 /* Number of dimensions found so far */
   int i, j, k;
 
   /* Process arguments. */
@@ -175,50 +174,48 @@ int main (int argc, char **argv)
 
   if (sscanf(argv[1],"%d%c",&rep,&junk)!=1 || rep<=0) usage();
 
-  trans1 = trans2 = 0;
-  if (strcmp(argv[2],"t")==0 || strcmp(argv[2],"T")==0)
-  { trans1 = 1 + (strcmp(argv[2],"T")==0);
-    argv += 1;
-    argc -= 1;
-  }
-  if (strcmp(argv[argc-1],"t")==0 || strcmp(argv[argc-1],"T")==0)
-  { trans2 = 1 + (strcmp(argv[argc-1],"T")==0);
-    argc -= 1;
-  }
+  ndim = 0;
 
-  nmat = argc-3;
-
-  if (nmat<2 || nmat==2 && trans1 && trans2) usage();
-
-  if (nmat>MAX_MATRICES)
-  { fprintf(stderr,"Too many matrices specified\n");
-    exit(1);
-  }
-
-  for (i = 0; i<argc-2; i++)
-  { int d;
-    if (strcmp(argv[i+2],"v")==0 || strcmp(argv[i+2],"V")==0)
+  for (i = 2; i<argc; i++)
+  { int d, v;
+    if (strcmp(argv[i],"t")==0 || strcmp(argv[i],"T")==0)
+    { if (i >= argc-2 || trans[nmat]!=0) usage();
+      trans[nmat] = 1 + (strcmp(argv[i],"T")==0);
+      continue;
+    }
+    if (strcmp(argv[i],"v")==0 || strcmp(argv[i],"V")==0)
     { d = 1;
-      vec[i] = 1;
+      v = 1 + (strcmp(argv[i],"V")==0);
     }
     else
-    { if (sscanf(argv[i+2],"%d%c",&d,&junk)!=1) usage();
-      vec[i] = 0;
+    { if (sscanf(argv[i],"%d%c",&d,&junk)!=1 || d<0) usage();
+      v = 0;
     }
-    if (i<nmat) matrows[i] = d;
-    if (i>0) matcols[i-1] = d;
+    if (ndim>MAX_MATRICES)
+    { fprintf(stderr,"Too many matrices specified\n");
+      exit(1);
+    }
+    dim[ndim] = d;
+    ndim += 1;
   }
 
-  last_V = strcmp(argv[argc-1],"V")==0;
+  if (ndim<3) usage();
+  if (trans[nmat-2] && trans[nmat-1]) usage();
+
+  nmat = ndim-1;
+  last_V = vec[ndim-1]>1;
 
   do_check = getenv("CHECK") != NULL;
 
   /* For each matrix, compute matlen and allocate space, or re-use space
-     (if possible) when a "T" option applies. */
+     when a "T" option applies. */
 
   for (i = 0; i<nmat; i++)
-  { matlen[i] = (size_t) matrows[i] * (size_t) matcols[i];
-    if (i==1 && trans1>1 || i==nmat-1 && trans2>1)
+  { if (trans[i]>1 && (i!=0 && i!=nmat-1)) usage();
+    matrows[i] = dim[i];
+    matcols[i] = dim[i+1];
+    matlen[i] = (size_t) matrows[i] * (size_t) matcols[i];
+    if (i==1 && trans[0]>1 || i==nmat-1 && trans[i]>1)  /* share space */
     { if (matrows[i-1]!=matcols[i])
       { fprintf(stderr,"\"T\" option used when dimensions don't match\n");
         exit(1);
@@ -277,8 +274,8 @@ int main (int argc, char **argv)
   for (i = 0; i<nmat; i++)
   { for (j = 0; j<matcols[i]; j++) 
     { for (k = 0; k<matrows[i]; k++) 
-      { size_t ix = i==0 && trans1 || i==nmat-1 && trans2 
-                     ? j + matcols[i]*(size_t)k : k + matrows[i]*(size_t)j;
+      { size_t ix = trans[i] ? j + matcols[i]*(size_t)k 
+                             : k + matrows[i]*(size_t)j;
         matrix[i][ix] = INITVAL(i,j,k);
       }
     }
@@ -286,8 +283,8 @@ int main (int argc, char **argv)
     { printf("\nInput matrix %d\n\n",i);
       for (k = 0; k<matrows[i]; k++) 
       { for (j = 0; j<matcols[i]; j++) 
-        { size_t ix = i==0 && trans1 || i==nmat-1 && trans2 
-                       ? j + matcols[i]*(size_t)k : k + matrows[i]*(size_t)j;
+        { size_t ix = trans[i] ? j + matcols[i]*(size_t)k 
+                               : k + matrows[i]*(size_t)j;
           printf(" %f",matrix[i][ix]);
         }
         printf("\n");
@@ -305,8 +302,8 @@ int main (int argc, char **argv)
   for (i = 0; i<nmat; i++)
   { for (j = 0; j<matcols[i]; j++) 
     { for (k = 0; k<matrows[i]; k++) 
-      { size_t ix = i==0 && trans1 || i==nmat-1 && trans2 
-                     ? j + matcols[i]*(size_t)k : k + matrows[i]*(size_t)j;
+      { size_t ix = trans[i] ? j + matcols[i]*(size_t)k 
+                             : k + matrows[i]*(size_t)j;
         if (matrix[i][ix] != INITVAL(i,j,k))
         { fprintf (stderr, 
                   "Input matrix %d changed after operation (%lld, %g, %g)\n",

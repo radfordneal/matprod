@@ -99,8 +99,8 @@ void do_test (int rep)
                product[i], &ione);
       }
       else
-      { int t1 = i==0 && trans1;
-        int t2 = i==nmat-2 && trans2;
+      { int t1 = trans[i];
+        int t2 = trans[i+1];
         if (t1 && matrix[i]==product[i+1])
         { dsyrk_("U", "T", &matrows[i], &matcols[i], &one, matrix[i],
                  &matcols[i], &zero, product[i], &matrows[i]);
