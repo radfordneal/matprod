@@ -441,26 +441,24 @@ alignment.
 
 These programs are invoked by a command such as the following:
 
-    matprod-test rep [ "t" | "T" ] A B C D [ "t" | "T" ]
+    matprod-test rep A B C D
 
-Where the arguments (other than the optional "t" arguments) are
-positive integers (or "v" or "V", as discussed below).  In this
-example, three matrices of dimensions AxB, BxC, and CxD are created,
-and the product of the first of these matrices with the product of the
-second and third matrices is computed (note the right associativity),
-with this computation repeated rep times (with identical results each
-time, one hopes).  The first, second, second-to-last, and last
-elements of the result are then printed on standard output, except
-that fewer elements are printed when only fewer exist.  If the
-environment variable PRINTWHOLE is defined (as anything), the entire
-result matrix is also printed.
+Where the arguments are either positive integers (or "v" or "V", as
+discussed below), or "t" or "T".  In this example, three matrices of
+dimensions AxB, BxC, and CxD are created, and the product of the first
+of these matrices with the product of the second and third matrices is
+computed (note the right associativity), with this computation
+repeated rep times (with identical results each time, one hopes).  The
+first, second, second-to-last, and last elements of the result are
+then printed on standard output, except that fewer elements are
+printed when only fewer exist.  If the environment variable PRINTWHOLE
+is defined (as anything), the entire result matrix is also printed.
 
-If the environment variable CHECK is defined (as anything), the
-results are checked against simple code implementing the naive
-algorithm, resulting in either "Check OK" being printed, or an error
-message followed by an abort.  Note that these checks take time, and
-so should not be done when running the test programs for performance
-evaluation.
+If an argument after "rep" is "t" or "T", the matrix whose dimensions
+follow is stored in transposed form, and the trans1 or trans2 form of
+the multiply routine is called (or analogous routines for BLAS tests).
+Note that it is not allowed to transpose both operands with the
+matprod routines (but this is allowed with BLAS routines).  
 
 In general, n>2 arguments (other than "t" or "T") follow the rep
 argument, defining the dimensions of n-1 matrices, which are used as
@@ -469,22 +467,11 @@ the right.  The result of each of these products will be a matrix with
 number of rows equal to the first argument and number of columns equal
 to the last argument.
 
-If the optional "t" or "T" argument precedes the matrix dimensions,
-the final multiply (by the AxB matrix in the example above) is done by
-multiplying by the transpose of this matrix (eg, with matprod_trans1).
-Similarly, if the optional final "t" or "T" argument is present, the
-first multiply (of a CxD matrix in the example above) is done on the
-transpose of this matrix (eg, using matprod_trans2).  If only one
-multiplication is done (ie, only three matrix dimensions are
-specified), "t" or "T" must not be on both the left and right (ie, a
-multiply with both operands transposed is not allowed).
-
-If "T" is specified instead of "t" on either the right or left, the
-result of the multiply must be a square matrix (eg, for "T" on the
-right, B must be the same as D in the example above).  The two
-operands of this multiply will then be set to be the same matrix,
-which may allow for the multiply to be done more quickly (eg, by
-exploiting the fact that the result is symmetric).  
+The "T" argument can be used only for one of the last two matrices,
+and results in the two last matrices being identical (sharing the same
+memory).  This is possible only if the number of rows of the first is
+the same as the number of columns of the second.  The result of the
+multiply will be symmetric, and hence may perhaps be computed faster.
 
 An argument after rep with the value "1" may be replaced with the
 argument "v" or "V", which has the same effect as "1", except that the
@@ -508,9 +495,15 @@ invariant to transposition, the result with "T" instead of "t" is also
 the same.
 
 The matprod_outer procedure is called when the k argument is 1, and
-neither operand is transposed. The matprod_scalar_vec and
-matprod_fill_lower procedures are tested only indirectly, via calls
-from the other procedures.
+neither operand is transposed. The matprod_scalar_vec s tested only
+indirectly, via calls from the other procedures.
+
+If the environment variable CHECK is defined (as anything), the
+results are checked against simple code implementing the naive
+algorithm, resulting in either "Check OK" being printed, or an error
+message followed by an abort.  Note that these checks take time, and
+so should not be done when running the test programs for performance
+evaluation.
 
 Several test programs can be compiled using the supplied Makefile,
 including the following:
