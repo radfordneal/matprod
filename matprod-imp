@@ -1,7 +1,7 @@
 MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
           Implementation Documentation 
 
-Copyright (C) 2017 Radford M. Neal.
+Copyright (C) 2017, 2018 Radford M. Neal.
 
   The matprod library is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -30,19 +30,20 @@ implementation strategy for matprod is described here.
 SIMD instructions and alignment.
 
 For Intel/AMD processors, the matprod routines can be compiled so that
-some code sections use the SSE2, SSE3, and AVX instrinsics provided by
-gcc.  Other compilers may also provide such intrinsics; they will be
-assumed available if the symbols __SSE2__, __SSE3__, or __AVX__ are
-defined.  For all operations, code written in standard C is provided,
-for use on non-Intel/AMD processors, or when the intrinsics are not
-available, or when use of the intrinsics is disabled.  There are often
-code sections for both AVX and SSE2/SSE3, with the latter used when
-the routine is compiled for a processor with SSE2/SSE3 instructions
-but not AVX instructions.  Sometimes only SSE2 or SSE3 code is
-provided, because there is no advantage to using AVX, or only AVX code
-is provided, because trying to do it with SSE2 or SSE3 does not work
-well.  (Or, of course, suitable AVX or SSE2/SSE3 code may just not
-have been written yet.)
+some code sections use the SSE2, SSE3, AVX, and AVX2 instrinsics
+provided by gcc.  Other compilers may also provide such intrinsics;
+their availability is assumed to be given by whether the symbols
+__SSE2__, __SSE3__, __AVX__, or __AVX2__ are defined.  For all
+operations, code written in standard C is provided, for use on
+non-Intel/AMD processors, or when the intrinsics are not available, or
+when use of the intrinsics is disabled.  There are often code sections
+for more than one of __SSE2__, __SSE3__, etc, with the most
+powerful/recent option used when the routine is compiled for a
+processor for which it is available.  Sometimes only SSE2 or SSE3 code
+is provided, because there is no advantage to using AVX, or only AVX
+code is provided, because trying to do it with SSE2 or SSE3 does not
+work well.  (Or, of course, suitable AVX or SSE2/SSE3 code may just
+not have been written yet.)
 
 Optional specification of alignment of arguments is allowed.  Some
 code may be generated conditionally on the alignment, for example to
@@ -54,7 +55,7 @@ In particular, gcc will convert some SSE or AVX intrinsics that
 specify unaligned accesses to ones specifying aligned acccesses if it
 knows the operand always aligned.  Nevertheless, selection of aligned
 versus unaligned operations is often done explicitly in the code (via
-some macro definitons, such as for _mm_loadA_pd).
+some macros that are defined, such as _mm_loadA_pd).
 
 In some places, alignment is checked at run-time - for example, when
 aligment of the start of a matrix column depends on whether the number
@@ -78,3 +79,32 @@ The vector-vector, matrix-vector, vector-matrix, and outer product
 procedure are particular cases of such special-case optimization that
 are made visible in the API, but other special cases are handled by
 non-visible functions.
+
+
+Avoidance of overflow.
+
+The numbers of rows and columns in a matrix have the C "int" type,
+which is typically 32 bits in size, allowing a maximum of 2^31-1 for
+the number of rows or columns.  However, the number of elements in a
+matrix (the product of the number of rows and the number of columns)
+may be greater than 2^32-1.  Care is therefore required to avoid
+overflow when accessing an element.
+
+If an index into a matrix is computed from a row and column index, it
+is necessary to cast the "int" values to "size_t" values - for
+example, if x is a matrix with n rows, and i and j are row and column
+indexes, element i,j should be accessed as x[i+(size_t)j*n], not as
+x[i+j*n].  This form of access is usually avoided, however, in favour
+of accesses using pointers into the matrix.  For example, if p points
+to the first element in a column of x, then p[i] can be used to access
+the element of that column in row i.  The element in row i of the next
+column can be accessed as (p+n)[i], which should not be rewritten as
+p[n+i], since n+i might overflow.  
+
+Note also that p += 2*n is not safe, but p += n; p += n; will be safe.
+Similarly, p + 2*n is unsafe, but p + n + n is safe.
+
+Since the result of overflow with signed arithmetic is undefined in C,
+it is possible that the unsafe code will actually work when overflow
+happens.  But of course this cannot be relied on.
+
