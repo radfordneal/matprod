@@ -100,13 +100,13 @@ void do_test (int rep)
       }
       else
       { int t1 = trans[i];
-        int t2 = trans[i+1];
-        if (t1 && !t2 && matrix[i]==product[i+1])
+        int t2 = i==nmat-2 ? trans[i+1] : 0;
+        if (t1>1 && !t2 && matrix[i]==matrix[i+1])
         { dsyrk_("U", "T", &matrows[i], &matcols[i], &one, matrix[i],
                  &matcols[i], &zero, product[i], &matrows[i]);
           fill_lower(product[i],matrows[i]);
         }
-        else if (t2 && !t1 && matrix[i]==product[i+1])
+        else if (t2>1 && !t1 && matrix[i]==matrix[i+1])
         { dsyrk_("U", "N", &matrows[i], &matcols[i], &one, matrix[i],
                  &matrows[i], &zero, product[i], &matrows[i]);
           fill_lower(product[i],matrows[i]);

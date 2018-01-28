@@ -84,7 +84,7 @@ void helpers_master (void)
     { int n = matrows[i];
       int k = matcols[i];
       int w;
-      if (trans[i] && trans[i+1])
+      if (i==nmat-2 && trans[i] && trans[i+1])
       { fprintf(stderr,"Transposing both operands is not allowed\n");
         exit(1);
       }

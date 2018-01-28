@@ -123,16 +123,16 @@ void check_results (void)
         z[l] = s;
       }
     }
-    else if (trans[i] && !trans[i+1])               /* t(mat) X mat */
+    else if (i==nmat-2 && trans[i] && trans[i+1])   /* t(mat) X t(mat) */
     { for (j = 0; j < N; j++)
       { for (l = 0; l < M; l++)
         { s = 0;
-          for (k = 0; k < K; k++) s += x[k+K*j] * y[k+K*l];
+          for (k = 0; k < K; k++) s += x[k+K*j] * y[l+M*k];
           z[j+N*l] = s;
         }
       }
     }
-    else if (i==nmat-2 && trans[i+1] && !trans[i])  /* mat X t(mat) */
+    else if (i==nmat-2 && trans[i+1]) /* mat X t(mat) */
     { for (j = 0; j < N; j++)
       { for (l = 0; l < M; l++)
         { s = 0;
@@ -141,11 +141,11 @@ void check_results (void)
         }
       }
     }
-    else if (i==nmat-2 && trans[i+1] && trans[i])   /* t(mat) X t(mat) */
+    else if (trans[i])                /* t(mat) X mat */
     { for (j = 0; j < N; j++)
       { for (l = 0; l < M; l++)
         { s = 0;
-          for (k = 0; k < K; k++) s += x[k+K*j] * y[l+M*k];
+          for (k = 0; k < K; k++) s += x[k+K*j] * y[k+K*l];
           z[j+N*l] = s;
         }
       }
@@ -160,10 +160,16 @@ void check_results (void)
       }
     }
 
-    if (memcmp (z, product[i], N*M*sizeof(double)) != 0)
-    { fprintf(stderr,"Check failed on computation of result %d : %f %f\n",
-                      i,z[0],product[i][0]);
-      abort();
+    for (j = 0; j < N; j++)
+    { for (l = 0; l < M; l++)
+      { if (z[j+N*l] != product[i][j+N*l])
+        { fprintf(stderr,
+                "Check failed on computation of result %d : (%d,%d) %f %f %g\n",
+                 i, j, l, product[i][j+N*l], z[j+N*l], 
+                 product[i][j+N*l]-z[j+N*l]);
+          abort();
+        }
+      }
     }
   }  
 

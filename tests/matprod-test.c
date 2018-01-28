@@ -33,7 +33,7 @@ void do_test (int rep)
   for (r = 0; r<rep; r++)
   { v = vec[nmat];
     for (i = nmat-2; i>=0; i--)
-    { if (trans[i] && trans[i+1])
+    { if (i==nmat-2 && trans[i] && trans[i+1])
       { fprintf(stderr,"Transposing both operands is not allowed\n");
         exit(1);
       }
