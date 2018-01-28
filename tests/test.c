@@ -123,7 +123,7 @@ void check_results (void)
         z[l] = s;
       }
     }
-    else if (trans[i])                /* t(mat) X mat */
+    else if (trans[i] && !trans[i+1])               /* t(mat) X mat */
     { for (j = 0; j < N; j++)
       { for (l = 0; l < M; l++)
         { s = 0;
@@ -132,11 +132,20 @@ void check_results (void)
         }
       }
     }
-    else if (i==nmat-2 && trans[i+1]) /* mat X t(mat) */
+    else if (i==nmat-2 && trans[i+1] && !trans[i])  /* mat X t(mat) */
     { for (j = 0; j < N; j++)
       { for (l = 0; l < M; l++)
         { s = 0;
           for (k = 0; k < K; k++) s += x[j+N*k] * y[l+M*k];
+          z[j+N*l] = s;
+        }
+      }
+    }
+    else if (i==nmat-2 && trans[i+1] && trans[i])   /* t(mat) X t(mat) */
+    { for (j = 0; j < N; j++)
+      { for (l = 0; l < M; l++)
+        { s = 0;
+          for (k = 0; k < K; k++) s += x[k+K*j] * y[l+M*k];
           z[j+N*l] = s;
         }
       }
@@ -207,15 +216,21 @@ int main (int argc, char **argv)
 
   do_check = getenv("CHECK") != NULL;
 
+  if (trans[nmat-1]>1 && trans[nmat-2]
+   || trans[nmat-2]>1 && trans[nmat-1])
+  { fprintf(stderr,"\"T\" option used when other operand is also transposed\n");
+    exit(1);
+  }
+
   /* For each matrix, compute matlen and allocate space, or re-use space
      when a "T" option applies. */
 
   for (i = 0; i<nmat; i++)
-  { if (trans[i]>1 && (i!=0 && i!=nmat-1)) usage();
-    matrows[i] = dim[i];
+  { matrows[i] = dim[i];
     matcols[i] = dim[i+1];
     matlen[i] = (size_t) matrows[i] * (size_t) matcols[i];
-    if (i==1 && trans[0]>1 || i==nmat-1 && trans[i]>1)  /* share space */
+    if (trans[i]>1 && (i!=nmat-2 && i!=nmat-1)) usage();
+    if (i==nmat-1 && (trans[i]>1 || trans[i-1]>1))  /* share space */
     { if (matrows[i-1]!=matcols[i])
       { fprintf(stderr,"\"T\" option used when dimensions don't match\n");
         exit(1);
