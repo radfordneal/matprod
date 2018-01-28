@@ -204,8 +204,11 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
     int w = OP_W(op);
 
     if (k <= 1) {
-        if (w == s-1)  /* do in only the last thread */
+        if (w == s-1) {  /* do in only the last thread */
+            helpers_size_t a;
+            HELPERS_WAIT_IN2 (a, k-1, k);
             matprod_mat_vec (x, y, z, n, k);
+        }
         return;
     }
 
@@ -283,8 +286,9 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
     int w = OP_W(op);
 
     if (m == 0) {
-        if (w == s-1)  /* do in only the last thread */
+        if (w == s-1) {  /* do in only the last thread */
             matprod_outer (x, y, z, n, m, z, z, 0, THRESH);
+        }
         return;
     }
         

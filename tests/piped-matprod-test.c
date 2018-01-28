@@ -75,7 +75,7 @@ void helpers_master (void)
 
   for (r = 0; r<repeat; r++)
   { 
-    if (vec[nmat])
+    if (vec[nmat]>1)
     { helpers_do_task (HELPERS_PIPE_OUT, task_output_vector, 0, nmat, 0, 0);
     }
 
@@ -88,27 +88,30 @@ void helpers_master (void)
       { fprintf(stderr,"Transposing both operands is not allowed\n");
         exit(1);
       }
+      int op0 = -(i+1);
+      int op1 = i+1;
+      int op2 = i+2==nmat ? nmat : -(i+2);
       v |= vec[i+1];
       if (vec[i] && v && matrows[i]==1 && matcols[nmat-1]==1) 
-      { par_matprod_vec_vec (-(i+1), i+1, i+2==nmat ? nmat : -(i+2), split);
+      { par_matprod_vec_vec (op0, op1, op2, split);
       }
       else if (vec[i] && matrows[i]==1)
-      { par_matprod_vec_mat (-(i+1), i+1, i+2==nmat ? nmat : -(i+2), split);
+      { par_matprod_vec_mat (op0, op1, op2, split);
       }
       else if (v && matcols[nmat-1]==1)
-      { par_matprod_mat_vec (-(i+1), i+1, i+2==nmat ? nmat : -(i+2), split);
+      { par_matprod_mat_vec (op0, op1, op2, split);
       }
       else if (trans[i])
-      { par_matprod_trans1 (-(i+1), i+1, i+2==nmat ? nmat : -(i+2), k, split);
+      { par_matprod_trans1 (op0, op1, op2, k, split);
       }
       else if (i==nmat-2 && trans[i+1])
-      { par_matprod_trans2 (-(i+1), i+1, i+2==nmat ? nmat : -(i+2), k, split);
+      { par_matprod_trans2 (op0, op1, op2, k, split);
       }
       else if (matcols[i]==1 && matrows[nmat-1]==1)
-      { par_matprod_outer (-(i+1), i+1, i+2==nmat ? nmat : -(i+2), split);
+      { par_matprod_outer (op0, op1, op2, split);
       }
       else
-      { par_matprod_mat_mat (-(i+1), i+1, i+2==nmat ? nmat : -(i+2), k, split);
+      { par_matprod_mat_mat (op0, op1, op2, k, split);
       }
     }
     helpers_wait_for_all();
