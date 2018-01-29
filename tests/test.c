@@ -165,7 +165,7 @@ void check_results (void)
       { if (z[j+N*l] != product[i][j+N*l])
         { fprintf(stderr,
                 "Check failed on computation of result %d : (%d,%d) %f %f %g\n",
-                 i, j, l, product[i][j+N*l], z[j+N*l], 
+                 i, (int)j, (int)l, product[i][j+N*l], z[j+N*l], 
                  product[i][j+N*l]-z[j+N*l]);
           abort();
         }
