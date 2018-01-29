@@ -104,8 +104,6 @@ void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
         HELPERS_WAIT_IN2 (a, na-1, k);
         if (a < k) a &= ~3;
 
-        if (a == oa) continue;
-
         s = matprod_vec_vec_sub (x+oa, y+oa, a-oa, s);
     }
 
@@ -157,8 +155,6 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
                 d = a/k;
                 if (d < m) d &= ~3;
 
-                if (d == od) continue;
-
                 matprod_vec_mat (x, y+od*k, z+od, k, d-od, z, z+od, w, THRESH);
             }
         }
@@ -176,8 +172,6 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
             HELPERS_WAIT_IN2 (a, na-1, k_times_m);
             d = a/k;
             if (d < m) d &= ~3;
-
-            if (d == od) continue;
 
             matprod_vec_mat (x, y+od*k, z+od, k, d-od, z, z+od, 0, THRESH);
         }
@@ -313,7 +307,6 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
 
                 d = a;
                 if (d < m) d &= ~3;
-                if (d == od) continue;
                 if (d > d1) d = d1;
 
                 matprod_outer (x, y+od, z+od*n, n, d-od, 
@@ -334,8 +327,6 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
             HELPERS_WAIT_IN2 (a, na-1, m);
             d = a;
             if (d < m) d &= ~3;
-
-            if (d == od) continue;
 
             matprod_outer (x, y+od, z+od*n, n, d-od, 
                            z, z+od*n, 0, THRESH);
@@ -394,7 +385,6 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
 
                 d = a/k;
                 if (d < m) d &= ~3;
-                if (d == od) continue;
                 if (d > d1) d = d1;
 
                 matprod_mat_mat (x, y+od*k, z+od*n, n, k, d-od, 
@@ -415,8 +405,6 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
             HELPERS_WAIT_IN2 (a, na-1, k_times_m);
             d = a/k;
             if (d < m) d &= ~3;
-
-            if (d == od) continue;
 
             matprod_mat_mat (x, y+od*k, z+od*n, n, k, d-od, 
                              z, z+od*n, 0, THRESH);
@@ -476,7 +464,6 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
 
                 d = a/k;
                 if (d < m) d &= ~3;
-                if (d == od) continue;
                 if (d > d1) d = d1;
 
                 matprod_trans1 (x, y+od*k, z+od*n, n, k, d-od, 
@@ -497,8 +484,6 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
             HELPERS_WAIT_IN2 (a, na-1, k_times_m);
             d = a/k;
             if (d < m) d &= ~3;
-
-            if (d == od) continue;
 
             matprod_trans1 (x, y+od*k, z+od*n, n, k, d-od, 
                             z, z+od*n, 0, THRESH);
