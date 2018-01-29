@@ -580,6 +580,7 @@ void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x,
     helpers_size_t k = LENGTH(x);
 
     if (split == 0) {
+        helpers_wait_until_not_being_computed(y);
         REAL(z)[0] = matprod_vec_vec (REAL(x), REAL(y), k);
         return;
     }
@@ -597,6 +598,7 @@ void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x,
     helpers_size_t m = LENGTH(z);
 
     if (split == 0) {
+        helpers_wait_until_not_being_computed(y);
         matprod_vec_mat (REAL(x), REAL(y), REAL(z), k, m EXTRAZ);
         return;
     }
@@ -627,6 +629,7 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
     helpers_size_t k = LENGTH(y);
 
     if (split == 0) {
+        helpers_wait_until_not_being_computed(y);
         matprod_mat_vec (REAL(x), REAL(y), REAL(z), n, k);
         return;
     }
@@ -658,6 +661,7 @@ void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x,
     helpers_size_t m = LENGTH(y);
 
     if (split == 0) {
+        helpers_wait_until_not_being_computed(y);
         matprod_outer (REAL(x), REAL(y), REAL(z), n, m EXTRAZ);
         return;
     }
@@ -688,6 +692,7 @@ void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x,
     helpers_size_t m = LENGTH(y) / k;
 
     if (split == 0) {
+        helpers_wait_until_not_being_computed(y);
         matprod_mat_mat (REAL(x), REAL(y), REAL(z), n, k, m EXTRAZ);
         return;
     }
@@ -718,6 +723,7 @@ void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
     helpers_size_t m = LENGTH(y) / k;
 
     if (split == 0) {
+        helpers_wait_until_not_being_computed(y);
         matprod_trans1 (REAL(x), REAL(y), REAL(z), n, k, m EXTRAZ);
         return;
     }
@@ -752,6 +758,7 @@ void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x,
     helpers_size_t m = LENGTH(y) / k;
 
     if (split == 0) {
+        helpers_wait_until_not_being_computed(y);
         matprod_trans2 (REAL(x), REAL(y), REAL(z), n, k, m EXTRAZ);
         return;
     }
