@@ -1,5 +1,5 @@
 MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
-          Documentation for Library Procedures and Test Programs
+          Documentation for Application Program Interface to Library Procedures
 
 Copyright (C) 2013, 2014, 2017, 2018 Radford M. Neal.
 
@@ -27,15 +27,21 @@ program.  Distinguishing features of this library are
    - Exact reproducibility between platforms, with the results being
      identical to what would be produced with a naive implementation.
 
-   - Good performance.
+   - No allocation of temporary storage (except, of course, for small
+     amounts on the procedure-call stack).
+
+   - Good performance, subject to the above two requirements.
 
    - Optional parallel implementation using the "helpers" library.
 
 The routines should work with any C compiler implementing the C99
-standard.  However, some performance improvements are enabled only for
-a gcc look-alike compiler.  Performance tuning has been done using gcc
-7.2, and may not be optimal for other compilers.  Testing has been
-primarily done on Intel/AMD machines, of a variety of vintages.
+standard, and for any processor implementing IEEE standard
+floating-point arithmetic.  However, some performance improvements are
+enabled only for a gcc look-alike compiler, and SIMD instructions are
+used only for Intel/AMD processors.  Performance tuning has been done
+using gcc 7.2, and may not be optimal for other compilers.  Testing
+has been primarily done on Intel/AMD machines, of a variety of
+vintages.
 
 Note that matrices are assumed to be stored in FORTRAN memory order,
 proceeding down columns (not across rows).  To use the matprod
@@ -109,7 +115,7 @@ goal is met for the most part.  For some operands, the matprod
 routines are actually faster than the routines provided in some
 optimized BLAS libraries, in some cases substantially faster.
 
-See matprod-imp and the comments in matprod.c and piped-matprod.c for
+See imp-doc and the comments in matprod.c and piped-matprod.c for
 details on the algorithms used.
 
 
@@ -305,8 +311,8 @@ negative value can be used for "split", in which case the negative of
 "split" will be used, with this value reduced only if that degree of
 splitting is not possible (given implementation constraints).  A value
 of zero for "split" indicates that the corresponding matprod procedure
-should be called immediately without scheduling a task.  The arguments
-in this case must not have their computation still pending.  
+should be called immediately without scheduling a task, after waiting
+for the second operand to be computed if it has not been already.
 
 The tasks scheduled by the par_matprod procedures use pipelining if
 possible.
@@ -427,161 +433,3 @@ non-pipelined procedures above, and are as follows:
 
 Note that, to reduce overhead, columns or elements of pipelined output
 may not always be made available immediately after being computed.
-
-
-Test programs.
-
-Test programs are provided for the matprod and piped-matprod routines,
-in the directory "tests", which share a common framework, and which
-can also be used to test matrix multiply routines in a BLAS or other
-library.  These test programs can perform checks on correctness, but
-are mainly meant for testing speed.  If ALIGN and/or ALIGN_OFFSET is
-defined, the test program will allocate matrices with the specfied
-alignment.
-
-These programs are invoked by a command such as the following:
-
-    matprod-test rep A B C D
-
-Where the arguments are either positive integers (or "v" or "V", as
-discussed below), or "t" or "T".  In this example, three matrices of
-dimensions AxB, BxC, and CxD are created, and the product of the first
-of these matrices with the product of the second and third matrices is
-computed (note the right associativity), with this computation
-repeated rep times (with identical results each time, one hopes).  The
-first, second, second-to-last, and last elements of the result are
-then printed on standard output, except that fewer elements are
-printed when only fewer exist.  If the environment variable PRINTWHOLE
-is defined (as anything), the entire result matrix is also printed.
-
-If an argument after "rep" is "t" or "T", the matrix whose dimensions
-follow is stored in transposed form, and the trans1 or trans2 form of
-the multiply routine is called (or analogous routines for BLAS tests).
-Note that it is not allowed to transpose both operands with the
-matprod routines (but this is allowed with BLAS routines).  
-
-In general, n>2 arguments (other than "t" or "T") follow the rep
-argument, defining the dimensions of n-1 matrices, which are used as
-operands in n-2 matrix multiplication operations, which associate to
-the right.  The result of each of these products will be a matrix with
-number of rows equal to the first argument and number of columns equal
-to the last argument.
-
-The "T" argument can be used only for one of the last two matrices,
-and results in the two last matrices being identical (sharing the same
-memory).  This is possible only if the number of rows of the first is
-the same as the number of columns of the second.  The result of the
-multiply will be symmetric, and hence may perhaps be computed faster.
-
-An argument after rep with the value "1" may be replaced with the
-argument "v" or "V", which has the same effect as "1", except that the
-appropriate mat_vec, vec_mat, or vec_vec procedure is used for some or
-all products, rather than the general matrix multiplication procedure.
-This applies both to the vectors specified in this way, and the
-vectors that result from multiplying such a vector by a matrix.  For
-example, if the last argument is "v", all the products will use the
-mat_vec procedure, except if the first operand was also specified
-using "v" or "V", in which case the vec_vec procedure will be used.
-
-The matrices created by the test programs have elements that are set
-to 0.1 times the sum of the number of rows and columns in the matrix,
-plus 0.01 times the product of the number of rows and columns in the
-matrix, plus 0.01 times the product of the row and column indexes for
-each element.  A matrix whose transpose will be used as an operand
-will be initialized so that this is its value after transposition, so
-the results obtained should be the same with or without the "t"
-option, on either the left or right.  Since the initialization is
-invariant to transposition, the result with "T" instead of "t" is also
-the same.
-
-The matprod_outer procedure is called when the k argument is 1, and
-neither operand is transposed. The matprod_scalar_vec s tested only
-indirectly, via calls from the other procedures.
-
-If the environment variable CHECK is defined (as anything), the
-results are checked against simple code implementing the naive
-algorithm, resulting in either "Check OK" being printed, or an error
-message followed by an abort.  Note that these checks take time, and
-so should not be done when running the test programs for performance
-evaluation.
-
-Several test programs can be compiled using the supplied Makefile,
-including the following:
-
-    matprod-test
-
-      Uses the procedures in matprod.c.  A number of other versions of
-      this test program are also compiled, with varying alignment
-      options, etc.  See the Makefile for details.
-
-    piped-matprod-test
-
-      Uses the procedures in piped-matprod.c, and the helpers library.
-      The number of helper threads used is given by the environment
-      variable HELPERS (default 0).  The amount of splitting to do is
-      given by the environment variable SPLIT (default 1).  If an
-      environment variable TRACE is defined, trace output from the
-      helpers library is enabled.  See below for the special role of a
-      last argument of "V".  Some other versions are also compiled;
-      see the Makefile for details.
-
-    blas0-test
-
-      Uses BLAS routines in the following FORTRAN source files:
-
-          ddot.f  dgemv.f  dgemm.f  dsyrk.f  lsame.f
-
-      A xerbla routine for BLAS error reporting is provided as part of 
-      the test program.  The dsyrk routine is used when the "T" option 
-      is specified, along with a C routine for filling in the lower 
-      triangle of the matrix from the upper triangle.  
-
-      The versions of these files distributed here were downloaded on
-      2017-11-27 from www.netlib.org/blas.  They are known as the
-      "reference BLAS" routines.
-
-    blas1-test
-
-      Like blas-test, except that all BLAS routines are taken from one
-      file called blas1.f.  The version of blas1.f distributed is the
-      one used in R-2.15.0, which is a modifed version of those in the
-      reference BLAS.
-
-    blas2-test
-
-      Like blas-test, except that all BLAS routines are taken from one
-      file called blas2.f.  The vesion of blas2.f distributed is the
-      modified version of the one from R-2.15.0 that is used in pqR.
-
-    blas3-test
-
-      Like blas-test, except that BLAS routines are taken from the
-      Linux library /usr/lib/libblas.so.3, which can be set to various
-      BLAS implementations (eg, by using "update-alternatives").  The
-      location of this library may be different on some Linux systems.
-
-    blas4-test
-
-      Like blas-test, except that BLAS routines are taken from the Mac
-      "Accelerate" framework (also known as "VecLib").
-
-The blas test programs are not compiled by default, but are compiled
-by "make blas-linux" (builds blas3-test) or "make blas-mac" (builds
-blas4-test).
-
-The helpers procedures that are used in the piped-matprod test
-programs can be obtained from github.com/radfordneal/helpers.
-
-If the last argument to piped-matprod-test is "V" (only, not "v"), the
-final matrix (a column vector) will be supplied as pipelined output
-from a task procedure that delivers elements in groups of 17 (or fewer
-for the last group), with variable time lags.  This allows pipelining
-to be tested for the mat_vec and vec_vec procedures, for which
-pipelined input cannot otherwise be arranged.  (Of course, this is
-slower than just accessing the already-initialized matrix.)
-
-The shell file run-tests runs a series of tests, with the test program
-specified by its first argument (eg, "matprod", for matprod-test).
-For more details on the testing framework, look at the Makefile and
-shell files in the tests directory, and the subdirectories in it that
-record results on various systems used for testing.

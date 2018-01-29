@@ -22,9 +22,11 @@ The routines in the matprod library have been written to be reasonably
 fast.  However, compared to the matrix multiply routines in optimized
 BLAS libraries (DGEMM, DGEMV, and DDOT), the speed of the matprod
 routines is limited by the requirement that they produce the same
-results as the naive algorithms, and by the lesser amount of effort
-that has been expended in trying to make them fast.  The general
-implementation strategy for matprod is described here.
+results as the naive algorithms, by the requirement that no
+substantial temporary storage be used, and by the lesser amount of
+effort that has been expended in trying to make them fast.  The
+general implementation strategy for matprod is described here, along
+with some other implementation details.
 
 
 SIMD instructions and alignment.
@@ -106,5 +108,5 @@ Similarly, p + 2*n is unsafe, but p + n + n is safe.
 
 Since the result of overflow with signed arithmetic is undefined in C,
 it is possible that the unsafe code will actually work when overflow
-happens.  But of course this cannot be relied on.
-
+happens.  But of course this cannot be relied on.  (The possibility of
+code that is unsafe actually working does make testing difficult.)
