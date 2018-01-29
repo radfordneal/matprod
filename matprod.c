@@ -1482,7 +1482,7 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
         else if (n == 2)
             matprod_mat_vec_n2 (x, y, z, k, add);
         else if (n == 1)
-            z[0] = matprod_vec_vec_sub (x, y, k, add);
+            z[0] = matprod_vec_vec_sub (x, y, k, add ? z[0] : 0.0);
         return;
     }
 
