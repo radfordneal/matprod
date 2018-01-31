@@ -518,7 +518,8 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     if (split > 0) \
         while ((cond) && s > 1) s -= 1;
 
-#define MINMUL 64   /* Desired minimum number of multiplies per thread */
+#define MINMUL0 32 /* Minimum number of multiplies to not do directly at once */
+#define MINMUL 64  /* Desired minimum number of multiplies per thread */
 
 
 void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x, 
@@ -526,7 +527,7 @@ void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x,
 {
     helpers_size_t k = LENGTH(x);
 
-    if (split == 0) {
+    if (split == 0 || k < MINMUL0) {
         helpers_wait_until_not_being_computed(y);
         REAL(z)[0] = matprod_vec_vec (REAL(x), REAL(y), k);
         return;
@@ -543,14 +544,13 @@ void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x,
 {
     helpers_size_t k = LENGTH(x);
     helpers_size_t m = LENGTH(z);
+    double multiplies;
 
-    if (split == 0) {
+    if (split == 0 || (multiplies = (double)k*m) < MINMUL0) {
         helpers_wait_until_not_being_computed(y);
         matprod_vec_mat (REAL(x), REAL(y), REAL(z), k, m EXTRAZ);
         return;
     }
-
-    double multiplies = (double)k * m;
 
     DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
 
@@ -576,14 +576,13 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
 {
     helpers_size_t n = LENGTH(z);
     helpers_size_t k = LENGTH(y);
+    double multiplies;
 
-    if (split == 0) {
+    if (split == 0 || (multiplies = (double)k*n) < MINMUL0) {
         helpers_wait_until_not_being_computed(y);
         matprod_mat_vec (REAL(x), REAL(y), REAL(z), n, k);
         return;
     }
-
-    double multiplies = (double)k * n;
 
     DECIDE_SPLIT (n, 4*s > n && MINMUL*s > multiplies)
 
@@ -610,14 +609,13 @@ void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x,
 {
     helpers_size_t n = LENGTH(x);
     helpers_size_t m = LENGTH(y);
+    double multiplies;
 
-    if (split == 0) {
+    if (split == 0 || (multiplies = (double)n*m) < MINMUL0) {
         helpers_wait_until_not_being_computed(y);
         matprod_outer (REAL(x), REAL(y), REAL(z), n, m EXTRAZ);
         return;
     }
-
-    double multiplies = (double)n * m;
 
     DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
 
@@ -643,14 +641,13 @@ void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x,
 {
     helpers_size_t n = LENGTH(x) / k;
     helpers_size_t m = LENGTH(y) / k;
+    double multiplies;
 
-    if (split == 0) {
+    if (split == 0 || (multiplies = (double)n*k*m) < MINMUL0) {
         helpers_wait_until_not_being_computed(y);
         matprod_mat_mat (REAL(x), REAL(y), REAL(z), n, k, m EXTRAZ);
         return;
     }
-
-    double multiplies = (double)n * k * m;
 
     DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
 
@@ -676,14 +673,13 @@ void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
 {
     helpers_size_t n = LENGTH(x) / k;
     helpers_size_t m = LENGTH(y) / k;
+    double multiplies;
 
-    if (split == 0) {
+    if (split == 0 || (multiplies = (double)n*k*m) < MINMUL0) {
         helpers_wait_until_not_being_computed(y);
         matprod_trans1 (REAL(x), REAL(y), REAL(z), n, k, m EXTRAZ);
         return;
     }
-
-    double multiplies = (double)n * k * m;
 
     DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
 
@@ -713,14 +709,13 @@ void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x,
 {
     helpers_size_t n = LENGTH(x) / k;
     helpers_size_t m = LENGTH(y) / k;
+    double multiplies;
 
-    if (split == 0) {
+    if (split == 0 || (multiplies = (double)n*k*m) < MINMUL0) {
         helpers_wait_until_not_being_computed(y);
         matprod_trans2 (REAL(x), REAL(y), REAL(z), n, k, m EXTRAZ);
         return;
     }
-
-    double multiplies = (double)n * k * m;
 
     DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
 
