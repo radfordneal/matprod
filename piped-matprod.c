@@ -518,8 +518,8 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     if (split > 0) \
         while ((cond) && s > 1) s -= 1;
 
-#define MINMUL0 32 /* Minimum number of multiplies to not do directly at once */
-#define MINMUL 64  /* Desired minimum number of multiplies per thread */
+#define MINMUL0 1024  /* Minimum # of multiplies to not do directly at once*/
+#define MINMUL 4096   /* Desired minimum number of multiplies per thread */
 
 
 void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x, 
