@@ -35,9 +35,11 @@
 
 #define SCOPE static
 
-#define EXTRAD , double *start_z, double *last_z, int input_first, int threshold
-#define EXTRAZ , 0, 0, 0, 0
-#define EXTRAN , start_z, last_z, input_first, threshold
+#define EXTRAD , double *start_z, double *last_z, int input_first
+#define EXTRAZ , 0, 0, 0
+#define EXTRAN , start_z, last_z, input_first
+
+#define THRESH 64
 
 #define AMTOUT(_z_) do { \
     if (start_z == 0) break; \
@@ -48,7 +50,7 @@
         if (a < last_z - start_z) break; \
         input_first = 0; \
     } \
-    if ((_z_) - last_z >= threshold) { \
+    if ((_z_) - last_z >= THRESH) { \
         helpers_amount_out ((_z_) - start_z); \
         last_z = (_z_); \
     } \
@@ -75,6 +77,14 @@
         ; /* Wait for tasks doing earlier portions to complete. */ \
     } while (helpers_avail0(LENGTH(sz)) < LENGTH(sz))
 
+#define SETUP_SPLIT(cond) \
+    int s = OP_S(op); \
+    int w = OP_W(op); \
+    while ((cond) && s > 1) { \
+        if (w == 0) return; \
+        s -= 1; w -= 1; \
+    }
+
 
 /* Dot product of two vectors, with pipelining of input y. */
 
@@ -87,7 +97,7 @@ void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
 
     helpers_size_t k = LENGTH(sx);
 
-    if (op && OP_W(op)!=OP_S(op)-1) return;  /* return if mistakenly split */
+    SETUP_SPLIT (1)
 
     if (k == 0) {
         z[0] = 0;
@@ -95,7 +105,7 @@ void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
     }
 
     helpers_size_t a = 0;
-    double s = 0.0;
+    double sum = 0.0;
 
     while (a < k) {
 
@@ -104,10 +114,10 @@ void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
         HELPERS_WAIT_IN2 (a, na-1, k);
         if (a < k) a &= ~3;
 
-        s = matprod_vec_vec_sub (x+oa, y+oa, a-oa, s);
+        sum = matprod_vec_vec_sub (x+oa, y+oa, a-oa, sum);
     }
 
-    z[0] = s;
+    z[0] = sum;
 }
 
 
@@ -125,18 +135,15 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t k = LENGTH(sx);
     helpers_size_t m = LENGTH(sz);
 
-    int s = OP_S(op);
-    int w = OP_W(op);
+    SETUP_SPLIT (4*s > m)
 
     if (k_times_m == 0) {
         if (w == s-1)  /* do in only the last thread */
-            matprod_vec_mat (x, y, z, k, m, z, z, 0, THRESH);
+            matprod_vec_mat (x, y, z, k, m, z, z, 0);
         return;
     }
 
-    while (4*s > m) s -= 1;
-
-    if (s > 1) {  /* do in more than one thread */
+    if (s > 1) {
 
         if (w < s) {
 
@@ -155,12 +162,14 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
                 d = a/k;
                 if (d < m) d &= ~3;
 
-                matprod_vec_mat (x, y+od*k, z+od, k, d-od, z, z+od, w, THRESH);
+                matprod_vec_mat (x, y+od*k, z+od, k, d-od, z, z+od, w);
             }
         }
+
+        if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
     }
 
-    else if (w == 0) {  /* either no split, or better done in only one thread */
+    else {  /* only one thread */
 
         helpers_size_t d = 0;
         helpers_size_t a = 0;
@@ -173,11 +182,9 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
             d = a/k;
             if (d < m) d &= ~3;
 
-            matprod_vec_mat (x, y+od*k, z+od, k, d-od, z, z+od, 0, THRESH);
+            matprod_vec_mat (x, y+od*k, z+od, k, d-od, z, z+od, 0);
         }
     }
-
-    if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
 }
 
 
@@ -194,8 +201,7 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t k = LENGTH(sy);
     helpers_size_t n = LENGTH(sz);
 
-    int s = OP_S(op);
-    int w = OP_W(op);
+    SETUP_SPLIT (16*s > n)
 
     if (k <= 1) {
         if (w == s-1) {  /* do in only the last thread */
@@ -206,42 +212,38 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
         return;
     }
 
-    if (s > 1 && n > 16) {  /* do in more than one thread */
+    if (s > 1) {
 
-        if (s > (n+15)/16) s = (n+15)/16;
+        double *z0 = z + (size_t) ((double)n * w / s);
+        double *z1 = z + (size_t) ((double)n * (w+1) / s);
 
-        if (w < s) {
-
-            double *z0 = z + (size_t) ((double)n * w / s);
-            double *z1 = z + (size_t) ((double)n * (w+1) / s);
-
-            if (ALIGNED8(z)) {
-                if (w != 0) z0 = CACHE_ALIGN(z0);
-                if (w != s-1) z1 = CACHE_ALIGN(z1);
-            }
-
-            int xrows = z1 - z0;
-            x += z0 - z;
-            z += z0 - z;
-
-            helpers_size_t a = 0;
-            int add = 0;
-
-            while (a < k) {
-
-                helpers_size_t oa = a;
-                helpers_size_t na = k-a <= 4 ? k : a+4;
-                HELPERS_WAIT_IN2 (a, na-1, k);
-                if (a < k) a &= ~3;
-
-                matprod_mat_vec_sub_xrows0 (x+oa*n, y+oa, z0, 
-                                            n, a-oa, xrows, add);
-                add = 1;
-            }
+        if (ALIGNED8(z)) {
+            if (w != 0) z0 = CACHE_ALIGN(z0);
+            if (w != s-1) z1 = CACHE_ALIGN(z1);
         }
+
+        int xrows = z1 - z0;
+        x += z0 - z;
+        z += z0 - z;
+
+        helpers_size_t a = 0;
+        int add = 0;
+
+        while (a < k) {
+
+            helpers_size_t oa = a;
+            helpers_size_t na = k-a <= 4 ? k : a+4;
+            HELPERS_WAIT_IN2 (a, na-1, k);
+            if (a < k) a &= ~3;
+
+            matprod_mat_vec_sub_xrows0 (x+oa*n, y+oa, z0, n, a-oa, xrows, add);
+            add = 1;
+        }
+
+        if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
     }
 
-    else if (w == 0) {  /* either no split, or better done in only one thread */
+    else {  /* only one thread */
 
         helpers_size_t a = 0;
         int add = 0;
@@ -257,8 +259,6 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
             add = 1;
         }
     }
-
-    if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
 }
 
 /* Product of an n x 1 matrix (x) and a 1 x m matrix (y) with result stored 
@@ -272,50 +272,45 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
     double * MATPROD_RESTRICT z = REAL(sz);
 
     helpers_size_t n = LENGTH(sx);
-	    helpers_size_t m = LENGTH(sy);
+    helpers_size_t m = LENGTH(sy);
 
     helpers_size_t a = 0;
 
-    int s = OP_S(op);
-    int w = OP_W(op);
+    SETUP_SPLIT (4*s > m)
 
     if (m == 0) {
         if (w == s-1) {  /* do in only the last thread */
-            matprod_outer (x, y, z, n, m, z, z, 0, THRESH);
+            matprod_outer (x, y, z, n, m, z, z, 0);
         }
         return;
     }
-        
-    while (s > 1 && 4*s > m) s -= 1;
 
-    if (s > 1) {  /* do in more than one thread */
+    if (s > 1) {
 
-        if (w < s) {
+        helpers_size_t d, d1, a, a1;
 
-            helpers_size_t d, d1, a, a1;
+        d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
+        d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
+        a = d;
+        a1 = d1;
 
-            d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
-            d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
-            a = d;
-            a1 = d1;
+        while (d < d1) {
 
-            while (d < d1) {
+            helpers_size_t od = d;
+            helpers_size_t na = d1-d <= 4 ? a1 : d+4;
+            HELPERS_WAIT_IN2 (a, na-1, a1);
 
-                helpers_size_t od = d;
-                helpers_size_t na = d1-d <= 4 ? a1 : d+4;
-                HELPERS_WAIT_IN2 (a, na-1, a1);
+            d = a;
+            if (d < m) d &= ~3;
+            if (d > d1) d = d1;
 
-                d = a;
-                if (d < m) d &= ~3;
-                if (d > d1) d = d1;
-
-                matprod_outer (x, y+od, z+od*n, n, d-od, 
-                               z, z+od*n, w, THRESH);
-            }
+            matprod_outer (x, y+od, z+od*n, n, d-od, z, z+od*n, w);
         }
+
+        if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
     }
 
-    else if (w == 0) {  /* either no split, or better done in only one thread */
+    else {  /* only one thread */
 
         helpers_size_t d = 0;
         helpers_size_t a = 0;
@@ -328,12 +323,9 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
             d = a;
             if (d < m) d &= ~3;
 
-            matprod_outer (x, y+od, z+od*n, n, d-od, 
-                           z, z+od*n, 0, THRESH);
+            matprod_outer (x, y+od, z+od*n, n, d-od, z, z+od*n, 0);
         }
     }
-
-    if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
 }
 
 
@@ -355,45 +347,40 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
 
     helpers_size_t a = 0;
 
-    int s = OP_S(op);
-    int w = OP_W(op);
+    SETUP_SPLIT (4*s > m)
 
     if (k_times_m == 0) {
         if (w == s-1)  /* do in only the last thread */
-            matprod_mat_mat (x, y, z, n, k, m, z, z, 0, THRESH);
+            matprod_mat_mat (x, y, z, n, k, m, z, z, 0);
         return;
     }
-        
-    while (s > 1 && 4*s > m) s -= 1;
 
-    if (s > 1) {  /* do in more than one thread */
+    if (s > 1) {
 
-        if (w < s) {
+        helpers_size_t d, d1, a, a1;
 
-            helpers_size_t d, d1, a, a1;
+        d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
+        d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
+        a = d * k;
+        a1 = d1 * k;
 
-            d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
-            d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
-            a = d * k;
-            a1 = d1 * k;
+        while (d < d1) {
 
-            while (d < d1) {
+            helpers_size_t od = d;
+            helpers_size_t na = d1-d <= 4 ? a1 : k*(d+4);
+            HELPERS_WAIT_IN2 (a, na-1, a1);
 
-                helpers_size_t od = d;
-                helpers_size_t na = d1-d <= 4 ? a1 : k*(d+4);
-                HELPERS_WAIT_IN2 (a, na-1, a1);
+            d = a/k;
+            if (d < m) d &= ~3;
+            if (d > d1) d = d1;
 
-                d = a/k;
-                if (d < m) d &= ~3;
-                if (d > d1) d = d1;
-
-                matprod_mat_mat (x, y+od*k, z+od*n, n, k, d-od, 
-                                 z, z+od*n, w, THRESH);
-            }
+            matprod_mat_mat (x, y+od*k, z+od*n, n, k, d-od, z, z+od*n, w);
         }
+
+        if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
     }
 
-    else if (w == 0) {  /* either no split, or better done in only one thread */
+    else {  /* only one thread */
 
         helpers_size_t d = 0;
         helpers_size_t a = 0;
@@ -406,12 +393,9 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
             d = a/k;
             if (d < m) d &= ~3;
 
-            matprod_mat_mat (x, y+od*k, z+od*n, n, k, d-od, 
-                             z, z+od*n, 0, THRESH);
+            matprod_mat_mat (x, y+od*k, z+od*n, n, k, d-od, z, z+od*n, 0);
         }
     }
-
-    if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
 }
 
 
@@ -434,45 +418,40 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
 
     helpers_size_t a = 0;
 
-    int s = OP_S(op);
-    int w = OP_W(op);
+    SETUP_SPLIT (4*s > m)
 
     if (k_times_m == 0) {
         if (w == s-1)  /* do in only the last thread */
-            matprod_trans1 (x, y, z, n, k, m, z, z, 0, THRESH);
+            matprod_trans1 (x, y, z, n, k, m, z, z, 0);
         return;
     }
-        
-    while (s > 1 && 4*s > m) s -= 1;
 
     if (s > 1) {  /* do in more than one thread */
 
-        if (w < s) {
+        helpers_size_t d, d1, a, a1;
 
-            helpers_size_t d, d1, a, a1;
+        d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
+        d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
+        a = d * k;
+        a1 = d1 * k;
 
-            d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
-            d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
-            a = d * k;
-            a1 = d1 * k;
+        while (d < d1) {
 
-            while (d < d1) {
+            helpers_size_t od = d;
+            helpers_size_t na = d1-d <= 4 ? a1 : k*(d+4);
+            HELPERS_WAIT_IN2 (a, na-1, a1);
 
-                helpers_size_t od = d;
-                helpers_size_t na = d1-d <= 4 ? a1 : k*(d+4);
-                HELPERS_WAIT_IN2 (a, na-1, a1);
+            d = a/k;
+            if (d < m) d &= ~3;
+            if (d > d1) d = d1;
 
-                d = a/k;
-                if (d < m) d &= ~3;
-                if (d > d1) d = d1;
-
-                matprod_trans1 (x, y+od*k, z+od*n, n, k, d-od, 
-                                z, z+od*n, w, THRESH);
-            }
+            matprod_trans1 (x, y+od*k, z+od*n, n, k, d-od, z, z+od*n, w);
         }
+
+        if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
     }
 
-    else if (w == 0) {  /* either no split, or better done in only one thread */
+    else {  /* only one thread */
 
         helpers_size_t d = 0;
         helpers_size_t a = 0;
@@ -485,12 +464,9 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
             d = a/k;
             if (d < m) d &= ~3;
 
-            matprod_trans1 (x, y+od*k, z+od*n, n, k, d-od, 
-                            z, z+od*n, 0, THRESH);
+            matprod_trans1 (x, y+od*k, z+od*n, n, k, d-od, z, z+od*n, 0);
         }
     }
-
-    if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
 }
 
 
@@ -512,51 +488,37 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
 
     helpers_size_t a = 0;
 
-    int s = OP_S(op);
-    int w = OP_W(op);
+    SETUP_SPLIT (4*s > m || n <= 2 || k <= 1 || m <= 1)
 
     if (k_times_m != 0) {
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
     }
 
-    if (n <= 2 || k <= 1 || m <= 1) s = 1;
+    if (s > 1) {
 
-    while (s > 1 && 4*s > m) s -= 1;
+        helpers_size_t d, d1;
+        d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
+        d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
 
-    if (s > 1) {  /* do in more than one thread */
-        if (w < s) {
+        matprod_trans2_sub (x, y+d, z+d*n, n, k, m, d1-d, z, z+d*n, w);
 
-            helpers_size_t d, d1;
-            d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
-            d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
-
-            matprod_trans2_sub (x, y+d, z+d*n, n, k, m, d1-d,
-                                z, z+d*n, w, THRESH);
-        }
+        if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
     }
 
-    else if (w == 0) {  /* either no split, or better done in only one thread */
-        matprod_trans2 (x, y, z, n, k, m, z, z, 0, THRESH);
+    else {  /* only one thread */
+        matprod_trans2 (x, y, z, n, k, m, z, z, 0);
     }
-
-    if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
 }
 
 /* -------------------------------------------------------------------------- */
 
-static inline int find_split (int split, int size)
-{
-    int s;
+#define DECIDE_SPLIT(size,cond) \
+    int s = split < 0 ? -split : split; \
+    if (s > (size)) s = (size); \
+    if (split > 0) \
+        while ((cond) && s > 1) s -= 1;
 
-    if (split < 0)
-        s = -split > size ? size : -split;
-    else {
-        s = split;
-        while (4*s > size) s -= 1;
-    }
-
-    return s;
-}
+#define MINMUL 64   /* Desired minimum number of multiplies per thread */
 
 
 void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x, 
@@ -588,7 +550,9 @@ void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    int s = find_split(split,m);
+    double multiplies = (double)k * m;
+
+    DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
 
     if (s > 1) {
         int w;
@@ -619,7 +583,9 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    int s = find_split(split,n);
+    double multiplies = (double)k * n;
+
+    DECIDE_SPLIT (n, 4*s > n && MINMUL*s > multiplies)
 
     if (s > 1) {
         int w;
@@ -651,7 +617,9 @@ void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    int s = find_split(split,m);
+    double multiplies = (double)n * m;
+
+    DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
 
     if (s > 1) {
         int w;
@@ -682,7 +650,9 @@ void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    int s = find_split(split,m);
+    double multiplies = (double)n * k * m;
+
+    DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
 
     if (s > 1) {
         int w;
@@ -713,7 +683,9 @@ void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    int s = find_split(split,m);
+    double multiplies = (double)n * k * m;
+
+    DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
 
     if (REAL(x) == REAL(y) && LENGTH(x) == LENGTH(y)) {
         s = 1;  /* Don't split for the symmetric case */
@@ -748,7 +720,9 @@ void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    int s = find_split(split,m);
+    double multiplies = (double)n * k * m;
+
+    DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
 
     if (REAL(x) == REAL(y) && LENGTH(x) == LENGTH(y)) {
         s = 1;  /* Don't split for the symmetric case */
