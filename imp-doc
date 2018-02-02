@@ -26,7 +26,39 @@ results as the naive algorithms, by the requirement that no
 substantial temporary storage be used, and by the lesser amount of
 effort that has been expended in trying to make them fast.  The
 general implementation strategy for matprod is described here, along
-with some other implementation details.
+with some details of the implementation.
+
+
+General algorithmic approaches.
+
+This section describes the general algorithms used when computations
+are done in a single thread, the matrices are small enough that the
+computation is not split into parts to improve cache performance, and
+special case code for small values of n or k does not apply.
+
+The matprod_vec_vec procedure uses what is essentially the naive
+algorithm, successively adding products of elements, since any
+reordering of additions could affect the result.
+
+When matprod_mat_mat multiplies matrices x and y to produce result z,
+it computes columns of z in succession.  A column of z is computed by
+first setting the column to the sum of the products of the first two
+columns of x and the first two elements of the corresponding column of
+y, and then successively adding to this column of z the product of
+another column of x with another element of y (two columns of x at a
+time, unless only one column remains).  Two columns of z are computed
+concurrently by this method (unless only one remains) so that the data
+fetched from the columns of x can is used twice.  When this approach
+is applied to a small matrix, two columns of z will fit in the L1 data
+cache, and so will be quickly accessible when products with columns of
+x are added repeatedly (even if not all of x, y, and z fit in the L1
+cache).
+
+The matprod_mat_vec procedure uses the same method as matprod_mat_mat,
+with y having only a single column.
+
+A different approach is used for matprod_vec_mat, for which the
+columns of x and z have only one element.  
 
 
 SIMD instructions and alignment.
@@ -66,6 +98,15 @@ of rows in the matrix is even or odd.
 It is intended that even if no explicit SIMD instructions are used,
 and no alignment information is specified, the matprod routines should
 still be substantially faster than a naive implementation.
+
+
+Optimizing for caching behaviour.
+
+The code is written assuming that the processor has an L1 data cache
+of 32K bytes (or more) and an L2 cache of 256K bytes (or more).  The
+size of a cache line is assumed to be 64 bytes.  The code will of
+course work correctly regardless, but perhaps more slowly than it
+might with some other assumption.
 
 
 Special cases.
