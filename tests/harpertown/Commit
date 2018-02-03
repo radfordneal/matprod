@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit 0b99a8efbf12d8a171935ae02caf14b69bfcb91b
+commit 8d1e7f93613209a89df329cc685ad23a99170155
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Jan 26 14:25:29 2018 -0500
+Date:   Fri Feb 2 17:02:27 2018 -0500
 
-    results for sandybridge
+    more workk on imp-doc
