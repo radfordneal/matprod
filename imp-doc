@@ -38,66 +38,46 @@ special case code for small values of n or k does not apply.
 
 The matprod_vec_vec procedure uses what is essentially the naive
 algorithm, successively adding products of elements, since any
-reordering of additions could affect the result.
+reordering of additions could change the result.
 
 When matprod_mat_mat multiplies matrices x and y to produce result z,
 it computes columns of z in succession.  A column of z is computed by
 first setting the column to the sum of the products of the first two
 columns of x and the first two elements of the corresponding column of
 y, and then successively adding to this column of z the product of
-another column of x with another element of y (two columns of x at a
-time, unless only one column remains).  Two columns of z are computed
-concurrently by this method (unless only one remains) so that the data
-fetched from the columns of x can is used twice.  When this approach
-is applied to a small matrix, two columns of z will fit in the L1 data
-cache, and so will be quickly accessible when products with columns of
-x are added repeatedly (even if not all of x, y, and z fit in the L1
-cache).
+another column of x with another element of y (two columns of x are
+done together, unless only one column remains).  Two columns of z are
+computed concurrently by this method (unless only one remains) so that
+the data fetched from the columns of x can be used twice.  When this
+approach is applied to a small matrix, two columns of z will fit in
+the L1 data cache, and so will be quickly accessible when products
+with columns of x are added repeatedly to it (even if not all of x, y,
+and z fit in the L1 cache).
+
+For matprod_outer, there is only one column of x, which is multiplied
+by successive elements of y to give successive columns of z.  This is
+presently done one column at a time.  (It is not clear that doing two
+columns concurrently would be faster.)
 
 The matprod_mat_vec procedure uses the same method as matprod_mat_mat,
 with y having only a single column.
 
 A different approach is used for matprod_vec_mat, for which the
-columns of x and z have only one element.  
+columns of x and z have only one element.  Successive elements of the
+result are computed as dot products of x with successive columns of y.
+To allow use of SIMD instructions (or other instruction-level
+parallelism), and to reuse data fetched from x, four such dot products
+are computed concurrently (except when fewer than four columns of y
+remain).
 
+The method for matprod_trans1 is similar to that for matprod_vec_mat,
+except that the four dot products computed concurrently are for two
+columns of x and two columns of y, which produce four elements of z in
+a two-by-two block.
 
-SIMD instructions and alignment.
-
-For Intel/AMD processors, the matprod routines can be compiled so that
-some code sections use the SSE2, SSE3, AVX, and AVX2 instrinsics
-provided by gcc.  Other compilers may also provide such intrinsics;
-their availability is assumed to be given by whether the symbols
-__SSE2__, __SSE3__, __AVX__, or __AVX2__ are defined.  For all
-operations, code written in standard C is provided, for use on
-non-Intel/AMD processors, or when the intrinsics are not available, or
-when use of the intrinsics is disabled.  There are often code sections
-for more than one of __SSE2__, __SSE3__, etc, with the most
-powerful/recent option used when the routine is compiled for a
-processor for which it is available.  Sometimes only SSE2 or SSE3 code
-is provided, because there is no advantage to using AVX, or only AVX
-code is provided, because trying to do it with SSE2 or SSE3 does not
-work well.  (Or, of course, suitable AVX or SSE2/SSE3 code may just
-not have been written yet.)
-
-Optional specification of alignment of arguments is allowed.  Some
-code may be generated conditionally on the alignment, for example to
-do some operations before a loop so that the loop operations are
-aligned at good boundaries.  For gcc and gcc look-alikes, alignment is
-sometimes declared using the __builtin_assume_aligned function
-provided in gcc, which may allow the compiler to generate better code.
-In particular, gcc will convert some SSE or AVX intrinsics that
-specify unaligned accesses to ones specifying aligned acccesses if it
-knows the operand always aligned.  Nevertheless, selection of aligned
-versus unaligned operations is often done explicitly in the code (via
-some macros that are defined, such as _mm_loadA_pd).
-
-In some places, alignment is checked at run-time - for example, when
-aligment of the start of a matrix column depends on whether the number
-of rows in the matrix is even or odd.
-
-It is intended that even if no explicit SIMD instructions are used,
-and no alignment information is specified, the matprod routines should
-still be substantially faster than a naive implementation.
+The method for matprod_trans2 is similar to that for matprod_mat_mat,
+except that the elements multiplying columns of x are taken from rows
+of y (rather than columns of y).
 
 
 Optimizing for caching behaviour.
@@ -151,3 +131,42 @@ Since the result of overflow with signed arithmetic is undefined in C,
 it is possible that the unsafe code will actually work when overflow
 happens.  But of course this cannot be relied on.  (The possibility of
 code that is unsafe actually working does make testing difficult.)
+
+
+SIMD instructions and alignment.
+
+For Intel/AMD processors, the matprod routines can be compiled so that
+some code sections use the SSE2, SSE3, AVX, and AVX2 instrinsics
+provided by gcc.  Other compilers may also provide such intrinsics;
+their availability is assumed to be given by whether the symbols
+__SSE2__, __SSE3__, __AVX__, or __AVX2__ are defined.  For all
+operations, code written in standard C is provided, for use on
+non-Intel/AMD processors, or when the intrinsics are not available, or
+when use of the intrinsics is disabled.  There are often code sections
+for more than one of __SSE2__, __SSE3__, etc, with the most
+powerful/recent option used when the routine is compiled for a
+processor for which it is available.  Sometimes only SSE2 or SSE3 code
+is provided, because there is no advantage to using AVX, or only AVX
+code is provided, because trying to do it with SSE2 or SSE3 does not
+work well.  (Or, of course, suitable AVX or SSE2/SSE3 code may just
+not have been written yet.)
+
+Optional specification of alignment of arguments is allowed.  Some
+code may be generated conditionally on the alignment, for example to
+do some operations before a loop so that the loop operations are
+aligned at good boundaries.  For gcc and gcc look-alikes, alignment is
+sometimes declared using the __builtin_assume_aligned function
+provided in gcc, which may allow the compiler to generate better code.
+In particular, gcc will convert some SSE or AVX intrinsics that
+specify unaligned accesses to ones specifying aligned acccesses if it
+knows the operand always aligned.  Nevertheless, selection of aligned
+versus unaligned operations is often done explicitly in the code (via
+some macros that are defined, such as _mm_loadA_pd).
+
+In some places, alignment is checked at run-time - for example, when
+aligment of the start of a matrix column depends on whether the number
+of rows in the matrix is even or odd.
+
+It is intended that even if no explicit SIMD instructions are used,
+and no alignment information is specified, the matprod routines should
+still be substantially faster than a naive implementation.
