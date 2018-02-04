@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit 8d1e7f93613209a89df329cc685ad23a99170155
+commit 57f3e3132ce2671f29c57d77d4d0f2edbce47ed9
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Feb 2 17:02:27 2018 -0500
+Date:   Sat Feb 3 20:18:05 2018 -0500
 
-    more workk on imp-doc
+    bug fix in how split decided
