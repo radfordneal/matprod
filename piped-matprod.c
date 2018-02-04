@@ -552,7 +552,7 @@ void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
+    DECIDE_SPLIT (m, 4*s > m || MINMUL*s > multiplies)
 
     if (s > 1) {
         int w;
@@ -584,7 +584,7 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    DECIDE_SPLIT (n, 4*s > n && MINMUL*s > multiplies)
+    DECIDE_SPLIT (n, 4*s > n || MINMUL*s > multiplies)
 
     if (s > 1) {
         int w;
@@ -617,7 +617,7 @@ void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
+    DECIDE_SPLIT (m, 4*s > m || MINMUL*s > multiplies)
 
     if (s > 1) {
         int w;
@@ -649,7 +649,7 @@ void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
+    DECIDE_SPLIT (m, 4*s > m || MINMUL*s > multiplies)
 
     if (s > 1) {
         int w;
@@ -681,7 +681,7 @@ void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
+    DECIDE_SPLIT (m, 4*s > m || MINMUL*s > multiplies)
 
     if (REAL(x) == REAL(y) && LENGTH(x) == LENGTH(y)) {
         s = 1;  /* Don't split for the symmetric case */
@@ -717,7 +717,7 @@ void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    DECIDE_SPLIT (m, 4*s > m && MINMUL*s > multiplies)
+    DECIDE_SPLIT (m, 4*s > m || MINMUL*s > multiplies)
 
     if (REAL(x) == REAL(y) && LENGTH(x) == LENGTH(y)) {
         s = 1;  /* Don't split for the symmetric case */
