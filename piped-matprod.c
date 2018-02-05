@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef MATPROD_APP_INCLUDED
 #include "matprod-app.h"
@@ -97,27 +98,74 @@ void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
 
     helpers_size_t k = LENGTH(sx);
 
-    SETUP_SPLIT (1)
-
     if (k == 0) {
         z[0] = 0;
         return;
     }
 
-    helpers_size_t a = 0;
-    double sum = 0.0;
+    SETUP_SPLIT(0);
 
-    while (a < k) {
+    helpers_size_t a;
+    double sum;
 
-        helpers_size_t oa = a;
-        helpers_size_t na = k-a <= 4 ? k : a+4;
-        HELPERS_WAIT_IN2 (a, na-1, k);
-        if (a < k) a &= ~3;
+    if (s > 1) {  /* Split to do fetches from x in parallel (may not help) */
 
-        sum = matprod_vec_vec_sub (x+oa, y+oa, a-oa, sum);
+        helpers_size_t k0, k1;
+
+        k0 = w == 0 ? 0 : (helpers_size_t) ((double)k * w / s) & ~3;
+        k1 = w == s-1 ? k : (helpers_size_t) ((double)k * (w+1) / s) & ~3;
+
+        double xb[k1-k0];
+
+        if (w != 0) {
+            while (!helpers_avail0(1)) ;
+        }
+
+        memcpy (xb, x+k0, (k1-k0)*sizeof(double));
+
+        if (w != s-1) helpers_amount_out (1);
+
+        if (w == 0) {
+            sum = 0;
+        }
+        else {
+            while (helpers_avail0(2) != 2) ;
+            sum = z[0];
+        }
+
+        a = k0;
+
+        while (a < k1) {
+
+            helpers_size_t oa = a;
+            helpers_size_t na = k1-a <= 4 ? k1 : a+4;
+            HELPERS_WAIT_IN2 (a, na-1, k);
+            if (a > k1) a = k1;
+            else if (a < k1) a &= ~3;
+
+            sum = matprod_vec_vec_sub (xb+(oa-k0), y+oa, a-oa, sum);
+        }
+
+        z[0] = sum;
     }
 
-    z[0] = sum;
+    else {
+
+        a = 0;
+        sum = 0;
+
+        while (a < k) {
+
+            helpers_size_t oa = a;
+            helpers_size_t na = k-a <= 4 ? k : a+4;
+            HELPERS_WAIT_IN2 (a, na-1, k);
+            if (a < k) a &= ~3;
+
+            sum = matprod_vec_vec_sub (x+oa, y+oa, a-oa, sum);
+        }
+
+        z[0] = sum;
+    }
 }
 
 
@@ -518,9 +566,13 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     if (split > 0) \
         while ((cond) && s > 1) s -= 1;
 
-#define MINMUL0 1024  /* Minimum # of multiplies to not do directly at once*/
-#define MINMUL 4096   /* Desired minimum number of multiplies per thread */
 
+#define MINMUL0 512   /* Minimum # of multiplies to not do directly at once */
+#define MINMUL 2048   /* Desired minimum number of multiplies per thread
+                         (not used for vec_vec) */
+
+
+#define DISABLE_VEC_VEC_SPLIT 1  /* Splitting dot products may be undesirable */
 
 void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x, 
                           helpers_var_ptr y, int split)
@@ -533,9 +585,23 @@ void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    helpers_do_task (HELPERS_PIPE_IN2,
-                     task_piped_matprod_vec_vec,
-                     0, z, x, y);
+    DECIDE_SPLIT (k, DISABLE_VEC_VEC_SPLIT || 512*s>k || (7*512)*s<k || s>10)
+
+    if (s > 1) {
+        int w;
+        for (w = 0; w < s; w++) {
+            helpers_do_task (w == 0   ? HELPERS_PIPE_IN2_OUT :
+                             w == s-1 ? HELPERS_PIPE_IN02 :
+                                        HELPERS_PIPE_IN02_OUT,
+                             task_piped_matprod_vec_vec,
+                             MAKE_OP(w,s,0), z, x, y);
+        }
+    }
+    else {
+        helpers_do_task (HELPERS_PIPE_IN2,
+                         task_piped_matprod_vec_vec,
+                         0, z, x, y);
+    }
 }
 
 

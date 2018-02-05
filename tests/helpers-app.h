@@ -41,6 +41,8 @@ typedef int helpers_var_ptr;
 
 /* Now include the helpers.h file, after the above declarations. */
 
+#define ENABLE_DEBUG 0
+
 #include "helpers.h"
 
 
