@@ -536,7 +536,7 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
 
     helpers_size_t a = 0;
 
-    SETUP_SPLIT (4*s > m || n <= 2 || k <= 1 || m <= 1)
+    SETUP_SPLIT (4*s > m || k <= 1 || m <= 1)
 
     if (k_times_m != 0) {
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
@@ -554,6 +554,7 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     }
 
     else {  /* only one thread */
+
         matprod_trans2 (x, y, z, n, k, m, z, z, 0);
     }
 }

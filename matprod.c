@@ -4608,7 +4608,7 @@ static void matprod_trans2_sub_xrowscols(double * MATPROD_RESTRICT x,
 static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
                                double * MATPROD_RESTRICT y,
                                double * MATPROD_RESTRICT z,
-                               int k, int m);
+                               int k, int m, int yrows);
 
 SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x, 
                            double * MATPROD_RESTRICT y, 
@@ -4629,10 +4629,8 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
         return;
     }
 
-    if (n <= 2) {
-        if (n == 2)
-            matprod_trans2_n2 (x, y, z, k, m);
-        else if (n == 1)
+    if (n <= 1) {
+        if (n == 1)
             matprod_mat_vec (y, x, z, m, k);
         return;
     }
@@ -4676,6 +4674,11 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    if (n == 2) {
+        matprod_trans2_n2 (x, y, z, k, m, yrows);
+        return;
+    }
 
     int sym = x==y && n==m        /* if operands same, result is symmetric, */
               && (n>8 || k>8);    /*    but faster to ignore if n & k small */
@@ -5096,7 +5099,7 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
 static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
                                double * MATPROD_RESTRICT y,
                                double * MATPROD_RESTRICT z,
-                               int k, int m)
+                               int k, int m, int yrows)
 {
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -5104,24 +5107,22 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-    int m2 = m;
-
     /* Compute two columns of the result each time around this loop, 
        updating y, z, and m accordingly. */
 
-    while (m2 > 1) {
+    while (yrows > 1) {
 
         double *r = x;
         double *q = y;
         int k2 = k;
 
-#       if CAN_USE_AVX && 0
+        /* The loops below each time around add the products of two
+           columns of x with elements of the next two rows of y to the
+           sums, adjusting r and q to account for this. */
+
+#       if CAN_USE_AVX && ENABLE_ALL_AVX_CODE
 
             __m256d S = _mm256_setzero_pd();
-
-            /* Each time around this loop, add the products of two columns
-               of x with elements of the next two rows of y to the sums.
-               Adjust r and y to account for this. */
 
             while (k2 > 1) {
                 __m256d Q, R;
@@ -5155,10 +5156,6 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
             __m128d S0 = _mm_setzero_pd();
             __m128d S1 = _mm_setzero_pd();
 
-            /* Each time around this loop, add the products of two columns
-               of x with elements of the next two rows of y to the sums.
-               Adjust r and y to account for this. */
-
             while (k2 > 1) {
                 __m128d R;
                 R = _mm_loadAA_pd(r);
@@ -5186,11 +5183,7 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
 
 #       else  /* non-SIMD code */
 
-            double s[4] = { 0, 0, 0, 0 };
-
-            /* Each time around this loop, add the products of two columns
-               of x with elements of the next two rows of y to the sums.
-               Adjust r and q to account for this. */
+            double s[4] = { 0, 0, 0, 0 };  /* sums for two columns of result */
 
             while (k2 > 1) {
                 double b00 = q[0];
@@ -5226,74 +5219,72 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
 
 #       endif
 
-        /* Move forward two to next column of the result and the next
-           column of y. */
+        /* Move forward two columns to the next column to compute of
+           the result, and also move forward by two rows of y, in
+           corresponding fashion. */
 
-        y += 2;
-        z += 4;
-        m2 -= 2;
+        y += 2;     /* forward by two rows */
+        z += 4;     /* forward by two columns */
+        yrows -= 2;
     }
 
     /* If m is odd, compute the last column of the result. */
 
-    if (m2 >= 1) {
+    if (yrows >= 1) {
 
         double *r = x;
+        double *q = y;
         int k2 = k;
+
+        /* The loops below each time around add the products of two
+           columns of x with two elements of the last row of y to the
+           sums. */
 
 #       if CAN_USE_SSE2
         {
             __m128d S = _mm_setzero_pd();
 
-            /* Each time around this loop, add the products of two
-               columns of x with two elements of the last row of y
-               to S. */
-
             while (k2 > 1) {
-                S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (y[0]),
+                S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (q[0]),
                                                _mm_loadAA_pd(r)));
-                S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd ((y+m)[0]),
+                S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd ((q+m)[0]),
                                                _mm_loadAA_pd(r+2)));
-                y += m; y += m;
+                q += m; q += m;
                 r += 4;
                 k2 -= 2;
             }
 
             if (k2 >= 1) {
-                S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (y[0]),
+                S = _mm_add_pd (S, _mm_mul_pd (_mm_set1_pd (q[0]),
                                                _mm_loadAA_pd(r)));
             }
 
-            /* Store the two sums in S in the result vector. */
+            /* Store the two sums in S in the last column of the result. */
 
             _mm_storeAA_pd (z, S);
         }
 #       else  /* non-SIMD code */
         {
-            double s[2] = { 0, 0 }; /* sums for the 2 values in the result*/
-
-            /* Each time around this loop, add the products of two
-               columns of x with two elements of the last row of y
-               to s[0] and s[1]. */
+            double s[2] = { 0, 0 }; /* sums for 2 values in last col of result*/
 
             while (k2 > 1) {
-                double b1 = y[0];
-                double b2 = (y+m)[0];
+                double b1 = q[0];
+                double b2 = (q+m)[0];
                 s[0] = (s[0] + (r[0] * b1)) + (r[2] * b2);
                 s[1] = (s[1] + (r[1] * b1)) + (r[3] * b2);
-                y += m; y += m;
+                q += m; q += m;
                 r += 4;
                 k2 -= 2;
             }
 
             if (k2 >= 1) {
-                double b = y[0];
+                double b = q[0];
                 s[0] += r[0] * b;
                 s[1] += r[1] * b;
-                /* y += 1; */
             }
 
-            /* Store the two sums in s[0] and s[1] in the result vector. */
+            /* Store the two sums in s[0] and s[1] in the last column
+               of the result. */
 
             z[0] = s[0];
             z[1] = s[1];
