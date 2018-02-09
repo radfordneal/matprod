@@ -5292,3 +5292,39 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
 #       endif
     }
 }
+
+/* Product of the transpose of an n x k matrix (x) and the transpose
+   of an m x k matrix (y) with the result stored in z. */
+
+
+SCOPE void matprod_trans12 (double * MATPROD_RESTRICT x, 
+                            double * MATPROD_RESTRICT y, 
+                            double * MATPROD_RESTRICT z,
+                            int n, int k, int m)
+{
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    if (k <= 1) {
+        if (k == 1)
+            matprod_outer (x, y, z, n, m EXTRAZ);
+        else
+            set_to_zeros (z, (size_t)n*m);
+        return;
+    }
+
+    if (n <= 1) {
+        if (n == 1)
+            matprod_mat_vec (y, x, z, m, k);
+        return;
+    }
+
+    if (m <= 1) {
+        if (m == 1)
+            matprod_vec_mat (y, x, z, k, n EXTRAZ);
+        return;
+    }
+}

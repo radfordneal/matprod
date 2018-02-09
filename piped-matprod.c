@@ -559,6 +559,49 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     }
 }
 
+
+/* Product of the transpose of an n x k matrix (x) and the transpose
+   of an m x k matrix (y) with result stored in z, with no pipelining
+   of inputs or output. */
+
+void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz, 
+                                 helpers_var_ptr sx, helpers_var_ptr sy)
+{
+    double * MATPROD_RESTRICT x = REAL(sx);
+    double * MATPROD_RESTRICT y = REAL(sy);
+    double * MATPROD_RESTRICT z = REAL(sz);
+
+    helpers_size_t k = OP_K(op);
+    helpers_size_t n_times_k = LENGTH(sx);
+    helpers_size_t k_times_m = LENGTH(sy);
+    helpers_size_t n = n_times_k / k;
+    helpers_size_t m = k_times_m / k;
+
+    helpers_size_t a = 0;
+
+    SETUP_SPLIT (4*s > m || k <= 1 || m <= 1 || 1 /* for now */)
+
+    if (k_times_m != 0) {
+        HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
+    }
+
+    if (s > 1) {
+
+        helpers_size_t d, d1;
+        d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
+        d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
+
+        /* matprod_trans12_sub (x, y+d, z+d*n, n, k, m, d1-d, z, z+d*n, w); */
+
+        if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
+    }
+
+    else {  /* only one thread */
+
+        matprod_trans12 (x, y, z, n, k, m);
+    }
+}
+
 /* -------------------------------------------------------------------------- */
 
 #define DECIDE_SPLIT(size,cond) \
@@ -802,6 +845,39 @@ void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x,
     else {
         helpers_do_task (HELPERS_PIPE_OUT, 
                          task_piped_matprod_trans2,
+                         k, z, x, y);
+    }
+}
+
+
+void par_matprod_trans12 (helpers_var_ptr z, helpers_var_ptr x, 
+                          helpers_var_ptr y, int k, int split)
+{
+    helpers_size_t n = LENGTH(x) / k;
+    helpers_size_t m = LENGTH(y) / k;
+    double multiplies;
+
+    if (split == 0 || (multiplies = (double)n*k*m) < MINMUL0) {
+        helpers_wait_until_not_being_computed(y);
+        matprod_trans12 (REAL(x), REAL(y), REAL(z), n, k, m);
+        return;
+    }
+
+    DECIDE_SPLIT (m, 4*s > m || MINMUL*s > multiplies)
+
+    if (s > 1) {
+        int w;
+        for (w = 0; w < s; w++) {
+            helpers_do_task (w == 0   ? HELPERS_PIPE_OUT : 
+                             w == s-1 ? HELPERS_PIPE_IN0_OUT
+                                      : HELPERS_PIPE_IN0,
+                             task_piped_matprod_trans12,
+                             MAKE_OP(w,s,k), z, x, y);
+        }
+    }
+    else {
+        helpers_do_task (0,
+                         task_piped_matprod_trans12,
                          k, z, x, y);
     }
 }

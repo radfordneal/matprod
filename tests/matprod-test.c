@@ -33,11 +33,7 @@ void do_test (int rep)
   for (r = 0; r<rep; r++)
   { v = vec[nmat];
     for (i = nmat-2; i>=0; i--)
-    { if (i==nmat-2 && trans[i] && trans[i+1])
-      { fprintf(stderr,"Transposing both operands is not allowed\n");
-        exit(1);
-      }
-      v |= vec[i+1];
+    { v |= vec[i+1];
       if (vec[i] && v && matrows[i]==1 && matcols[nmat-1]==1) 
       { *product[i] = matprod_vec_vec (matrix[i], product[i+1], matcols[i]);
       }
@@ -49,17 +45,25 @@ void do_test (int rep)
       { matprod_vec_mat (matrix[i], product[i+1], product[i],
                          matcols[i], matcols[nmat-1]);
       }
-      else if (trans[i])
-      { matprod_trans1 (matrix[i], product[i+1], product[i],
-                        matrows[i], matcols[i], matcols[nmat-1]);
-      }
-      else if (i==nmat-2 && trans[i+1])
-      { matprod_trans2 (matrix[i], product[i+1], product[i],
-                        matrows[i], matcols[i], matcols[nmat-1]);
-      }
       else
-      { matprod_mat_mat (matrix[i], product[i+1], product[i],
-                         matrows[i], matcols[i], matcols[nmat-1]);
+      { int t1 = trans[i];
+        int t2 = i==nmat-2 ? trans[i+1] : 0;
+        if (t1 && t2)
+        { matprod_trans12 (matrix[i], product[i+1], product[i],
+                           matrows[i], matcols[i], matcols[nmat-1]);
+        }
+        else if (t1)
+        { matprod_trans1 (matrix[i], product[i+1], product[i],
+                          matrows[i], matcols[i], matcols[nmat-1]);
+        }
+        else if (t2)
+        { matprod_trans2 (matrix[i], product[i+1], product[i],
+                          matrows[i], matcols[i], matcols[nmat-1]);
+        }
+        else
+        { matprod_mat_mat (matrix[i], product[i+1], product[i],
+                           matrows[i], matcols[i], matcols[nmat-1]);
+        }
       }
     }
   }  
