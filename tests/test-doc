@@ -42,10 +42,9 @@ printed when only fewer exist.  If the environment variable PRINTWHOLE
 is defined (as anything), the entire result matrix is also printed.
 
 If an argument after "rep" is "t" or "T", the matrix whose dimensions
-follow is stored in transposed form, and the trans1 or trans2 form of
-the multiply routine is called (or analogous routines for BLAS tests).
-Note that it is not allowed to transpose both operands with the
-matprod routines (but this is allowed with BLAS routines).  
+follow is stored in transposed form, and the trans1, trans2, or
+trans12 form of the multiply routine is called (or a call with
+analogous options is done for BLAS tests).
 
 In general, n>2 arguments (other than "t" or "T") follow the rep
 argument, defining the dimensions of n-1 matrices, which are used as

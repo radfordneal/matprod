@@ -32,5 +32,6 @@
 ../run-tests-mat-mat $1
 ../run-tests-trans1 $1
 ../run-tests-trans2 $1
+../run-tests-trans12 $1
 ../run-tests-special $1
 ../run-tests-seq $1

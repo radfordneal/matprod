@@ -248,6 +248,12 @@ can be stored in an int.
       is symetrical, redundant computations of symetric elements are
       avoided.
 
+    void matprod_trans12 (double *x, double *y, double *z, int n, int k, int m)
+
+      Multiply the transpose of matrix x, of dimension k x n, and the
+      transpose of matrix y, of dimension m x k, storing the result in
+      matrix z, of dimension n x m.
+
     void matprod_fill_lower (double *z, int n)
 
       Fills the lower triangle of the n x n matrix z with the symetric
@@ -263,23 +269,25 @@ special code, when the general procedure would be significantly
 slower.  Also, matprod_vec_mat and other procedures will simply call
 matprod_scalar_vec when the operation reduces to multiplication by a
 scalar.  Similarly,the matprod_outer procedure will be called from
-matprod_mat_mat, matprod_trans1, or matprod_trans2 when the value of k
-passed is one.  Also, cases of matprod_mat_mat, matprod_trans1, and
-matprod_trans2 that reduce to matprod_vec_mat, or matprod_mat_vec will
-call the specialized routine, and similarly cases of matprod_mat_vec
-and matprod_vec_mat that reduce to matprod_vec_vec will call that
-routine.  Calling a specialized routine directly will of course be
-slightly faster when it is known that it is appropriate.
+matprod_mat_mat, matprod_trans1, matprod_trans2, and matprod_trans12
+when the value of k passed is one.  Also, cases of matprod_mat_mat,
+matprod_trans1, matprod_trans2, and matprod_trans12 that reduce to
+matprod_vec_mat, or matprod_mat_vec will call the specialized routine,
+and similarly cases of matprod_mat_vec and matprod_vec_mat that reduce
+to matprod_vec_vec will call that routine.  Calling a specialized
+routine directly will of course be slightly faster when it is known
+that it is appropriate.
 
 
 Parallel operation using task procedures in piped-matprod.c.
 
 Task procedures are defined in piped-matprod.c (and declared in
 piped-matprod.h) for use with the "helpers" facility, with pipelining
-of the second operand (except for matprod_trans2) and pipelining of
-the output for matrix-matrix and vector-matrix operations.  It is also
-possible to schedule several of these task procedures to run
-concurrently, each computing a portion of the result.
+of the second operand (except for matprod_trans2 and matprod_trans12)
+and pipelining of the output for matrix-matrix and vector-matrix
+operations (except for matprod_trans12).  It is also possible to
+schedule several of these task procedures to run concurrently, each
+computing a portion of the result.
 
 Using these routines requires the helpers.h and helpers.c files from
 the helpers library, available at github.com/radfordneal/helpers.  A
@@ -367,6 +375,13 @@ available (none are provided for fill_lower or scalar_vec):
       operand transposed, with k being the number of columns in x and
       y, with pipelining of the output, but not of the input.
 
+    void par_matprod_trans12 (helpers_var_ptr z, helpers_var_ptr x, 
+                             helpers_var_ptr y, int k, int split)
+
+      Schedules a task to perform a matrix-matrix product with both
+      operands transposed, with k being the number of rows in x and
+      columns in y, with no pipelining of either input or output.
+
 An application can instead do its own scheduling of task procedures.
 These are declared in piped-matprod.h to be of type helpers_task_proc,
 for which the arguments are an op value, a pointer to the result
@@ -376,8 +391,8 @@ matrix/vector.
 
 When an operation is to be done by a single task, the op value passed
 to the task procedure should be zero except for the mat_mat, trans1,
-and trans2 procedures, for which it should be the value of k (the
-number of products summed to compute each element of the result).
+trans2, and trans12 procedures, for which it should be the value of k
+(the number of products summed to compute each element of the result).
 
 When an operation is to be split between several tasks, the low 32
 bits of the op value should be the value of k (or zero), the 8 bits
@@ -428,8 +443,19 @@ non-pipelined procedures above, and are as follows:
       second operand matrix, with column-by-column pipelining of the
       output, but no pipelining of the operands.  (However, this task
       procedure does explicitly wait for the second operand to become
-      available, in case it has been scheduled with pipelining of this 
-      operand, since it is pipelined for all the other task procedures.)
+      available, in case it has been scheduled with pipelining of this
+      operand, since it is pipelined for many of the other task
+      procedures.)
+
+    task_piped_matprod_trans12
+
+      Multiplies the transpose of the first operand matrix and the
+      transpose of the second operand matrix, with no pipelining of
+      the output and no pipelining of the operands.  (However, this
+      task procedure does explicitly wait for the second operand to
+      become available, in case it has been scheduled with pipelining
+      of this operand, since it is pipelined for many of the other
+      task procedures.)
 
 Note that, to reduce overhead, columns or elements of pipelined output
 may not always be made available immediately after being computed.
