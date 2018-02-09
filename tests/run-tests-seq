@@ -39,6 +39,8 @@ echo " "; time $prog 2$Z t 1287 t 1201 670 499
 
 echo " "; time $prog 1$Z 1287 1201 444 499 670 499
 echo " "; time $prog 1$Z t 1287 t 1201 t 444 499 t 670 499
+echo " "; time $prog 1$Z t 1287 t 1201 t 444 t 499 670 499
+echo " "; time $prog 1$Z t 1287 t 1201 t 444 t 499 t 670 499
 echo " "; time $prog 1$Z t 1287 t 1201 t 444 499 T 670 499
 echo " "; time $prog 1$Z t 1287 t 1201 t 444 T 499 670 499
 
