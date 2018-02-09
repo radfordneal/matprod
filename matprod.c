@@ -4644,9 +4644,10 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
     matprod_trans2_sub (x, y, z, n, k, m, m EXTRAN);
 }
 
-/* The general case with n > 2.  Calls matprod_trans2_sub_xrows to do
-   parts (only one part for a matrix with fewer than TRANS2_XROWS
-   xrows and fewer than TRANS2_XCOLS columns).
+/* The general case with n, m, and k greater than 1.  Calls
+   matprod_trans2_sub_xrows to do parts (only one part for a matrix
+   with fewer than TRANS2_XROWS xrows and fewer than TRANS2_XCOLS
+   columns).
 
    The definition of TRANS2_XROWS is designed to keep two columns of z
    in an L1 cache of 32K bytes or more, given that two columns of z
