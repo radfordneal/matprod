@@ -5414,16 +5414,14 @@ printf("i %d\n",i);
             int zzr = i < n-zr ? zr : n-i;
 
             matprod_mat_mat_sub_xrows (y, xx, ztmp, m, k, zzr, 
-                                       zzc, zr EXTRAZ);
+                                       zzc, zzc EXTRAZ);
 printf(" & i %d  j %d  n %d  m %d  x %p  zcols %d\n",i,j,n,m,x,zcols);
 
             int ii, jj;
             for (ii = 0; ii < zzr; ii++) {
                 for (jj = 0; jj < zzc; jj++) {
 printf("> %d %d %d %d - %d %f\n",i,ii,jj,n,i + ii + jj*n,ztmp[ii + jj*zr]);
-if (i + ii + (size_t)jj*n >= zr*zc) abort();
-if (i + ii + (size_t)jj*n < 0) abort();
-                    z [i + ii + (size_t)jj*n] = ztmp[ii + jj*zr];
+                    z [i + ii + (size_t)jj*n] = ztmp[jj + ii*zzc];
                 }
             }
 
