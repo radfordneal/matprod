@@ -48,6 +48,21 @@
 #endif
 
 
+/* Debugging facilities. */
+
+#define DEBUG_PRINTF 1   /* Set to 1 to enable printf of procedure args */
+
+#if DEBUG_PRINTF
+#   include <stdio.h>
+#endif
+
+// #define NDEBUG           /* Define to disable assertion check */
+#include <assert.h>
+
+#define CHK_ALIGN(p) \
+    assert (((uintptr_t)(p)&(ALIGN-1)) == ALIGN_OFFSET)
+
+
 /* Set up alignment definitions. */
 
 #ifndef ALIGN
@@ -78,19 +93,6 @@
 #else
 #define CAN_ASSUME_ALIGNED 0
 #define ASSUME_ALIGNED(x,a,o) (x)
-#endif
-
-
-/* Debugging facilities. */
-
-#define DEBUG_PRINTF 1   /* Set to 1 to enable printf of procedure args */
-
-#if 0  /* Enable for debug check */
-#   define CHK_ALIGN(p) \
-      do { if (((uintptr_t)(p)&(ALIGN-1)) != ALIGN_OFFSET) abort(); } while (0)
-#else
-#   define CHK_ALIGN(p) \
-      do {} while (0)
 #endif
 
 
@@ -277,6 +279,11 @@ SCOPE void matprod_fill_lower (double * MATPROD_RESTRICT z, int n)
 SCOPE void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
                                          double * MATPROD_RESTRICT z, int m)
 {
+#   if DEBUG_PRINTF
+        printf("scalar_vec %f %p %p - %d\n",
+                            x, y, z,   m);
+#   endif
+
     CHK_ALIGN(y); CHK_ALIGN(z);
 
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
@@ -356,6 +363,11 @@ static double matprod_vec_vec_sub(double * MATPROD_RESTRICT x,
 SCOPE double matprod_vec_vec (double * MATPROD_RESTRICT x, 
                               double * MATPROD_RESTRICT y, int k)
 {
+#   if DEBUG_PRINTF
+        printf("vec_vec %p %p - %d\n",
+                         x, y,   k);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -378,6 +390,11 @@ SCOPE double matprod_vec_vec (double * MATPROD_RESTRICT x,
 static double matprod_vec_vec_sub (double * MATPROD_RESTRICT x, 
                                    double * MATPROD_RESTRICT y, int k, double s)
 {
+#   if DEBUG_PRINTF
+        printf("vec_vec_sub %p %p %f - %d\n",
+                             x, y, s,   k);
+#   endif
+
     int i = 0;
 
     /* Use an unrolled loop to add most products, perhaps using SSE2
@@ -543,6 +560,11 @@ SCOPE void matprod_vec_mat (double * MATPROD_RESTRICT x,
                             double * MATPROD_RESTRICT y, 
                             double * MATPROD_RESTRICT z, int k, int m EXTRAD)
 {
+#   if DEBUG_PRINTF
+        printf("vec_mat %p %p %p - %d %d\n",
+                         x, y, z,   k, m);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -621,6 +643,11 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                                        double * MATPROD_RESTRICT z,
                                        int k, int m, int yrows, int add EXTRAD)
 {
+#   if DEBUG_PRINTF
+        printf("vec_mat_sub_yrows %p %p %p - %d %d %d\n",
+                                   x, y, z,   k, m, yrows);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -1272,6 +1299,11 @@ static void matprod_vec_mat_k2 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT z, int m)
 
 {
+#   if DEBUG_PRINTF
+        printf("vec_mat_k2 %p %p %p - %d\n",
+                            x, y, z,   m);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -1443,6 +1475,11 @@ SCOPE void matprod_mat_vec (double * MATPROD_RESTRICT x,
                             double * MATPROD_RESTRICT y, 
                             double * MATPROD_RESTRICT z, int n, int k)
 {
+#   if DEBUG_PRINTF
+        printf("mat_vec %p %p %p - %d %d\n",
+                         x, y, z,   n, k);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -1460,6 +1497,11 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
                                  double * MATPROD_RESTRICT z, 
                                  int n, int k, int add)
 {
+#   if DEBUG_PRINTF
+        printf("mat_vec_sub %p %p %p - %d %d %d\n",
+                             x, y, z,   n, k, add);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -1501,6 +1543,11 @@ static void matprod_mat_vec_sub_xrows0 (double * MATPROD_RESTRICT x,
                                         double * MATPROD_RESTRICT z,
                                         int n, int k, int xrows, int add)
 {
+#   if DEBUG_PRINTF
+        printf("mat_vec_sub_xrows0 %p %p %p - %d %d %d %d\n",
+                                    x, y, z,   n, k, xrows, add);
+#   endif
+
     /* The general case with n > 4.  Calls matprod_mat_vec_sub_xrows
        to do parts (only one part for a matrix with fewer than
        MAT_VEC_XROWS rows).
@@ -1549,6 +1596,11 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
                                        double * MATPROD_RESTRICT z,
                                        int n, int k, int xrows, int add)
 {
+#   if DEBUG_PRINTF
+        printf("mat_vec_sub_xrows %p %p %p - %d %d %d %d\n",
+                                   x, y, z,   n, k, xrows, add);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -1884,6 +1936,11 @@ static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT z,
                                 int k, int add)
 {
+#   if DEBUG_PRINTF
+        printf("mat_vec_n2 %p %p %p - %d %d\n",
+                            x, y, z,   k, add);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -2005,6 +2062,11 @@ static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT z,
                                 int k, int add)
 {
+#   if DEBUG_PRINTF
+        printf("mat_vec_n3 %p %p %p - %d %d\n",
+                            x, y, z,   k, add);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -2110,6 +2172,11 @@ static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT z,
                                 int k, int add)
 {
+#   if DEBUG_PRINTF
+        printf("mat_vec_n4 %p %p %p - %d %d\n",
+                            x, y, z,   k, add);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -2243,6 +2310,11 @@ SCOPE void matprod_outer (double * MATPROD_RESTRICT x,
                           double * MATPROD_RESTRICT y, 
                           double * MATPROD_RESTRICT z, int n, int m EXTRAD)
 {
+#   if DEBUG_PRINTF
+        printf("outer %p %p %p - %d %d\n",
+                       x, y, z,   n, m);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -2301,6 +2373,17 @@ static void matprod_outer_sub (double * MATPROD_RESTRICT x,
                                double * MATPROD_RESTRICT z, 
                                int n, int m, int rows EXTRAD)
 {
+#   if DEBUG_PRINTF
+        printf("outer_sub %p %p %p - %d %d %d\n",
+                           x, y, z,   n, m, rows);
+#   endif
+
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
     int j = 0;
 
     while (j < m) {
@@ -2414,6 +2497,17 @@ static void matprod_outer_n4 (double * MATPROD_RESTRICT x,
                               double * MATPROD_RESTRICT y,
                               double * MATPROD_RESTRICT z, int m)
 {
+#   if DEBUG_PRINTF
+        printf("outer_n4 %p %p %p - %d\n",
+                          x, y, z,   m);
+#   endif
+
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
     int j = 0;
 
 #   if CAN_USE_AVX
@@ -2505,6 +2599,17 @@ static void matprod_outer_n3 (double * MATPROD_RESTRICT x,
                               double * MATPROD_RESTRICT y,
                               double * MATPROD_RESTRICT z, int m)
 {
+#   if DEBUG_PRINTF
+        printf("outer_n3 %p %p %p - %d\n",
+                          x, y, z,   m);
+#   endif
+
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
     int j = 0;
 
 #   if CAN_USE_AVX
@@ -2606,6 +2711,17 @@ static void matprod_outer_n2 (double * MATPROD_RESTRICT x,
                               double * MATPROD_RESTRICT y,
                               double * MATPROD_RESTRICT z, int m)
 {
+#   if DEBUG_PRINTF
+        printf("outer_n2 %p %p %p - %d\n",
+                          x, y, z,   m);
+#   endif
+
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
+
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
     int j = 0;
 
 #   if CAN_USE_AVX || CAN_USE_SSE2
@@ -2703,6 +2819,11 @@ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x,
                             double * MATPROD_RESTRICT z, 
                             int n, int k, int m EXTRAD)
 {
+#   if DEBUG_PRINTF
+        printf("mat_mat %p %p %p - %d %d %d\n",
+                         x, y, z,   n, k, m);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -2813,8 +2934,8 @@ static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x,
                                        int xrows, int zn EXTRAD)
 {
 #   if DEBUG_PRINTF
-        printf("* %p %p %p - %d %d %d - %d %d\n",
-                   x, y, z,   n, k, m,  xrows, zn);
+        printf("mat_mat_sub_xrows %p %p %p - %d %d %d - %d %d\n",
+                                   x, y, z,   n, k, m,  xrows, zn);
 #   endif
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
@@ -2887,8 +3008,9 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                                            int add EXTRAD)
 {
 #   if DEBUG_PRINTF
-        printf("- %p %p %p - %d %d %d - %d %d %d\n",
-                   x, y, z,   n, k, m,  xrows, xcols, add);
+        printf("mat_mat_sub_xrowscols %p %p %p - %d %d %d - %d %d %d %d\n",
+                                       x, y, z,   n, k, m,  xrows, zn, xcols,
+                                                            add);
 #   endif
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
@@ -3658,6 +3780,11 @@ static void matprod_mat_mat_n2 (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT z, 
                                 int k, int m)
 {
+#   if DEBUG_PRINTF
+        printf("mat_mat_n2 %p %p %p - %d %d\n",
+                            x, y, z,   k, m);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -3862,6 +3989,11 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
                            double * MATPROD_RESTRICT z, 
                            int n, int k, int m EXTRAD)
 {
+#   if DEBUG_PRINTF
+        printf("trans1 %p %p %p - %d %d %d\n",
+                        x, y, z,   n, k, m);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -3980,6 +4112,11 @@ static void matprod_trans1_sub_xrows (double * MATPROD_RESTRICT x,
                                       int n, int k, int m,
                                       int sym, int add, int xrows EXTRAD)
 {
+#   if DEBUG_PRINTF
+        printf("trans1_sub_xrows %p %p %p - %d %d %d - %d %d %d\n",
+                                  x, y, z,   n, k, m,   sym, add, xrows);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -4035,8 +4172,9 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                                           int xrows, int xcols EXTRAD)
 {
 #   if DEBUG_PRINTF
-        printf("- %p %p %p - %d %d %d - %d %d %d %d\n",
-                   x, y, z,   n, k, m,  sym, add, xrows, xcols);
+        printf("trans1_sub_xrowscols %p %p %p - %d %d %d - %d %d %d %d\n",
+                                      x, y, z,   n, k, m,  sym, add, 
+                                                           xrows, xcols);
 #   endif
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
@@ -4546,6 +4684,11 @@ static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
                                double * MATPROD_RESTRICT z,
                                int n, int m)
 {
+#   if DEBUG_PRINTF
+        printf("trans1_k2 %p %p %p - %d %d\n",
+                           x, y, z,   n, m);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -4660,6 +4803,11 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
                            double * MATPROD_RESTRICT z,
                            int n, int k, int m EXTRAD)
 {
+#   if DEBUG_PRINTF
+        printf("trans2 %p %p %p - %d %d %d\n",
+                        x, y, z,   n, k, m);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -4713,8 +4861,8 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
                                 int yrows EXTRAD)
 {
 #   if DEBUG_PRINTF
-        printf("^ %p %p %p - %d %d %d - %d\n",
-                   x, y, z,   n, k, m,  yrows);
+        printf("trans2_sub %p %p %p - %d %d %d - %d\n",
+                            x, y, z,   n, k, m,  yrows);
 #   endif
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
@@ -4809,8 +4957,8 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
                                       int sym, int xrows, int yrows EXTRAD)
 {
 #   if DEBUG_PRINTF
-        printf("^ %p %p %p - %d %d %d - %d %d %d\n",
-                   x, y, z,   n, k, m,  sym, xrows, yrows);
+        printf("trans2_sub_xrows %p %p %p - %d %d %d - %d %d %d\n",
+                                  x, y, z,   n, k, m,  sym, xrows, yrows);
 #   endif
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
@@ -4862,8 +5010,9 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
                                           int xcols, int add EXTRAD)
 {
 #   if DEBUG_PRINTF
-        printf("- %p %p %p - %d %d %d - %d %d %d %d %d\n",
-                   x, y, z,   n, k, m,  sym, xrows, yrows, xcols, add);
+        printf("trans2_sub_xrowscols %p %p %p - %d %d %d - %d %d %d %d %d\n",
+                                      x, y, z,   n, k, m,  sym, xrows, yrows,
+                                                           xcols, add);
 #   endif
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
@@ -5153,6 +5302,11 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
                                double * MATPROD_RESTRICT z,
                                int k, int m, int yrows)
 {
+#   if DEBUG_PRINTF
+        printf("trans2_n2 %p %p %p - %d %d - %d\n",
+                           x, y, z,   k, m,  yrows);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -5358,6 +5512,11 @@ SCOPE void matprod_trans12 (double * MATPROD_RESTRICT x,
                             double * MATPROD_RESTRICT z,
                             int n, int k, int m)
 {
+#   if DEBUG_PRINTF
+        printf("trans12 %p %p %p - %d %d %d\n",
+                         x, y, z,   n, k, m);
+#   endif
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -5393,8 +5552,8 @@ static void matprod_trans12_sub (double * MATPROD_RESTRICT x,
                                  int n, int k, int m, int zcols)
 {
 #   if DEBUG_PRINTF
-        printf("- %p %p %p - %d %d %d - %d\n",
-                   x, y, z,   n, k, m,  zcols);
+        printf("trans12_sub %p %p %p - %d %d %d - %d\n",
+                             x, y, z,   n, k, m,  zcols);
 #   endif
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
