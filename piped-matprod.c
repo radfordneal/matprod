@@ -579,7 +579,7 @@ void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
 
     helpers_size_t a = 0;
 
-    SETUP_SPLIT (4*s > m || k <= 1 || m <= 1 || 1 /* for now */)
+    SETUP_SPLIT (4*s > m || k <= 1 || m <= 1)
 
     if (k_times_m != 0) {
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
@@ -591,7 +591,7 @@ void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
         d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
         d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
 
-        /* matprod_trans12_sub (x, y+d, z+d*n, n, k, m, d1-d, z, z+d*n, w); */
+        matprod_trans12_sub (x, y+d, z+d*n, n, k, m, d1-d);
 
         if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
     }

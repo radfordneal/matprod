@@ -5410,8 +5410,13 @@ static void matprod_trans12_sub (double * MATPROD_RESTRICT x,
 
             int zzr = i < n-zr ? zr : n-i;
 
-            matprod_mat_mat_sub_xrows (y, xx, ztmp, m, k, zzr, 
-                                       zzc, zzc EXTRAZ);
+            if (m == 2) {
+                matprod_mat_mat_n2 (y, xx, ztmp, k, zzr);
+            }
+            else {
+                matprod_mat_mat_sub_xrows (y, xx, ztmp, m, k, zzr, 
+                                           zzc, zzc EXTRAZ);
+            }
 
             int ii, jj;
             for (ii = 0; ii < zzr; ii++) {

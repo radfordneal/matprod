@@ -56,9 +56,11 @@ extern helpers_task_proc task_output_vector;
 ( p==task_piped_matprod_vec_vec ? "matprod_vec_vec" : \
   p==task_piped_matprod_mat_vec ? "matprod_mat_vec" : \
   p==task_piped_matprod_vec_mat ? "matprod_vec_mat" : \
+  p==task_piped_matprod_outer   ? "matprod_outer" : \
+  p==task_piped_matprod_mat_mat ? "matprod_mat_mat" : \
   p==task_piped_matprod_trans1  ? "matprod_trans1" : \
   p==task_piped_matprod_trans2  ? "matprod_trans2" : \
-  p==task_piped_matprod_mat_mat ? "matprod_mat_mat" : \
+  p==task_piped_matprod_trans12 ? "matprod_trans12" : \
   p==task_output_vector         ? "output_vector" : "?" \
 )
 
