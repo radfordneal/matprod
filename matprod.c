@@ -5395,7 +5395,10 @@ static void matprod_trans12_sub (double * MATPROD_RESTRICT x,
     if (zr > n)
         zr = n;
 
-    double ztmp [zr*zc];
+    double zelem [zr*zc + 3];  /* +3 to allow alignment */
+    double *ztmp = zelem;
+    while ((((uintptr_t)ztmp) & (ALIGN-1)) != ALIGN_OFFSET)
+        ztmp += 1;
 
     int j = 0;
 
