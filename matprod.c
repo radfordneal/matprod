@@ -3013,6 +3013,12 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
                                                             add);
 #   endif
 
+    assert (k >= 2);
+    assert (m >= 2);
+    assert (n >= 3);
+    assert (xrows >= 3);
+    assert (xcols >= 2);
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
