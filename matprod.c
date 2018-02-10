@@ -2807,8 +2807,8 @@ static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x,
                                        int n, int k, int m,
                                        int xrows, int zn EXTRAD)
 {
-    printf("* %p %p %p - %d %d %d - %d %d\n",
-               x, y, z,   n, k, m,  xrows, zn);
+/*  printf("* %p %p %p - %d %d %d - %d %d\n",
+               x, y, z,   n, k, m,  xrows, zn); */
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -5375,8 +5375,8 @@ static void matprod_trans12_sub (double * MATPROD_RESTRICT x,
                                  double * MATPROD_RESTRICT z,
                                  int n, int k, int m, int zcols)
 {
-    printf("- %p %p %p - %d %d %d - %d\n",
-               x, y, z,   n, k, m,  zcols);
+/*  printf("- %p %p %p - %d %d %d - %d\n",
+               x, y, z,   n, k, m,  zcols); */
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -5395,14 +5395,11 @@ static void matprod_trans12_sub (double * MATPROD_RESTRICT x,
     if (zr > n)
         zr = n;
 
-    printf(". %d %d\n",zr,zc);
-
     double ztmp [zr*zc];
 
     int j = 0;
 
     while (j < zcols) {
-printf("j %d\n",j);
 
         int zzc = j < zcols-zc ? zc : zcols-j;
 
@@ -5410,32 +5407,25 @@ printf("j %d\n",j);
         int i = 0;
 
         while (i < n) {
-printf("i %d\n",i);
+
             int zzr = i < n-zr ? zr : n-i;
 
             matprod_mat_mat_sub_xrows (y, xx, ztmp, m, k, zzr, 
                                        zzc, zzc EXTRAZ);
-printf(" & i %d  j %d  n %d  m %d  x %p  zcols %d\n",i,j,n,m,x,zcols);
 
             int ii, jj;
             for (ii = 0; ii < zzr; ii++) {
                 for (jj = 0; jj < zzc; jj++) {
-printf("> %d %d %d %d - %d %f\n",i,ii,jj,n,i + ii + jj*n,ztmp[ii + jj*zr]);
                     z [i + ii + (size_t)jj*n] = ztmp[jj + ii*zzc];
                 }
             }
-
-printf(" $ i %d  j %d  n %d  m %d  x %p  zcols %d  zzc %d\n",i,j,n,m,x,zcols,zzc);
-printf(" $ i %d  j %d  n %d  m %d  x %p  zcols %d  zzc %d\n",i,j,n,m,x,zcols,zzc);
 
             xx += (size_t)zzr*k;
             i += zzr;
         }
 
-printf("new1 j %d, zzc %d\n",j,zzc);
         y += zzc;
         z += (size_t)zzc*n;
         j += zzc;
-printf("new2 j %d, zzc %d\n",j,zzc);
     }
 }
