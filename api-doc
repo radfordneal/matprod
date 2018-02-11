@@ -28,7 +28,8 @@ program.  Distinguishing features of this library are
      identical to what would be produced with a naive implementation.
 
    - No allocation of temporary storage (except, of course, for small
-     amounts on the procedure-call stack).
+     amounts on the procedure-call stack, with only matprod_trans12
+     allocating a significant amount, up to about 16K bytes).
 
    - Good performance, subject to the above two requirements.
 

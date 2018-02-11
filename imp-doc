@@ -62,13 +62,12 @@ columns concurrently would be faster.)
 The matprod_mat_vec procedure uses the same method as matprod_mat_mat,
 with y having only a single column.
 
-A different approach is used for matprod_vec_mat, for which the
-columns of x and z have only one element.  Successive elements of the
-result are computed as dot products of x with successive columns of y.
-To allow use of SIMD instructions (or other instruction-level
-parallelism), and to reuse data fetched from x, four such dot products
-are computed concurrently (except when fewer than four columns of y
-remain).
+A different approach is used for matprod_vec_mat, for which columns of
+x and z have only one element.  Successive elements of the result are
+computed as dot products of x with successive columns of y.  To allow
+use of SIMD instructions (or other instruction-level parallelism), and
+to reuse data fetched from x, four such dot products are computed
+concurrently (except when fewer than four columns of y remain).
 
 The method for matprod_trans1 is similar to that for matprod_vec_mat,
 except that the four dot products computed concurrently are for two
@@ -78,6 +77,16 @@ a two-by-two block.
 The method for matprod_trans2 is similar to that for matprod_mat_mat,
 except that the elements multiplying columns of x are taken from rows
 of y (rather than columns of y).
+
+The implementation of matprod_trans12 is based on the fact that the
+product of the transposes of two matrices is the transpose of the
+product of these matrices with operands reversed.  The same procedures
+used for matprod_mat_mat are used here, storing the result in a local
+variable (on the stack), the transpose of which is then copied to z.
+For large matrices, this must be done repeatedly for portions of z, in
+order to lime the amount of stack space used to no more than about 16K
+bytes (both for cache performance and because stack space may be
+limited in some environments).
 
 
 Optimizing for caching behaviour.
