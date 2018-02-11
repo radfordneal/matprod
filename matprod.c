@@ -50,13 +50,13 @@
 
 /* Debugging facilities. */
 
-#define DEBUG_PRINTF 1   /* Set to 1 to enable printf of procedure args */
+#define DEBUG_PRINTF 0   /* Set to 1 to enable printf of procedure args */
 
 #if DEBUG_PRINTF
 #   include <stdio.h>
 #endif
 
-// #define NDEBUG           /* Define to disable assertion check */
+//#define NDEBUG           /* Define to disable assertion check */
 #include <assert.h>
 
 #define CHK_ALIGN(p) \
@@ -1600,6 +1600,9 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
         printf("mat_vec_sub_xrows %p %p %p - %d %d %d %d\n",
                                    x, y, z,   n, k, xrows, add);
 #   endif
+
+    assert (k >= 2);
+    assert (xrows >= 4);
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -5021,6 +5024,9 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
                                                            xcols, add);
 #   endif
 
+    assert (m >= 2);
+    assert (xcols >= 2);
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -5588,7 +5594,8 @@ static void matprod_trans12_sub (double * MATPROD_RESTRICT x,
 
     while (j < zcols) {
 
-        int zzc = j < zcols-zc ? zc : zcols-j;
+        int zzc = zcols-j <= zc ? zcols-j :
+                  zcols-j - zc < 3 ? ((zcols-j)/2) & ~3 : zc;
 
         double *xx = x;
         int i = 0;
