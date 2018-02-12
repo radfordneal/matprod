@@ -1502,6 +1502,8 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
                              x, y, z,   n, k, add);
 #   endif
 
+    assert (!add || k > 1);
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -1535,7 +1537,7 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
 
     /* The general case with n > 4. */
 
-    matprod_mat_vec_sub_xrows0 (x, y, z, n, k, n, 0);
+    matprod_mat_vec_sub_xrows0 (x, y, z, n, k, n, add);
 }
 
 static void matprod_mat_vec_sub_xrows0 (double * MATPROD_RESTRICT x, 
