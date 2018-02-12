@@ -648,6 +648,9 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                                    x, y, z,   k, m, yrows);
 #   endif
 
+    assert (k > 2);
+    assert (yrows > 2);
+
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -1489,8 +1492,10 @@ SCOPE void matprod_mat_vec (double * MATPROD_RESTRICT x,
     matprod_mat_vec_sub (x, y, z, n, k, 0);
 }
 
-/* Matrix-vector product, with result stored or added to z according to
-   add.  Adding is allowed only if k>1. */
+/* Matrix-vector product, with result stored or added to z according
+   to 'add'. 
+
+   Called above and from piped-matprod.c. */
 
 static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x, 
                                  double * MATPROD_RESTRICT y, 
@@ -1502,8 +1507,6 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
                              x, y, z,   n, k, add);
 #   endif
 
-    assert (!add || k > 1);
-
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -1514,10 +1517,18 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
        with zero rows. */
 
     if (k <= 1) {
-        if (k == 1)
-            matprod_scalar_vec (y[0], x, z, n);
-        else /* k == 0 */
-            set_to_zeros (z, n);
+        if (k == 1) {
+            if (add) {
+                double t = y[0];
+                int i;
+                for (i = 0; i < n; i++) z[i] += t * x[i];
+            }
+            else
+                matprod_scalar_vec (y[0], x, z, n);
+        }
+        else {  /* k == 0 */
+            if (!add) set_to_zeros (z, n);
+        }
         return;
     }
 
@@ -1540,6 +1551,12 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
     matprod_mat_vec_sub_xrows0 (x, y, z, n, k, n, add);
 }
 
+/* Call matprod_mat_vec_sub_xrows to do parts (only one part for a
+   matrix with fewer than MAT_VEC_XROWS rows).  Note that n must be at
+   least 4 and k must be at least 2.
+
+   Called above and from piped-matprod.c. */
+
 static void matprod_mat_vec_sub_xrows0 (double * MATPROD_RESTRICT x, 
                                         double * MATPROD_RESTRICT y, 
                                         double * MATPROD_RESTRICT z,
@@ -1550,11 +1567,16 @@ static void matprod_mat_vec_sub_xrows0 (double * MATPROD_RESTRICT x,
                                     x, y, z,   n, k, xrows, add);
 #   endif
 
-    /* The general case with n > 4.  Calls matprod_mat_vec_sub_xrows
-       to do parts (only one part for a matrix with fewer than
-       MAT_VEC_XROWS rows).
+    CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
-       The definition of MAT_VEC_XROWS is designed to keep the vector
+    x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
+    y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
+    z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    assert (n >= 4);
+    assert (k >= 2);
+
+    /* The definition of MAT_VEC_XROWS is designed to keep the vector
        z in an L1 cache of 32K bytes or more, given that z and two
        columns of x (all of length MAT_VEC_XROWS) are accessed within
        the main loop. */
@@ -1603,8 +1625,8 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
                                    x, y, z,   n, k, xrows, add);
 #   endif
 
-    assert (k >= 2);
     assert (xrows >= 4);
+    assert (k >= 2);
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 

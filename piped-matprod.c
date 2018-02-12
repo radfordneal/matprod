@@ -1,5 +1,5 @@
 /* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
-             Task Procedures for Matrix Multiplication With Pipelining
+             Task Procedures for Parallel/Pipelined Matrix Multiplication
 
    Copyright (c) 2013, 2014, 2017, 2018 Radford M. Neal.
 
@@ -81,7 +81,7 @@
 #define SETUP_SPLIT(cond) \
     int s = OP_S(op); \
     int w = OP_W(op); \
-    while ((cond) && s > 1) { \
+    while (s > 1 && (cond)) { \
         if (w == 0) return; \
         s -= 1; w -= 1; \
     }
@@ -103,7 +103,7 @@ void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
         return;
     }
 
-    SETUP_SPLIT(0);
+    SETUP_SPLIT (4*s > k);
 
     helpers_size_t a;
     double sum;
