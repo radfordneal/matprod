@@ -280,15 +280,23 @@ routine directly will of course be slightly faster when it is known
 that it is appropriate.
 
 
-Parallel operation using task procedures in piped-matprod.c.
+Parallel operation using procedures in piped-matprod.c.
 
 Task procedures are defined in piped-matprod.c (and declared in
-piped-matprod.h) for use with the "helpers" facility, with pipelining
-of the second operand (except for matprod_trans2 and matprod_trans12)
-and pipelining of the output for matrix-matrix and vector-matrix
-operations (except for matprod_trans12).  It is also possible to
-schedule several of these task procedures to run concurrently, each
-computing a portion of the result.
+piped-matprod.h) for use with the "helpers" facility.  An operation
+may be scheduled as a single task, potentially allowing it to run
+concurrently with the master thread or other task procedures, perhaps
+while pipelining data in or out, or several tasks may be scheduled for
+a single operation, with each task computing a portion of the result
+(again, perhaps with pipelining of data to/from other tasks), allowing
+parallel computation for a single operation.  
+
+Pipelining of the input may be done for the second operand for all
+operations except matprod_trans2 and matprod_trans12.  Pipelining of
+the output may be done for vector-matrix multiplies and matrix-matrix
+multiplies except for matprod_trans12.  Note that, to reduce overhead,
+columns or elements of pipelined output may not always be made
+available immediately after being computed.
 
 Using these routines requires the helpers.h and helpers.c files from
 the helpers library, available at github.com/radfordneal/helpers.  A
@@ -307,9 +315,12 @@ the "helpers" package (eg, helpers_wait_until_not_being_computed) to
 determine when the result of an operation is available.
 
 The task procedures can be scheduled to run by the application, as
-described below, or the par_matprod procedures described below (also
-defined in piped-matprod.c and declared in piped-matprod.h) can be
-used to schedule the appropriate tasks.
+described below.  More typically, however, the par_matprod procedures
+described below (also defined in piped-matprod.c and declared in
+piped-matprod.h) will be used to schedule the appropriate tasks.
+
+
+The par_matprod procedures.
 
 The operands for the par_matprod procedures are of type helpers_var_t
 (not direct pointers to the matrices).  The procedures all take a
@@ -323,11 +334,17 @@ of zero for "split" indicates that the corresponding matprod procedure
 should be called immediately without scheduling a task, after waiting
 for the second operand to be computed if it has not been already.
 
-The tasks scheduled by the par_matprod procedures use pipelining if
-possible.
+The tasks scheduled by the par_matprod procedures use pipelining for
+the second operand and the output, if this is possible.  Note that the
+par_matprod procedures do not check for special cases (for example,
+par_matprod_mat_mat does not check whether the operation is actually a
+dot product that could be done with par_matprod_vec_vec).  These
+special cases will instead be detected only after the task procedure
+has started.  Accordingly, non-negligible overhead can be avoided if
+the appropriate par_matprod procedure is called originally.
 
-The following procedures for scheduling parallel operations are
-available (none are provided for fill_lower or scalar_vec):
+The following par_matprod procedures are available (none are provided
+for fill_lower or scalar_vec):
 
     void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x, 
                               helpers_var_ptr y, int split)
@@ -383,12 +400,15 @@ available (none are provided for fill_lower or scalar_vec):
       operands transposed, with k being the number of rows in x and
       columns in y, with no pipelining of either input or output.
 
-An application can instead do its own scheduling of task procedures.
-These are declared in piped-matprod.h to be of type helpers_task_proc,
-for which the arguments are an op value, a pointer to the result
-matrix (which is possibly a vector or scalar), a pointer to the first
-operand matrix/vector, and a pointer to the second operand
-matrix/vector. 
+
+Task procedures.
+
+An application can instead do its own scheduling of task procedures,
+though this should generally be unnecessary.  These task procedures
+are declared in piped-matprod.h to be of type helpers_task_proc, for
+which the arguments are an op value, a pointer to the result matrix
+(which is possibly a vector or scalar), a pointer to the first operand
+matrix/vector, and a pointer to the second operand matrix/vector.
 
 When an operation is to be done by a single task, the op value passed
 to the task procedure should be zero except for the mat_mat, trans1,
@@ -396,12 +416,14 @@ trans2, and trans12 procedures, for which it should be the value of k
 (the number of products summed to compute each element of the result).
 
 When an operation is to be split between several tasks, the low 32
-bits of the op value should be the value of k (or zero), the 8 bits
-above that should be the number of tasks used for the operation minus
-one, and the 8 bits above that should be the portion (numbered from
-zero) that this task does.  The tasks should be scheduled scheduled
-sequentially starting with the one doing portion zero, with pipelining
-of each task's output to the next task's output operand.
+bits of the op value should be the value of k (or zero, for tasks not
+requiring k), the 8 bits above that should be the number of tasks used
+for the operation minus one, and the 8 bits above that should be the
+portion (numbered from zero) that this task does.  The tasks should be
+scheduled scheduled sequentially starting with the one doing portion
+zero, with pipelining of each task's output to the next task's output
+operand.  They may also be scheduled with pipelining of the second
+input (but this has no effect for matprod_trans2 and matprod_trans12).
 
 The task procedures (found in piped-matprod.c) correspond to the
 non-pipelined procedures above, and are as follows:
@@ -457,6 +479,3 @@ non-pipelined procedures above, and are as follows:
       become available, in case it has been scheduled with pipelining
       of this operand, since it is pipelined for many of the other
       task procedures.)
-
-Note that, to reduce overhead, columns or elements of pipelined output
-may not always be made available immediately after being computed.
