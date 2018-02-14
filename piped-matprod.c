@@ -536,7 +536,7 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
 
     helpers_size_t a = 0;
 
-    SETUP_SPLIT (4*s > m || k <= 1 || m <= 1)
+    SETUP_SPLIT (4*s > m || k <= 1)
 
     if (k_times_m != 0) {
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
@@ -577,9 +577,24 @@ void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t n = n_times_k / k;
     helpers_size_t m = k_times_m / k;
 
+    if (n <= 1) {
+        if (n == 1) task_piped_matprod_mat_vec (op, sz, sy, sx);
+        return;
+    }
+
+    if (m <= 1) {
+        if (m == 1) task_piped_matprod_vec_mat (op, sz, sy, sx);
+        return;
+    }
+
+    if (k == 1) {
+        task_piped_matprod_outer (op, sz, sy, sx);
+        return;
+    }
+
     helpers_size_t a = 0;
 
-    SETUP_SPLIT (4*s > m || k <= 1 || m <= 1)
+    SETUP_SPLIT (4*s > m)
 
     if (k_times_m != 0) {
         HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
@@ -608,7 +623,7 @@ void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
     int s = split < 0 ? -split : split; \
     if (s > (size)) s = (size); \
     if (split > 0) \
-        while ((cond) && s > 1) s -= 1;
+        while (s > 1 && (cond)) s -= 1;
 
 
 #define MINMUL0 512   /* Minimum # of multiplies to not do directly at once */
@@ -629,9 +644,9 @@ void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    DECIDE_SPLIT (k, DISABLE_VEC_VEC_SPLIT || 512*s>k || (7*512)*s<k || s>10)
+    DECIDE_SPLIT (k, DISABLE_VEC_VEC_SPLIT || 512*s > k)
 
-    if (s > 1) {
+    if (s > 1 && (7*512)*s < k /* won't use too much stack space */) {
         int w;
         for (w = 0; w < s; w++) {
             helpers_do_task (w == 0   ? HELPERS_PIPE_IN2_OUT :
@@ -694,7 +709,7 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
         return;
     }
 
-    DECIDE_SPLIT (n, 4*s > n || MINMUL*s > multiplies)
+    DECIDE_SPLIT (n, 16*s > n || MINMUL*s > multiplies)
 
     if (s > 1) {
         int w;

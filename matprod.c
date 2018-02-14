@@ -50,7 +50,7 @@
 
 /* Debugging facilities. */
 
-#define DEBUG_PRINTF 0   /* Set to 1 to enable printf of procedure args */
+#define DEBUG_PRINTF 0     /* Set to 1 to enable printf of procedure args */
 
 #if DEBUG_PRINTF
 #   include <stdio.h>
