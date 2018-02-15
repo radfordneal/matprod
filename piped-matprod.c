@@ -63,22 +63,24 @@
 
 /* -------------------------------------------------------------------------- */
 
-#define OP_K(op) (op & 0x7fffffff)
-#define OP_S(op) (1 + ((op >> 32) & 0xff))
-#define OP_W(op) (op >> 40)
+#define OP_K(op) (op & 0x7fffffff)          /* get value of k from task op */
+#define OP_S(op) (1 + ((op >> 32) & 0xff))  /* get value of s from task op */
+#define OP_W(op) (op >> 40)                 /* get value of w from task op */
 
-#define MAKE_OP(w,s,k) \
+#define MAKE_OP(w,s,k) /* create task op value from w, s, and k */ \
     (((helpers_op_t)(w)<<40) | ((helpers_op_t)((s)-1)<<32) | k)
 
-#define ALIGNED8(z) ((((uintptr_t)(z))&7) == 0)
-#define CACHE_ALIGN(z) ((double *) (((uintptr_t)(z)+0x18) & ~0x3f))
+#define ALIGNED8(z) ((((uintptr_t)(z))&7) == 0)  /* check if 8-byte aligned */
+
+#define CACHE_ALIGN(z) \
+    ((double *) (((uintptr_t)(z)+0x18) & ~0x3f)) /* round to 64-byte boundary */
 
 #define WAIT_FOR_EARLIER_TASKS(sz) \
     do { \
         ; /* Wait for tasks doing earlier portions to complete. */ \
     } while (helpers_avail0(LENGTH(sz)) < LENGTH(sz))
 
-#define SETUP_SPLIT(cond) \
+#define SETUP_SPLIT(cond) /* set s to split, reducing till 'cond' 0, or s 1 */ \
     int s = OP_S(op); \
     int w = OP_W(op); \
     while (s > 1 && (cond)) { \
@@ -249,12 +251,12 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t k = LENGTH(sy);
     helpers_size_t n = LENGTH(sz);
 
-    SETUP_SPLIT (16*s > n)
+    SETUP_SPLIT (8*s > n)
 
     if (k <= 1) {
         if (w == s-1) {  /* do in only the last thread */
             helpers_size_t a;
-            HELPERS_WAIT_IN2 (a, k-1, k);
+            if (k > 0) HELPERS_WAIT_IN2 (a, k-1, k);
             matprod_mat_vec (x, y, z, n, k);
         }
         return;
@@ -266,6 +268,7 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
         double *z1 = z + (size_t) ((double)n * (w+1) / s);
 
         if (ALIGNED8(z)) {
+            /* Align split in z to cache line boundary to avoid false sharing */
             if (w != 0) z0 = CACHE_ALIGN(z0);
             if (w != s-1) z1 = CACHE_ALIGN(z1);
         }
@@ -711,7 +714,7 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
 
     double multiplies = (double)n*k;
 
-    DECIDE_SPLIT (n, 16*s > n || MINMUL*s > multiplies)
+    DECIDE_SPLIT (n, 8*s > n || MINMUL*s > multiplies)
 
     if (s > 1) {
         int w;
