@@ -340,8 +340,8 @@ par_matprod procedures do not check for special cases (for example,
 par_matprod_mat_mat does not check whether the operation is actually a
 dot product that could be done with par_matprod_vec_vec).  These
 special cases will instead be detected only after the task procedure
-has started.  Accordingly, non-negligible overhead can be avoided if
-the appropriate par_matprod procedure is called originally.
+has started.  Accordingly, some non-negligible overhead can be avoided
+if the appropriate par_matprod procedure is called originally.
 
 The following par_matprod procedures are available (none are provided
 for fill_lower or scalar_vec):
@@ -351,8 +351,7 @@ for fill_lower or scalar_vec):
 
       Schedules a task to perform a vector-vector dot product, with
       pipelining of input y.  The result is stored in the scalar
-      operand z.  The split argument is currently ignored, with the
-      operation always being done by a single task.
+      operand z.
 
     void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x, 
                               helpers_var_ptr y, int split)
