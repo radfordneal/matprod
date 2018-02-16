@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit e32163df6620c8caff965dcee0fdbc2b77f66d23
+commit b4a261ff29a8b583d51970a114b63745253fcab0
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Feb 2 21:09:50 2018 -0500
+Date:   Fri Feb 16 15:44:24 2018 -0500
 
-    finished general method section
+    fixups/cleanups regarding piped-matprod
