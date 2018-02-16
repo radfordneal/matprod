@@ -98,11 +98,6 @@ void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
 
     helpers_size_t k = LENGTH(sx);
 
-    if (k == 0) {
-        z[0] = 0;
-        return;
-    }
-
     SETUP_SPLIT (4*s > k);
 
     helpers_size_t a;
@@ -183,9 +178,12 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t k = LENGTH(sx);
     helpers_size_t m = LENGTH(sz);
 
+    if (m <= 0)
+        return;
+
     SETUP_SPLIT (4*s > m)
 
-    if (k_times_m == 0) {
+    if (k == 0) {
         if (w == s-1)  /* do in only the last thread */
             matprod_vec_mat (x, y, z, k, m, z, z, 0);
         return;
@@ -248,6 +246,9 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
 
     helpers_size_t k = LENGTH(sy);
     helpers_size_t n = LENGTH(sz);
+
+    if (n <= 0)
+        return;
 
     SETUP_SPLIT (8*s > n)
 
@@ -331,16 +332,10 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t n = LENGTH(sx);
     helpers_size_t m = LENGTH(sy);
 
-    helpers_size_t a = 0;
+    if (n == 0 || m == 0)
+        return;
 
     SETUP_SPLIT (4*s > m)
-
-    if (m == 0) {
-        if (w == s-1) {  /* do in only the last thread */
-            matprod_outer (x, y, z, n, m, z, z, 0);
-        }
-        return;
-    }
 
     if (s > 1) {
 
@@ -406,24 +401,22 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
     helpers_size_t n_times_k = LENGTH(sx);
     helpers_size_t n = n_times_k / k;
 
-    if (n == 1) {
-        task_piped_matprod_vec_mat (op, sz, sx, sy);
+    if (n <= 1) {
+        if (n == 1) task_piped_matprod_vec_mat (op, sz, sx, sy);
         return;
     }
 
     helpers_size_t k_times_m = LENGTH(sy);
     helpers_size_t m = k_times_m / k;
 
-    if (m == 1) {
-        task_piped_matprod_mat_vec (op, sz, sx, sy);
+    if (m <= 1) {
+        if (m == 1) task_piped_matprod_mat_vec (op, sz, sx, sy);
         return;
     }
 
-    helpers_size_t a = 0;
-
     SETUP_SPLIT (4*s > m)
 
-    if (k_times_m == 0) {
+    if (k == 0) {
         if (w == s-1)  /* do in only the last thread */
             matprod_mat_mat (x, y, z, n, k, m, z, z, 0);
         return;
@@ -485,16 +478,31 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
     double * MATPROD_RESTRICT z = REAL(sz);
 
     helpers_size_t k = OP_K(op);
+
+    if (k == 1) {
+        task_piped_matprod_outer (op, sz, sx, sy);
+        return;
+    }
+
     helpers_size_t n_times_k = LENGTH(sx);
-    helpers_size_t k_times_m = LENGTH(sy);
     helpers_size_t n = n_times_k / k;
+
+    if (n <= 1) {
+        if (n == 1) task_piped_matprod_vec_mat (op, sz, sx, sy);
+        return;
+    }
+
+    helpers_size_t k_times_m = LENGTH(sy);
     helpers_size_t m = k_times_m / k;
 
-    helpers_size_t a = 0;
+    if (m <= 1) {
+        if (m == 1) task_piped_matprod_vec_mat (op, sz, sy, sx);
+        return;
+    }
 
     SETUP_SPLIT (4*s > m)
 
-    if (k_times_m == 0) {
+    if (k == 0) {
         if (w == s-1)  /* do in only the last thread */
             matprod_trans1 (x, y, z, n, k, m, z, z, 0);
         return;
@@ -555,18 +563,39 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     double * MATPROD_RESTRICT z = REAL(sz);
 
     helpers_size_t k = OP_K(op);
+
+    if (k == 1) {
+        task_piped_matprod_outer (op, sz, sx, sy);
+        return;
+    }
+
     helpers_size_t n_times_k = LENGTH(sx);
-    helpers_size_t k_times_m = LENGTH(sy);
     helpers_size_t n = n_times_k / k;
+
+    if (n <= 1) {
+        if (n == 1) task_piped_matprod_mat_vec (op, sz, sy, sx);
+        return;
+    }
+
+    helpers_size_t k_times_m = LENGTH(sy);
     helpers_size_t m = k_times_m / k;
+
+    if (m <= 1) {
+        if (m == 1) task_piped_matprod_mat_vec (op, sz, sx, sy);
+        return;
+    }
+
+    SETUP_SPLIT (4*s > m)
+
+    if (k == 0) {
+        if (w == s-1)  /* do in only the last thread */
+            matprod_trans2 (x, y, z, n, k, m, z, z, 0);
+        return;
+    }
 
     helpers_size_t a = 0;
 
-    SETUP_SPLIT (4*s > m || k <= 1)
-
-    if (k_times_m != 0) {
-        HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
-    }
+    HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
 
     if (s > 1) {
 
@@ -598,33 +627,39 @@ void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
     double * MATPROD_RESTRICT z = REAL(sz);
 
     helpers_size_t k = OP_K(op);
+
+    if (k == 1) {
+        task_piped_matprod_outer (op, sz, sx, sy);
+        return;
+    }
+
     helpers_size_t n_times_k = LENGTH(sx);
-    helpers_size_t k_times_m = LENGTH(sy);
     helpers_size_t n = n_times_k / k;
-    helpers_size_t m = k_times_m / k;
 
     if (n <= 1) {
         if (n == 1) task_piped_matprod_mat_vec (op, sz, sy, sx);
         return;
     }
 
+    helpers_size_t k_times_m = LENGTH(sy);
+    helpers_size_t m = k_times_m / k;
+
     if (m <= 1) {
         if (m == 1) task_piped_matprod_vec_mat (op, sz, sy, sx);
         return;
     }
 
-    if (k == 1) {
-        task_piped_matprod_outer (op, sz, sy, sx);
+    SETUP_SPLIT (4*s > m)
+
+    if (k == 0) {
+        if (w == s-1)  /* do in only the last thread */
+            matprod_trans2 (x, y, z, n, k, m, z, z, 0);
         return;
     }
 
     helpers_size_t a = 0;
 
-    SETUP_SPLIT (4*s > m)
-
-    if (k_times_m != 0) {
-        HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
-    }
+    HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
 
     if (s > 1) {
 
@@ -841,7 +876,7 @@ void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
     DECIDE_SPLIT (m, 4*s > m || MINMUL*s > multiplies)
 
     if (REAL(x) == REAL(y) && LENGTH(x) == LENGTH(y)) {
-        s = 1;  /* Don't split for the symmetric case */
+        s = 1;  /* For now, don't split for the symmetric case */
     }
 
     if (s > 1) {
@@ -878,7 +913,7 @@ void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x,
     DECIDE_SPLIT (m, 4*s > m || MINMUL*s > multiplies)
 
     if (REAL(x) == REAL(y) && LENGTH(x) == LENGTH(y)) {
-        s = 1;  /* Don't split for the symmetric case */
+        s = 1;  /* For now, don't split for the symmetric case */
     }
 
     if (s > 1) {

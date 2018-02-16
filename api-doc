@@ -335,16 +335,18 @@ should be called immediately without scheduling a task, after waiting
 for the second operand to be computed if it has not been already.
 
 The tasks scheduled by the par_matprod procedures use pipelining for
-the second operand and the output, if this is possible.  Note that the
-par_matprod procedures do not check for special cases (for example,
-par_matprod_mat_mat does not check whether the operation is actually a
-dot product that could be done with par_matprod_vec_vec).  These
+the second operand and the output, if this is possible. 
+
+Note that the par_matprod procedures do not check for special cases
+(for example, par_matprod_mat_mat does not check whether the operation
+is actually a dot product doable with par_matprod_vec_vec).  These
 special cases will instead be detected only after the task procedure
 has started.  Accordingly, some non-negligible overhead can be avoided
-if the appropriate par_matprod procedure is called originally.
+if the appropriate par_matprod procedure is called originally.  Also,
+the decisions taken regarding splitting into multiple tasks may not be
+optimal for special cases.
 
-The following par_matprod procedures are available (none are provided
-for fill_lower or scalar_vec):
+The following par_matprod procedures are available:
 
     void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x, 
                               helpers_var_ptr y, int split)

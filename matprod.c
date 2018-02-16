@@ -373,17 +373,6 @@ SCOPE double matprod_vec_vec (double * MATPROD_RESTRICT x,
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
 
-    /* Handle k = 0, 1, or 2 specially. */
-
-    if (k <= 2) {
-        if (k == 2)
-            return x[0] * y[0] + x[1] * y[1];
-        if (k == 1) 
-            return x[0] * y[0];
-        else  /* k <= 0 */
-            return 0.0;
-    }
-
     return matprod_vec_vec_sub (x, y, k, 0.0);
 }
 
@@ -394,6 +383,17 @@ static double matprod_vec_vec_sub (double * MATPROD_RESTRICT x,
         printf("vec_vec_sub %p %p %f - %d\n",
                              x, y, s,   k);
 #   endif
+
+    /* Handle k = 0, 1, or 2 specially. */
+
+    if (k <= 2) {
+        if (k == 2)
+            return s + x[0] * y[0] + x[1] * y[1];
+        if (k == 1) 
+            return s + x[0] * y[0];
+        else  /* k <= 0 */
+            return s;
+    }
 
     int i = 0;
 
