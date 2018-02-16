@@ -5,7 +5,9 @@
 for thr in $@; do
   export HELPERS=`expr $thr - 1`
   export SPLIT=$thr
-  echo RUNNING TESTS WITH $HELPERS HELPERS, SPLIT BY $SPLIT
-  ../run-tests piped-matprod >& piped-matprod-$SPLIT.out
-  ../tim piped-matprod-$SPLIT
+  for i in piped-matprod piped-matprod-off; do
+    echo RUNNING TESTS FOR $i WITH $HELPERS HELPERS, SPLIT BY $SPLIT
+    ../run-tests $i >& $i-$SPLIT.out
+    ../tim $i-$SPLIT
+  done
 done

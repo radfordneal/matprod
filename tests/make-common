@@ -1,7 +1,7 @@
 # MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
 #           Common Part of Makefile for Compiling Test Programs
 #
-# Copyright (c) 2013, 2017 Radford M. Neal.
+# Copyright (c) 2013, 2017, 2018 Radford M. Neal.
 # 
 #   The matprod library is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -59,7 +59,8 @@ matprod-extra-progs?=matprod-nosimd-test matprod-off-nosimd-test \
 
 matprod-progs=matprod-test matprod-off-test \
               matprod-noalign-test matprod-off-noalign-test \
-              piped-matprod-test piped-matprod-nohelpers-test
+              piped-matprod-test piped-matprod-off-test \
+              piped-matprod-nohelpers-test
 
 matprod-norestrict-progs=matprod-norestrict-test piped-matprod-norestrict-test
 
@@ -195,6 +196,12 @@ piped-matprod-test:	../test.h ../test.c ../piped-matprod-test.c ../../piped-matp
 	$(CC) $(II) $(CFLAGS) $(ALIGN) -fopenmp \
 		../test.c ../piped-matprod-test.c ../../piped-matprod.c ../helpers.c \
 		-o piped-matprod-test
+
+piped-matprod-off-test:	../test.h ../test.c ../piped-matprod-test.c ../../piped-matprod.h ../../matprod.c \
+			../../piped-matprod.c ../helpers-app.h ../helpers.h ../helpers.c
+	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) -fopenmp \
+		../test.c ../piped-matprod-test.c ../../piped-matprod.c ../helpers.c \
+		-o piped-matprod-off-test
 
 piped-matprod-nohelpers-test:	../test.h ../test.c ../piped-matprod-test.c ../../piped-matprod.h ../../matprod.c \
 			../../piped-matprod.c ../helpers-app.h ../helpers.h ../helpers.c

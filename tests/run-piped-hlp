@@ -5,7 +5,9 @@
 for hlp in $@; do
   export HELPERS=$hlp
   unset SPLIT
-  echo RUNNING TESTS WITH $HELPERS HELPERS, NOT SPLIT
-  ../run-tests piped-matprod >& piped-matprod-hlp$HELPERS.out
-  ../tim piped-matprod-hlp$HELPERS
+  for i in piped-matprod piped-matprod-off; do
+    echo RUNNING TESTS FOR $i WITH $HELPERS HELPERS, NOT SPLIT
+    ../run-tests $i >& $i-hlp$HELPERS.out
+    ../tim $i-hlp$HELPERS
+  done
 done
