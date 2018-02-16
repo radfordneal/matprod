@@ -30,11 +30,11 @@ prog=$1-test
 
 echo " "; echo OUTER
 
-echo " "; time $prog 500000$Z 2 1 2789
-echo " "; time $prog 500000$Z 3 1 2000
-echo " "; time $prog 500000$Z 4 1 1555
-echo " "; time $prog 2000000$Z 300 1 3
-echo " "; time $prog 2000000$Z 23 1 34
-echo " "; time $prog 20000$Z 230 1 341
-echo " "; time $prog 100$Z 2231 1 3201
-echo " "; time $prog 200$Z 7031 1 320
+echo " "; time $prog 500000$Z 2 v 2789
+echo " "; time $prog 500000$Z 3 v 2000
+echo " "; time $prog 500000$Z 4 v 1555
+echo " "; time $prog 2000000$Z 300 v 3
+echo " "; time $prog 2000000$Z 23 v 34
+echo " "; time $prog 20000$Z 230 v 341
+echo " "; time $prog 100$Z 2231 v 3201
+echo " "; time $prog 200$Z 7031 v 320

@@ -97,6 +97,9 @@ void helpers_master (void)
       else if (v && matcols[nmat-1]==1)
       { par_matprod_mat_vec (op0, op1, op2, split);
       }
+      else if (vec[i+1] && matcols[i]==1 && matrows[nmat-1]==1)
+      { par_matprod_outer (op0, op1, op2, split);
+      }
       else 
       { int t1 = trans[i];
         int t2 = i==nmat-2 ? trans[i+1] : 0;
@@ -108,9 +111,6 @@ void helpers_master (void)
         }
         else if (t2)
         { par_matprod_trans2 (op0, op1, op2, k, split);
-        }
-        else if (matcols[i]==1 && matrows[nmat-1]==1)
-        { par_matprod_outer (op0, op1, op2, split);
         }
         else
         { par_matprod_mat_mat (op0, op1, op2, k, split);

@@ -45,6 +45,10 @@ void do_test (int rep)
       { matprod_vec_mat (matrix[i], product[i+1], product[i],
                          matcols[i], matcols[nmat-1]);
       }
+      else if (vec[i+1] && matcols[i]==1 && matrows[nmat-1]==1)
+      { matprod_outer (matrix[i], product[i+1], product[i], 
+                       matrows[i], matcols[nmat-1]);
+      }
       else
       { int t1 = trans[i];
         int t2 = i==nmat-2 ? trans[i+1] : 0;

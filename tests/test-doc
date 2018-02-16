@@ -61,13 +61,14 @@ multiply will be symmetric, and hence may perhaps be computed faster.
 
 An argument after rep with the value "1" may be replaced with the
 argument "v" or "V", which has the same effect as "1", except that the
-appropriate mat_vec, vec_mat, or vec_vec procedure is used for some or
-all products, rather than the general matrix multiplication procedure.
-This applies both to the vectors specified in this way, and the
-vectors that result from multiplying such a vector by a matrix.  For
-example, if the last argument is "v", all the products will use the
-mat_vec procedure, except if the first operand was also specified
-using "v" or "V", in which case the vec_vec procedure will be used.
+appropriate mat_vec, vec_mat, vec_vec, or outer procedure is used for
+some or all products, rather than the general matrix multiplication
+procedure.  This applies both to the vectors specified in this way,
+and the vectors that result from multiplying such a vector by a
+matrix.  For example, if the last argument is "v", all the products
+will use the mat_vec procedure, except if the first operand was also
+specified using "v" or "V", in which case the vec_vec procedure will
+be used.
 
 The matrices created by the test programs have elements that are set
 to 0.1 times the sum of the number of rows and columns in the matrix,
@@ -79,10 +80,6 @@ the results obtained should be the same with or without the "t"
 option, on either the left or right.  Since the initialization is
 invariant to transposition, the result with "T" instead of "t" is also
 the same.
-
-The matprod_outer procedure is called when the k argument is 1, and
-neither operand is transposed. The matprod_scalar_vec s tested only
-indirectly, via calls from the other procedures.
 
 If the environment variable CHECK is defined (as anything), the
 results are checked against simple code implementing the naive
