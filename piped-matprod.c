@@ -397,10 +397,27 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
     double * MATPROD_RESTRICT z = REAL(sz);
 
     helpers_size_t k = OP_K(op);
+
+    if (k == 1) {
+        task_piped_matprod_outer (op, sz, sx, sy);
+        return;
+    }
+
     helpers_size_t n_times_k = LENGTH(sx);
-    helpers_size_t k_times_m = LENGTH(sy);
     helpers_size_t n = n_times_k / k;
+
+    if (n == 1) {
+        task_piped_matprod_vec_mat (op, sz, sx, sy);
+        return;
+    }
+
+    helpers_size_t k_times_m = LENGTH(sy);
     helpers_size_t m = k_times_m / k;
+
+    if (m == 1) {
+        task_piped_matprod_mat_vec (op, sz, sx, sy);
+        return;
+    }
 
     helpers_size_t a = 0;
 
