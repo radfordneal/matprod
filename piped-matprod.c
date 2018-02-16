@@ -70,8 +70,6 @@
 #define MAKE_OP(w,s,k) /* create task op value from w, s, and k */ \
     (((helpers_op_t)(w)<<40) | ((helpers_op_t)((s)-1)<<32) | k)
 
-#define ALIGNED8(z) ((((uintptr_t)(z))&7) == 0)  /* check if 8-byte aligned */
-
 #define CACHE_ALIGN(z) \
     ((double *) (((uintptr_t)(z)+0x18) & ~0x3f)) /* round to 64-byte boundary */
 
@@ -264,13 +262,21 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
 
     if (s > 1) {
 
-        double *z0 = z + (size_t) ((double)n * w / s);
-        double *z1 = z + (size_t) ((double)n * (w+1) / s);
+        int t0 = (int) ((double)n * w / s);
+        int t1 = (int) ((double)n * (w+1) / s);
 
-        if (ALIGNED8(z)) {
+        double *z0 = z + t0;
+        double *z1 = z + t1;
+
+        if (ALIGN >= 16 && ALIGN_OFFSET == 0) {
             /* Align split in z to cache line boundary to avoid false sharing */
-            if (w != 0) z0 = CACHE_ALIGN(z0);
-            if (w != s-1) z1 = CACHE_ALIGN(z1);
+            if (w != 0)   z0 = CACHE_ALIGN (z + t0);
+            if (w != s-1) z1 = CACHE_ALIGN (z + t1);
+        }
+        else if (ALIGN >= 16) {
+            /* Preserve up to 32-byte alignment */
+            if (w != 0)   z0 = z + ((t0 + 2) & ~3);
+            if (w != s-1) z1 = z + ((t1 + 2) & ~3);
         }
 
         int xrows = z1 - z0;
@@ -714,7 +720,8 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
 
     double multiplies = (double)n*k;
 
-    DECIDE_SPLIT (n, 8*s > n || MINMUL*s > multiplies)
+    DECIDE_SPLIT (n, (ALIGN >= 16 && ALIGN_OFFSET==0 ? 8*s : 32*s) > n 
+                       || MINMUL*s > multiplies)
 
     if (s > 1) {
         int w;
