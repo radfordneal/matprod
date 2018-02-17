@@ -1,7 +1,8 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit b4a261ff29a8b583d51970a114b63745253fcab0
+commit a046d0c38c342aacf4d03df9f788a4d333df0d01
+Merge: a7e35d2 f5994a8
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Feb 16 15:44:24 2018 -0500
+Date:   Sat Feb 17 11:00:34 2018 -0500
 
-    fixups/cleanups regarding piped-matprod
+    Merge branch 'master' of https://github.com/radfordneal/matprod
