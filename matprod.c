@@ -5598,11 +5598,11 @@ static void matprod_trans12_sub (double * MATPROD_RESTRICT x,
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
 
-#   define TRANS12_ZELEM 64 /* 2048 */
+#   define TRANS12_ZELEM 2048
 
     int zr, zc;
 
-    zc = 8 /* 128 */;
+    zc = 128;
     if (zc > zcols)
         zc = zcols;
     zr = (TRANS12_ZELEM / zc) & ~3;
@@ -5618,15 +5618,18 @@ static void matprod_trans12_sub (double * MATPROD_RESTRICT x,
 
     while (j < zcols) {
 
-        int zzc = zcols-j <= zc ? zcols-j :
-                  zcols-j - zc < 3 ? ((zcols-j)/2) & ~3 : zc;
+        int remaining_cols = zcols - j;
+        int zzc = remaining_cols <= zc ? remaining_cols :
+                  remaining_cols - zc < 3 ? (remaining_cols/2) & ~3 : zc;
 
         double *xx = x;
         int i = 0;
 
         while (i < n) {
 
-            int zzr = i < n-zr ? zr : n-i;
+            int remaining_rows = n - i;
+            int zzr = remaining_rows <= zr ? remaining_rows :
+                      remaining_rows - zr < 3 ? remaining_rows/2 : zr;
 
             if (m == 2) {
                 matprod_mat_mat_n2 (y, xx, ztmp, k, zzr);
