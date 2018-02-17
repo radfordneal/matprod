@@ -286,10 +286,10 @@ Task procedures are defined in piped-matprod.c (and declared in
 piped-matprod.h) for use with the "helpers" facility.  An operation
 may be scheduled as a single task, potentially allowing it to run
 concurrently with the master thread or other task procedures, perhaps
-while pipelining data in or out, or several tasks may be scheduled for
-a single operation, with each task computing a portion of the result
-(again, perhaps with pipelining of data to/from other tasks), allowing
-parallel computation for a single operation.  
+while pipelining data in or out.  Alternatively, several tasks may be
+scheduled for a single operation, with each task computing a portion
+of the result (again, perhaps with pipelining of data to/from other
+tasks), thereby allowing parallel computation for a single operation.
 
 Pipelining of the input may be done for the second operand for all
 operations except matprod_trans2 and matprod_trans12.  Pipelining of
@@ -314,8 +314,8 @@ Note that the application will need to use the facilities provided by
 the "helpers" package (eg, helpers_wait_until_not_being_computed) to
 determine when the result of an operation is available.
 
-The task procedures can be scheduled to run by the application, as
-described below.  More typically, however, the par_matprod procedures
+The task procedures (described below) can be scheduled to be run by
+the application.  More typically, however, the par_matprod procedures
 described below (also defined in piped-matprod.c and declared in
 piped-matprod.h) will be used to schedule the appropriate tasks.
 
@@ -337,14 +337,27 @@ for the second operand to be computed if it has not been already.
 The tasks scheduled by the par_matprod procedures use pipelining for
 the second operand and the output, if this is possible. 
 
-Note that the par_matprod procedures do not check for special cases
-(for example, par_matprod_mat_mat does not check whether the operation
-is actually a dot product doable with par_matprod_vec_vec).  These
-special cases will instead be detected only after the task procedure
-has started.  Accordingly, some non-negligible overhead can be avoided
-if the appropriate par_matprod procedure is called originally.  Also,
-the decisions taken regarding splitting into multiple tasks may not be
-optimal for special cases.
+Note that it has deliberately been left to the application to choose
+whether to do an operation immediately (setting 'split' to zero) or to
+instead schedule a task or tasks to do it (with the number of tasks
+limited by 'split', but possibly reduced according to heuristics used
+by the par_matprod procedure).  That is, if 'split' is non-zero, the
+par_matprod procedure will always schedule a task or tasks, regardless
+of how small the operation is (even if it is so small that the time
+required to schedule the task is greater than the time to just do the
+operation).  This is because the best decision may depend on factors
+such as whether the master thread has any other work to do currently,
+and whether the operands of the operation have not yet been computed,
+so trying to do it immediately would require waiting.
+
+Note also that the par_matprod procedures do not check for special
+cases (for example, par_matprod_mat_mat does not check whether the
+operation is actually a dot product doable with par_matprod_vec_vec).
+These special cases will instead be detected only after the task
+procedure has started.  Accordingly, some non-negligible overhead can
+be avoided if the appropriate par_matprod procedure is called
+originally.  Also, the decisions taken regarding splitting into
+multiple tasks may not be optimal for special cases.
 
 The following par_matprod procedures are available:
 
@@ -425,6 +438,10 @@ scheduled scheduled sequentially starting with the one doing portion
 zero, with pipelining of each task's output to the next task's output
 operand.  They may also be scheduled with pipelining of the second
 input (but this has no effect for matprod_trans2 and matprod_trans12).
+The task doing the final portion may if desired be scheduled with
+output pipelining, though this is potentially inefficient for the
+vec_vec, mat_vec, and trans12 operations, since they do not do any
+output pipelining.
 
 The task procedures (found in piped-matprod.c) correspond to the
 non-pipelined procedures above, and are as follows:
