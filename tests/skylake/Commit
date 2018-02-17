@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 705c8326cfde8596ab084f2998f1d5cc46155ba5
+commit b4a261ff29a8b583d51970a114b63745253fcab0
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Jan 29 13:04:22 2018 -0500
+Date:   Fri Feb 16 15:44:24 2018 -0500
 
-    bug fix in test program
+    fixups/cleanups regarding piped-matprod
