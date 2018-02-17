@@ -102,11 +102,16 @@ including the following:
       Uses the procedures in piped-matprod.c, and the helpers library.
       The number of helper threads used is given by the environment
       variable HELPERS (default 0).  The amount of splitting to do is
-      given by the environment variable SPLIT (default 1).  If an
-      environment variable TRACE is defined, trace output from the
-      helpers library is enabled.  See below for the special role of a
-      last argument of "V".  Some other versions are also compiled;
-      see the Makefile for details.
+      given by the environment variable SPLIT (default 1).  If SPLIT
+      is 0, and the environment variable MIN exists and is not 0, the
+      split will be set to HELPERS plus 1 if the number of multiplies
+      is at least MIN; otherwise 0 for SPLIT results in the operation
+      being done directly in the master thread.
+
+      If an environment variable TRACE is defined, trace output from
+      the helpers library is enabled.  See below for the special role
+      of a last argument of "V".  Some other versions are also
+      compiled; see the Makefile for details.
 
     blas0-test
 

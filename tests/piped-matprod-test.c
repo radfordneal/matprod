@@ -32,18 +32,23 @@ char * my_var_name (helpers_var_ptr v)
   return name;
 }  
 
+static int helpers;
 static int repeat;
 static int split;
+static int min;
 
 void do_test (int rep)
 {
   char *h = getenv("HELPERS");
   char *t = getenv("TRACE");
   char *s = getenv("SPLIT");
+  char *m = getenv("MIN");
   repeat = rep;
   split = s==0 ? 1 : atoi(s);
+  min = m==0 ? 0 : atoi(m);
+  helpers = h==0 ? 0 : atoi(h);
   helpers_trace (t!=0);
-  helpers_startup (h==0 ? 0 : atoi(h));
+  helpers_startup (helpers);
 }
 
 volatile int vola;
@@ -87,33 +92,37 @@ void helpers_master (void)
       int op0 = -(i+1);
       int op1 = i+1;
       int op2 = i+2==nmat ? nmat : -(i+2);
+      int split0 = split;
+      if (split0 == 0 && min != 0)
+      { if ((double)n * k * matcols[nmat-1] >= min) split0 = helpers+1;
+      }
       v |= vec[i+1];
       if (vec[i] && v && matrows[i]==1 && matcols[nmat-1]==1) 
-      { par_matprod_vec_vec (op0, op1, op2, split);
+      { par_matprod_vec_vec (op0, op1, op2, split0);
       }
       else if (vec[i] && matrows[i]==1)
-      { par_matprod_vec_mat (op0, op1, op2, split);
+      { par_matprod_vec_mat (op0, op1, op2, split0);
       }
       else if (v && matcols[nmat-1]==1)
-      { par_matprod_mat_vec (op0, op1, op2, split);
+      { par_matprod_mat_vec (op0, op1, op2, split0);
       }
       else if (vec[i+1] && matcols[i]==1 && matrows[nmat-1]==1)
-      { par_matprod_outer (op0, op1, op2, split);
+      { par_matprod_outer (op0, op1, op2, split0);
       }
       else 
       { int t1 = trans[i];
         int t2 = i==nmat-2 ? trans[i+1] : 0;
         if (t1 && t2)
-        { par_matprod_trans12 (op0, op1, op2, k, split);
+        { par_matprod_trans12 (op0, op1, op2, k, split0);
         }
         else if (t1)
-        { par_matprod_trans1 (op0, op1, op2, k, split);
+        { par_matprod_trans1 (op0, op1, op2, k, split0);
         }
         else if (t2)
-        { par_matprod_trans2 (op0, op1, op2, k, split);
+        { par_matprod_trans2 (op0, op1, op2, k, split0);
         }
         else
-        { par_matprod_mat_mat (op0, op1, op2, k, split);
+        { par_matprod_mat_mat (op0, op1, op2, k, split0);
         }
       }
     }

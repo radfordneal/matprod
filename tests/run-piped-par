@@ -5,6 +5,7 @@
 for thr in $@; do
   export HELPERS=`expr $thr - 1`
   export SPLIT=$thr
+  unset MIN
   for i in piped-matprod piped-matprod-off; do
     echo RUNNING TESTS FOR $i WITH $HELPERS HELPERS, SPLIT BY $SPLIT
     ../run-tests $i >& $i-$SPLIT.out

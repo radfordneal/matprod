@@ -687,7 +687,7 @@ void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
         while (s > 1 && (cond)) s -= 1;
 
 
-#define MINMUL 2048   /* Desired minimum number of multiplies per thread
+#define MINMUL 8192   /* Desired minimum number of multiplies per thread
                          (not used for vec_vec) */
 
 
