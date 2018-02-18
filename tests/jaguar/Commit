@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit a8d38deaccceb920b3a99d4926713f0846cea875
+commit 6a0d42d580e22fd8e1622da8261f561f022e69fb
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Jan 22 20:20:23 2018 -0500
+Date:   Sat Feb 17 11:39:41 2018 -0500
 
-    new schemed for piped tests with helpers, results for skylake with new scheme
+    tweaks to api-doc
