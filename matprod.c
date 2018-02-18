@@ -4712,7 +4712,10 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
     }
 }
 
-static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
+/* Multiply the transpose of the 2 x n matrix x by the m x 2 matrix y, storing
+   the result in the n x m matrix z. */
+
+void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
                                double * MATPROD_RESTRICT y,
                                double * MATPROD_RESTRICT z,
                                int n, int m)
@@ -4731,7 +4734,6 @@ static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
 #   if CAN_USE_AVX || CAN_USE_SSE3
     {
         double *e = y + m + m;
-        double *f = x + (n-3) + (n-3);
         while (y < e) {
 #           if CAN_USE_AVX
                 __m256d Y = _mm256_set_pd (y[1], y[0], y[1], y[0]);
@@ -4739,10 +4741,11 @@ static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
                 __m128d Y = _mm_set_pd (y[1], y[0]);
 #           endif
             double *p = x;
-            while (p < f) {
+            int i = 0;
+            while (i <= n-4) {
 #               if CAN_USE_AVX
-                    __m256d M0 = _mm256_mul_pd (Y, _mm256_loadu_pd(p));
-                    __m256d M1 = _mm256_mul_pd (Y, _mm256_loadu_pd(p+4));
+                    __m256d M0 = _mm256_mul_pd (Y, _mm256_loadAA_pd(p));
+                    __m256d M1 = _mm256_mul_pd (Y, _mm256_loadAA_pd(p+4));
                     __m256d Z = _mm256_hadd_pd 
                                   (_mm256_permute2f128_pd (M0, M1, 0x20),
                                    _mm256_permute2f128_pd (M0, M1, 0x31));
@@ -4756,20 +4759,21 @@ static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
                     M1 = _mm_mul_pd (Y, _mm_loadAA_pd(p+6));
                     _mm_storeu_pd (z+2, _mm_hadd_pd (M0, M1));
 #               endif
-                p += 8;
                 z += 4;
+                p += 8;
+                i += 4;
             }
-            if (n & 2) {
+            if (i <= n-2) {
                 __m128d M0 = _mm_mul_pd (cast128(Y), _mm_loadu_pd(p));
                 __m128d M1 = _mm_mul_pd (cast128(Y), _mm_loadu_pd(p+2));
                 _mm_storeu_pd (z, _mm_hadd_pd (M0, M1));
-                p += 4;
                 z += 2;
+                p += 4;
+                i += 2;
             }
-            if (n & 1) {
+            if (i < n) {
                 __m128d M0 = _mm_mul_pd (cast128(Y), _mm_loadu_pd(p));
                 _mm_store_sd (z, _mm_hadd_pd (M0, M0));
-                p += 2;
                 z += 1;
             }
             y += 2;
@@ -4779,12 +4783,18 @@ static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
 #   else  /* non-SIMD code */
     {
         double *e = y + m + m;
-        double *f = x + n + n;
         while (y < e) {
             double *p = x;
-            while (p < f) {
+            int i = 0;
+            while (i <= n-2) {
                 z[0] = p[0] * y[0] + p[1] * y[1];
-                p += 2;
+                z[1] = p[2] * y[2] + p[3] * y[3];
+                z += 2;
+                p += 4;
+                i += 2;
+            }
+            if (i < n) {
+                z[0] = p[0] * y[0] + p[1] * y[1];
                 z += 1;
             }
             y += 2;

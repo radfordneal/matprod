@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit d1a8428aa68bfae5ab5d1a85bcd2a4dabd180071
+commit 059636e3ac2f541598fec5b3ead56c0ff6a8feaf
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Feb 16 21:40:56 2018 -0500
+Date:   Sat Feb 17 20:07:48 2018 -0500
 
-    bug fix, full size for tmp in trans12
+    update README for trans12

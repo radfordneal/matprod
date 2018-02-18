@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 161e3417b85f151061fc1685e7abe62440d70ab3
+commit 3241a2359b262f67349ce9f4d815665da7f3207c
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Jan 12 22:10:48 2018 -0500
+Date:   Sat Feb 17 22:09:59 2018 -0500
 
-    results for harpertown
+    Set OMP_NUM_THREADS as well as OPENBLAS_NUM_THREADS in run-blas-linux...
