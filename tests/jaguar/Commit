@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 6a0d42d580e22fd8e1622da8261f561f022e69fb
+commit 7c023d2a706e6278b55c90dd57f6ef529ccbf88e
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Feb 17 11:39:41 2018 -0500
+Date:   Sat Feb 17 20:44:34 2018 -0500
 
-    tweaks to api-doc
+    results for jaguar
