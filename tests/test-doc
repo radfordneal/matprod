@@ -26,6 +26,9 @@ are mainly meant for testing speed.  If ALIGN and/or ALIGN_OFFSET is
 defined, the test program will allocate matrices with the specfied
 alignment.
 
+
+Running the programs.
+
 These programs are invoked by a command such as the following:
 
     matprod-test rep A B C D
@@ -87,6 +90,18 @@ algorithm, resulting in either "Check OK" being printed, or an error
 message followed by an abort.  Note that these checks take time, and
 so should not be done when running the test programs for performance
 evaluation.
+
+If the last argument to piped-matprod-test (see below) is "V" (only,
+not "v"), the final matrix (a column vector) will be supplied as
+pipelined output from a task procedure that delivers elements in
+groups of 17 (or fewer for the last group), with variable time lags.
+This allows pipelining to be tested for the mat_vec and vec_vec
+procedures, for which pipelined input cannot otherwise be arranged.
+(Of course, this is slower than just accessing the already-initialized
+matrix.)
+
+
+Makefile for compiling program versions.
 
 Several test programs can be compiled using the supplied Makefile,
 including the following:
@@ -153,20 +168,6 @@ including the following:
       Like blas-test, except that BLAS routines are taken from the Mac
       "Accelerate" framework (also known as "VecLib").
 
-If the last argument to piped-matprod-test is "V" (only, not "v"), the
-final matrix (a column vector) will be supplied as pipelined output
-from a task procedure that delivers elements in groups of 17 (or fewer
-for the last group), with variable time lags.  This allows pipelining
-to be tested for the mat_vec and vec_vec procedures, for which
-pipelined input cannot otherwise be arranged.  (Of course, this is
-slower than just accessing the already-initialized matrix.)
-
-The shell file run-tests runs a series of tests, with the test program
-specified by its first argument (eg, "matprod", for matprod-test).
-For more details on the testing framework, look at the Makefile and
-shell files in the tests directory, and the subdirectories in it that
-record results on various systems used for testing.
-
 The blas test programs are not compiled by default, but are compiled
 by "make blas-linux" (builds blas3-test) or "make blas-mac" (builds
 blas4-test).
@@ -176,3 +177,20 @@ programs can be obtained from github.com/radfordneal/helpers.
 Versions of the required helpers.c and helpers.h files are included in
 the tests directory here, but the helpers repository should be
 consulted for documentation, and to check for the most recent version.
+
+
+Facilities for running programs and looking at the results.
+
+The shell file run-tests runs a series of tests, with the test program
+specified by its first argument (eg, "matprod", for matprod-test).
+For more details on the testing framework, look at the Makefile and
+shell files in the tests directory, and the subdirectories in it that
+record results on various systems used for testing.
+
+The output is normally stored in a file with extension .out, with just
+the times extracted into a .tim file.  Ratios of times from two .tim
+files can be compared with cmp-tim, or plotted with plt-tim (using
+xgraph).
+
+The plt-mat-tim shell file plots times for the analogous tests done
+using the mat_mat, trans1, trans2, and trans12 procedures.
