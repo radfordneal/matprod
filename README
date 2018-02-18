@@ -22,7 +22,7 @@ version 2.
 
 The matprod library contains procedures for vector-vector,
 matrix-vector, vector-matrix, and matrix-matrix multiplication (plus
-version of matrix-matrix multiplication where one operand is
+version of matrix-matrix multiplication where one or both operands are
 transposed).  These procedures are written to produce exactly the same
 result as the naive procedures that sum products sequentially.
 Subject to this restriction, they are written to be reasonably fast,
