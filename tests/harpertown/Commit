@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit 57f3e3132ce2671f29c57d77d4d0f2edbce47ed9
+commit 059636e3ac2f541598fec5b3ead56c0ff6a8feaf
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Feb 3 20:18:05 2018 -0500
+Date:   Sat Feb 17 20:07:48 2018 -0500
 
-    bug fix in how split decided
+    update README for trans12
