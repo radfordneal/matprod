@@ -667,7 +667,7 @@ void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
         d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
         d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
 
-        matprod_trans12_sub (x, y+d, z+d*n, n, k, m, d1-d);
+        matprod_trans12_sub (x, y+d, z+(size_t)d*n, n, k, m, d1-d);
 
         if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
     }
@@ -953,8 +953,8 @@ void par_matprod_trans12 (helpers_var_ptr z, helpers_var_ptr x,
         int w;
         for (w = 0; w < s; w++) {
             helpers_do_task (w == 0   ? HELPERS_PIPE_OUT : 
-                             w == s-1 ? HELPERS_PIPE_IN0_OUT
-                                      : HELPERS_PIPE_IN0,
+                             w == s-1 ? HELPERS_PIPE_IN0
+                                      : HELPERS_PIPE_IN0_OUT,
                              task_piped_matprod_trans12,
                              MAKE_OP(w,s,k), z, x, y);
         }
