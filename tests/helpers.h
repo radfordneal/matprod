@@ -321,19 +321,29 @@ void helpers_no_merging (int);       /* Disable/re-enable task merging */
 
 #if ENABLE_DEBUG
 
-#include <stdio.h>
-#include <string.h>
+#   ifdef helpers_printf
+#      define helpers_debug_printf helpers_printf
+#   else
+#      include <stdio.h>
+#      define helpers_debug_printf printf
+#   endif
 
-#define helpers_debug(...) do { \
-    extern char helpers_debug_output [256] [1024]; \
-    extern int helpers_task_number_internal(void); \
-    char *str = helpers_debug_output [helpers_task_number_internal()]; \
-    snprintf (str + strlen(str), 1024 - strlen(str), __VA_ARGS__); \
-  } while (0)
+#   include <string.h>
+
+#   define helpers_debug(...) do { \
+      extern char helpers_debug_output [256] [1024]; \
+      extern int helpers_task_number_internal(void); \
+      int tn = helpers_task_number_internal(); \
+      if (tn == 0) helpers_debug_printf(__VA_ARGS__); \
+      else { \
+          char *str = helpers_debug_output[tn]; \
+          snprintf (str + strlen(str), 1024 - strlen(str), __VA_ARGS__); \
+      } \
+    } while (0)
 
 #else
 
-#define helpers_debug(...) do { } while (0)
+#   define helpers_debug(...) do { } while (0)
 
 #endif
 
