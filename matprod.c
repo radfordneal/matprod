@@ -5735,7 +5735,7 @@ static void matprod_trans12_m2 (double * MATPROD_RESTRICT x,
             /* Store sums in the next two result columns. */
 
             _mm_storeAA_pd (z, _mm_unpacklo_pd(S0,S1));
-            _mm_storeAA_pd (z+n, _mm_unpackhi_pd(S0,S1));
+            _mm_storeu_pd (z+n, _mm_unpackhi_pd(S0,S1));
         }
 
 #       else  /* non-SIMD code */
