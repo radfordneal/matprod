@@ -1,0 +1,7 @@
+#!/bin/bash
+
+time ../run-matprod
+time ../run-piped
+time ../run-piped-par 0 2
+time ../run-piped-parm 2
+time ../run-piped-hlp 1
