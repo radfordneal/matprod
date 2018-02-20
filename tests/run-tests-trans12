@@ -3,7 +3,7 @@
 # MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
 #           Shell File to Run a Series of Tests (for trans1)
 #
-# Copyright (c) 2013, 2017 Radford M. Neal.
+# Copyright (c) 2013, 2017, 2018 Radford M. Neal.
 # 
 #   The matprod library is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -28,6 +28,11 @@ echo " "; time $prog 50000$Z t 2 t 522 34
 echo " "; time $prog 30000$Z t 2 t 1053 35
 echo " "; time $prog 50000$Z t 3 t 61 144
 echo " "; time $prog 5000$Z t 3 t 1445 62
+
+echo " "; time $prog 50000$Z t 34 t 522 2
+echo " "; time $prog 30000$Z t 35 t 1053 2
+echo " "; time $prog 50000$Z t 144 t 61 3
+echo " "; time $prog 5000$Z t 62 t 1445 3
 
 echo " "; time $prog 100000$Z t 101 t 2 100
 echo " "; time $prog 500$Z t 1200 t 2 1299

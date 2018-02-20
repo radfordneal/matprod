@@ -3,7 +3,7 @@
 # MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
 #           Shell File to Run a Series of Tests (for vec_vec)
 #
-# Copyright (c) 2013, 2017 Radford M. Neal.
+# Copyright (c) 2013, 2017, 2018 Radford M. Neal.
 # 
 #   The matprod library is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
