@@ -1,0 +1,4 @@
+#!/bin/bash
+
+time ../run-blas-mac
+time ../run-blas-mac-par 2 3 4 8
