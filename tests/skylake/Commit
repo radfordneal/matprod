@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit afcb4808d8cf79ea81ef2e60fc18cc9669d77682
+commit fe6b5e9a1b936a699585f653203eac90f6926b6b
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Feb 19 21:00:35 2018 -0500
+Date:   Tue Feb 20 18:29:57 2018 -0500
 
-    do-blas and do-matprod for skylake
+    bug fix
