@@ -104,6 +104,12 @@ that 4K 8-byte double values fit in the L1 data cache, but it is best
 to rely only on somewhat fewer fitting, since the L1 cache will
 contain some other values (eg, top entries in the stack) as well.
 
+A last-level cache holding at least DOUBLES_IN_LLC doubles (currently
+100000) is also assumed to possibly exist (though perhaps be the same
+as the L2 cache).  If such a large last-level cache does not exist,
+there is only a small penalty for using the code that assumes it does
+exist.
+
 For matprod_scalar_vec and matprod_vec_vec, there is no apparent way
 of improving on the obvious method that accesses memory sequentially.
 
@@ -122,6 +128,33 @@ MAT_VEC_XROWS, currently 1024, is designed to keep the vector z in the
 L1 cache, given that z and two columns of x (all of length
 MAT_VEC_XROWS) are accessed within the main loop.
 
+For matprod_outer, if x has more than OUTER_ROWS elements (and hence z
+has more than OUTER_ROWS rows), the operation is done on successive
+parts of x, each consisting of at most OUTER_ROWS elements.  The
+definition of OUTER_ROWS, currently 2048-128, is designed to keep that
+part of x in the L1 cache, given that it and the corresponding part of
+a column of z are accessed within the main loop.
+
+For matprod_mat_mat, if x has more than MAT_MAT_XROWS rows, the
+operation is done on successive parts of the matrix, each consisting
+of at most MAT_MAT_XROWS of the rows.  Furthermore, if x has more than
+MAT_MAT_XCOLS, operations on each set of up to MAT_MAT_XROWS are split
+into operations looking at most MAT_MAT_XCOLS columns of x, with all
+except for the first operation adding to the sum from the previous
+columns.
+
+The definition of MAT_MAT_XROWS is designed to keep two columns of z
+in the L1 cache, given that two columns of z and two columns of x (all
+of length MAT_MAT_XROWS) are accessed within the main loop.
+
+The definition of MAT_MAT_XCOLS is designed to keep the submatrix of x
+with MAT_MAT_XROWS and MAT_MAT_XCOLS in the L2 cache, while it is
+multiplied repeatedly by columns of y.
+
+If y is large, and rows of x will be split, matprod_mat_mat does
+columns of y in groups, whose size is designed to keep these columns
+of y and z in a last-level cache that can hold DOUBLES_IN_LLC doubles.
+
 
 Special cases.
 
@@ -135,7 +168,8 @@ two columns at once.
 The vector-vector, matrix-vector, vector-matrix, and outer product
 procedure are particular cases of such special-case optimization that
 are made visible in the API, but other special cases are handled by
-non-visible functions.
+non-visible functions (including special cases of the matrix-vector,
+vector-matrix, and outer product operations).
 
 
 Avoidance of overflow.
@@ -159,7 +193,8 @@ column can be accessed as (p+n)[i], which should not be rewritten as
 p[n+i], since n+i might overflow.
 
 Note also that p += 2*n is not safe, but p += n; p += n; will be safe.
-Similarly, p + 2*n is unsafe, but p + n + n is safe.
+Similarly, p + 2*n is unsafe, but p + n + n, which means the same as
+(p + n) + n, is safe.
 
 Since the result of overflow with signed arithmetic is undefined in C,
 it is possible that the unsafe code will actually work when overflow

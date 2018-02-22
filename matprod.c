@@ -656,7 +656,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
 
     /* Each iteration of this loop computes four consecutive elements
        of the result vector, by doing four dot products of x with
-       columns of y.  Adjusts y, z, and m as it goes. */
+       columns of y.  Adjusts y, z, and m as it goes.
 
        For SIMD code, the sums for the dot products are initialized to
        from zero to three dot products, as helps alignment, plus the
@@ -2303,11 +2303,6 @@ static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x,
 /* Outer product - n x 1 matrix x times 1 x m matrix y, with result stored
    in the n x m matrix z. 
 
-   To improve cache performance, if x has more than OUTER_ROWS
-   elements (and hence z has more than OUTER_ROWS rows), the operation
-   is done on successive parts of x, each consisting of at most OUTER_ROWS
-   elements.  The matprod_outer_sub procedure below does one such part.
-
    Cases where n is four or less are handled specially, storing all of
    x in local variables rather thna fetching it to compute each column
    of z. */
@@ -2363,13 +2358,9 @@ SCOPE void matprod_outer (double * MATPROD_RESTRICT x,
     }
 
     /* The general case with n > 4.  Calls matprod_outer_sub to do
-       parts (only one part if z has fewer than OUTER_ROWS rows).
+       parts (only one part if z has fewer than OUTER_ROWS rows). */
 
-       The definition of OUTER_ROWS is designed to keep x in an L1
-       cache of 32K bytes or more, given that it and a column of z are
-       accessed within the main loop. */
-
-#   define OUTER_ROWS (2048-128)
+#   define OUTER_ROWS (2048-128)  /* be multiple of 8 to preserve alignment */
 
     int rows = n;
 
@@ -2390,6 +2381,13 @@ SCOPE void matprod_outer (double * MATPROD_RESTRICT x,
 
     matprod_outer_sub (x, y, z, n, m, rows EXTRAN);
 }
+
+/* Compute 'rows' rows of an outer product, with x pointing to the
+   left operand vector, y pointing to the right operand vector, and z
+   pointing to where to store the first result element, with n being
+   the amount to move to go to the next column of z. 
+
+   The same alignment assumptions apply as for the visible procedures. */
 
 static void matprod_outer_sub (double * MATPROD_RESTRICT x,
                                double * MATPROD_RESTRICT y,
@@ -2516,6 +2514,8 @@ static void matprod_outer_sub (double * MATPROD_RESTRICT x,
     }
 }
 
+/* Multiply 4 x 1 vector by 1 x m vector. */
+
 static void matprod_outer_n4 (double * MATPROD_RESTRICT x,
                               double * MATPROD_RESTRICT y,
                               double * MATPROD_RESTRICT z, int m)
@@ -2617,6 +2617,8 @@ static void matprod_outer_n4 (double * MATPROD_RESTRICT x,
     }
 #   endif
 }
+
+/* Multiply 3 x 1 vector by 1 x m vector. */
 
 static void matprod_outer_n3 (double * MATPROD_RESTRICT x,
                               double * MATPROD_RESTRICT y,
@@ -2729,6 +2731,7 @@ static void matprod_outer_n3 (double * MATPROD_RESTRICT x,
 #   endif
 }
 
+/* Multiply 2 x 1 vector by 1 x m vector. */
 
 static void matprod_outer_n2 (double * MATPROD_RESTRICT x,
                               double * MATPROD_RESTRICT y,
@@ -2798,26 +2801,10 @@ static void matprod_outer_n2 (double * MATPROD_RESTRICT x,
 /* Product of an n x k matrix (x) and a k x m matrix (y) with result stored 
    in z. 
 
-   The inner loop does two matrix-vector products each time, implemented 
-   much as in matprod_mat_vec above, except for computing two columns. This
-   gives a reasonably efficient implementation of an outer product (where
-   k is one).
+   Outer products (where k is one) are handled specially with the
+   matprod_outer procedure.
 
-   To improve cache performance, if x has more than MAT_MAT_XROWS
-   (defined below) rows, the operation is done on successive parts of
-   the matrix, each consisting of at most MAT_MAT_XROWS of the rows.
-   The matprod_mat_mat_sub_xrows procedure below does one such part.
-   Furthermore, if x has more than MAT_MAT_XCOLS, operations on each
-   set of up to MAT_MAT_XROWS are split into operations looking at
-   most MAT_MAT_XCOLS columns of x, with all except for the first
-   operation adding to the sum from the previous columns.  This is
-   done by the matprod_mat_mat_sub_xrowscols procedure below.
-
-   Cases where n is two are handled specially, in matprod_mat_mat_n2, 
-   accumulating sums in two local variables rather than in a column of
-   the result, and then storing them in the result column at the end.
-   Outer products (where k is one) are also handled specially, with
-   the matprod_outer procedure. */
+   Cases where n is 2 are also handled specially, in matprod_mat_mat_n2. */
 
 static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x, 
                                        double * MATPROD_RESTRICT y, 
@@ -2874,24 +2861,11 @@ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x,
         return;
     }
 
-    /* The general case with n > 2.  Calls matprod_mat_mat_sub_xrow
-       to do parts (only one part for a matrix with fewer than
-       MAT_MAT_XROWS rows and fewer than MAT_MAT_XCOLS columns).
-
-       The definition of MAT_MAT_XROWS is designed to keep two columns
-       of z in an L1 cache of 32K bytes or more, given that two
-       columns of z and two columns of x (all of length MAT_MAT_XROWS)
-       are accessed within the main loop.
-
-       The definition of MAT_MAT_XCOLS is designed to keep the
-       submatrix of x with MAT_MAT_XROWS and MAT_MAT_XCOLS in an L2
-       cache of a least 256K bytes, while it is multiplied repeatedly
-       by columns of y. 
-
-       If y is large, and rows of x will be split, the columns of y
-       are done in groups, whose size is designed to keep these
-       columns of y and z in a last-level cache that can hold
-       DOUBLES_IN_LLC doubles. */
+    /* The general case with n > 2.  Calls matprod_mat_mat_sub_xrow to
+       do parts (only one part for a matrix with fewer than
+       MAT_MAT_XROWS rows and fewer than MAT_MAT_XCOLS columns), or
+       sometimes calls matprod_mat_mat_sub_xrowscols directly, for a
+       matrix which will not be splt by either row or column. */
 
 #   define MAT_MAT_XROWS (1024-64) /* be multiple of 8 to keep any alignment  */
 #   define MAT_MAT_XCOLS 32        /* be multiple of 8 to keep any alignment  */
