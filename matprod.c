@@ -2894,7 +2894,7 @@ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x,
             if (m1 > mm) m1 = mm;
         }
 
-        if (xrows > MAT_MAT_XROWS && k > 2) {
+        if (xrows > MAT_MAT_XROWS) {
             while (xrows >= 2*MAT_MAT_XROWS) {
                 matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1, 
                                            MAT_MAT_XROWS, n EXTRAZ);
@@ -2924,6 +2924,16 @@ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x,
     }
 }
 
+/* Multiply 'xrows' rows of x by y, storing the result in 'xrows' of z.  
+   Note that x and z do not necessarily point to the start of the
+   full matrix, but rather to the first element referenced.  The step 
+   from one column to the next is n for x and zn for z.
+
+   The same alignment assumptions hold for x, y, and z as with the
+   visible procedures.
+
+   Note that k and m will be at least 2, and n and 'xrows' will be at
+   least 3. */
 
 static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x, 
                                        double * MATPROD_RESTRICT y, 
@@ -2935,6 +2945,11 @@ static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x,
         debug_printf("mat_mat_sub_xrows %p %p %p - %d %d %d - %d %d\n",
                                          x, y, z,   n, k, m,  xrows, zn);
 #   endif
+
+    assert (k >= 2);
+    assert (m >= 2);
+    assert (n >= 3);
+    assert (xrows >= 3);
 
     CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
@@ -2978,8 +2993,8 @@ static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x,
 }
 
 /* Multiply the first 'xrows' rows and 'xcols' columns of x with the m
-   columns of y, storing the result in z.  Note that x and z may not
-   be the start of the original matrices.  The k argument is the
+   columns of y, storing the result in z.  Note that x, y, and z may
+   not be the start of the original matrices.  The k argument is the
    number of columns in the original matrix x and rows in the matrix
    y, which is the amount to step to go right to an element of y in
    the same row and the next column.  The n argument is the number of

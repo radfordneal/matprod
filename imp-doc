@@ -145,11 +145,12 @@ columns.
 
 The definition of MAT_MAT_XROWS is designed to keep two columns of z
 in the L1 cache, given that two columns of z and two columns of x (all
-of length MAT_MAT_XROWS) are accessed within the main loop.
+of length MAT_MAT_XROWS) are accessed within the outer loop over
+columns of y and z.
 
 The definition of MAT_MAT_XCOLS is designed to keep the submatrix of x
-with MAT_MAT_XROWS and MAT_MAT_XCOLS in the L2 cache, while it is
-multiplied repeatedly by columns of y.
+with up to MAT_MAT_XROWS and MAT_MAT_XCOLS in the L2 cache, while it
+is multiplied repeatedly by columns of y.
 
 If y is large, and rows of x will be split, matprod_mat_mat does
 columns of y in groups, whose size is designed to keep these columns
