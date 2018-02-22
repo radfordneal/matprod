@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit d1cc09401fed8d5f322b7884aac6fc136d4d5d84
+commit daebe2137b862050ed5849e49f402d2864a937e2
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Feb 19 20:56:09 2018 -0500
+Date:   Wed Feb 21 21:29:11 2018 -0500
 
-    add do-blas and do-matprod for ivybridge
+    more work on documentation
