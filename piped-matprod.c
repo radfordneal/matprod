@@ -19,6 +19,12 @@
 */
 
 
+/* IMPORTANT NOTE:  The interface for the application-visible functions
+   defined here is documented in api-doc, and the implementation strategy
+   is documented in imp-doc.  These documents should be consulted before
+   reading this code, and updated if this code is changed. */
+
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

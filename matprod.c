@@ -19,6 +19,12 @@
 */
 
 
+/* IMPORTANT NOTE:  The interface for the application-visible functions
+   defined here is documented in api-doc, and the implementation strategy
+   is documented in imp-doc.  These documents should be consulted before
+   reading this code, and updated if this code is changed. */
+
+
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -540,17 +546,8 @@ static double matprod_vec_vec_sub (double * MATPROD_RESTRICT x,
 /* Product of row vector (x) of length k and k x m matrix (y), result
    stored in z.
 
-   Cases where k is 0, 1, or 2 are handled specially.  Otherwise, the
-   main loop is unrolled to do a set of four vector dot products in
-   each iteration, and these dot products are also done with loop
-   unrolling.
-
-   To improve cache performance, if y has more than VEC_MAT_YROWS
-   (defined below) rows, the operation is done on successive parts of
-   the matrix, each consisting of at most VEC_MAT_YROWS of the rows.
-   The second and later parts add to the result found by earlier
-   parts.  The matprod_vec_mat_sub_yrows procedure below does one such
-   part. */
+   Cases where k is 0, 1, or 2 and where m is 0 or 1 are handled
+   specially. */
 
 static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
                                        double * MATPROD_RESTRICT y,
@@ -597,12 +594,7 @@ SCOPE void matprod_vec_mat (double * MATPROD_RESTRICT x,
     }
 
     /* The general case with k > 2.  Calls matprod_vec_mat_sub_yrows to do parts
-       (only one part if y is a matrix with fewer than VEC_MAT_YROWS).
-
-       The definition of VEC_MAT_YROWS is designed to keep the vector x
-       in an L1 cache of 32K bytes or more, given that x and four
-       columns of y (all of length VEC_MAT_YROWS) are accessed within
-       the main loop. */
+       (only one part if y is a matrix with fewer than VEC_MAT_YROWS). */
 
 #   define VEC_MAT_YROWS 512  /* be multiple of 8 to keep any alignment*/
 
@@ -664,11 +656,11 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
 
     /* Each iteration of this loop computes four consecutive elements
        of the result vector, by doing four dot products of x with
-       columns of y.  Adjusts y, z, and m as it goes.
+       columns of y.  Adjusts y, z, and m as it goes. */
 
-       The sums for the dot products are initialized to zero to three
-       dot products, as helps alignment, plus the current value in z,
-       if 'add' is set. */
+       For SIMD code, the sums for the dot products are initialized to
+       from zero to three dot products, as helps alignment, plus the
+       current value in z, if 'add' is set. */
 
     while (m >= 4) {
 
@@ -1436,18 +1428,8 @@ static void matprod_vec_mat_k2 (double * MATPROD_RESTRICT x,
 /* Product of n x k matrix (x) and column vector of length k (y) with result 
    stored in z. 
 
-   The product is computed using an outer loop that accumulates the sums for 
-   all elements of the result vector, iterating over columns of x, in order
-   to produce sequential accesses.  This loop is unrolled to accumulate from
-   two columns of x at once.
-
-   To improve cache performance, if x has more than MAT_VEC_XROWS
-   (defined below) rows, the operation is done on successive parts of
-   the matrix, each consisting of at most MAT_VEC_XROWS of the rows.
-   The matprod_mat_vec_sub_xrows procedure below does one such part.
-
-   Cases where k is 0 or 1 and cases where n is 2, 3, or 4 are handled
-   specially. */
+   Cases where k is 0 or 1 and cases where n is 0, 1, 2, 3, or 4 are
+   handled specially. */
 
 static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x, 
                                  double * MATPROD_RESTRICT y, 
@@ -1497,8 +1479,8 @@ SCOPE void matprod_mat_vec (double * MATPROD_RESTRICT x,
     matprod_mat_vec_sub (x, y, z, n, k, 0);
 }
 
-/* Matrix-vector product, with result stored or added to z according
-   to 'add'. 
+/* Matrix-vector product, with result stored in z if 'add' is zero, or
+   added to z if 'add' is non-zero.
 
    Called above and from piped-matprod.c. */
 
@@ -1556,9 +1538,11 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
     matprod_mat_vec_sub_xrows0 (x, y, z, n, k, n, add);
 }
 
-/* Call matprod_mat_vec_sub_xrows to do parts (only one part for a
-   matrix with fewer than MAT_VEC_XROWS rows).  Note that n must be at
-   least 4 and k must be at least 2.
+/* Call matprod_mat_vec_sub_xrows to do parts of a matrix-vector
+   multiply (only one part for a matrix with fewer than MAT_VEC_XROWS
+   rows).  
+
+   Note that n must be at least 4 and k must be at least 2.
 
    Called above and from piped-matprod.c. */
 
@@ -1581,10 +1565,8 @@ static void matprod_mat_vec_sub_xrows0 (double * MATPROD_RESTRICT x,
     assert (n >= 4);
     assert (k >= 2);
 
-    /* The definition of MAT_VEC_XROWS is designed to keep the vector
-       z in an L1 cache of 32K bytes or more, given that z and two
-       columns of x (all of length MAT_VEC_XROWS) are accessed within
-       the main loop. */
+    /* Call matprod_mat_vec_sub_xrows to do parts (only one part if x
+       has fewer than MAT_VEC_XROWS rows). */
 
 #   define MAT_VEC_XROWS 1024  /* be multiple of 8 to keep any alignment */
 
@@ -1963,6 +1945,9 @@ static void matprod_mat_vec_sub_xrows (double * MATPROD_RESTRICT x,
     }
 }
 
+/* Multiply 2 x k vector x by vector y of dimension k, storing the result
+   in z if 'add' is zero, or adding the result to z if 'add' is non-zero. */
+
 static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x, 
                                 double * MATPROD_RESTRICT y, 
                                 double * MATPROD_RESTRICT z,
@@ -2055,7 +2040,7 @@ static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x,
 
 #   else  /* non-SIMD code */
 
-        double s[2];  /* sums for the two values in the result */
+        double s[2];  /* sums for the two values in the result vector */
 
         if (add) {
             s[0] = z[0];
@@ -2088,6 +2073,9 @@ static void matprod_mat_vec_n2 (double * MATPROD_RESTRICT x,
 
 #   endif
 }
+
+/* Multiply 3 x k vector x by vector y of dimension k, storing the result
+   in z if 'add' is zero, or adding the result to z if 'add' is non-zero. */
 
 static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x, 
                                 double * MATPROD_RESTRICT y, 
@@ -2165,7 +2153,7 @@ static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x,
 
 #   else  /* non-SIMD code */
     {
-        double s[3];  /* sums for the three values in the result */
+        double s[3];  /* sums for the three values in the result vector */
 
         if (add) {
             s[0] = z[0];
@@ -2198,6 +2186,9 @@ static void matprod_mat_vec_n3 (double * MATPROD_RESTRICT x,
     }
 #   endif
 }
+
+/* Multiply 4 x k vector x by vector y of dimension k, storing the result
+   in z if 'add' is zero, or adding the result to z if 'add' is non-zero. */
 
 static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x, 
                                 double * MATPROD_RESTRICT y, 
@@ -2269,7 +2260,7 @@ static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x,
     }
 #   else
     {
-        double s[4];  /* sums for the four values in result */
+        double s[4];  /* sums for the four values in the result vector */
 
         if (add) {
             s[0] = z[0];

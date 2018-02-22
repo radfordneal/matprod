@@ -93,13 +93,34 @@ order to limit the amount of stack space used to no more than about
 may be limited in some environments).
 
 
-Optimizing for caching behaviour.
+Optimizing for cache behaviour.
 
 The code is written assuming that the processor has an L1 data cache
 of 32K bytes (or more) and an L2 cache of 256K bytes (or more).  The
-size of a cache line is assumed to be 64 bytes.  The code will of
-course work correctly regardless, but perhaps more slowly than it
-might with some other assumption.
+size of a cache line is assumed to be 64 bytes.  If these assumptions
+are not true, the code will of course still work correctly, but
+perhaps more slowly than it might with some other assumptions.  Note
+that 4K 8-byte double values fit in the L1 data cache, but it is best
+to rely only on somewhat fewer fitting, since the L1 cache will
+contain some other values (eg, top entries in the stack) as well.
+
+For matprod_scalar_vec and matprod_vec_vec, there is no apparent way
+of improving on the obvious method that accesses memory sequentially.
+
+For matprod_vec_mat, if y has more than VEC_MAT_YROWS rows, the
+operation is done on successive parts of the matrix, each consisting
+of at most VEC_MAT_YROWS of the rows.  The second and later parts add
+to the result found by earlier parts.  The value for VEC_MAT_YROWS,
+currently 512, is designed to keep the vector x in the L1 cache, given
+that x and four columns of y (all of length VEC_MAT_YROWS) are
+accessed within the main loop.
+
+For matprod_mat_vec, if x has more than MAT_VEC_XROWS rows, the
+operation is done on successive parts of the matrix, each consisting
+of at most MAT_VEC_XROWS of the rows.  The definition of
+MAT_VEC_XROWS, currently 1024, is designed to keep the vector z in the
+L1 cache, given that z and two columns of x (all of length
+MAT_VEC_XROWS) are accessed within the main loop.
 
 
 Special cases.
