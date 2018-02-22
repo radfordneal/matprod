@@ -93,6 +93,22 @@ order to limit the amount of stack space used to no more than about
 may be limited in some environments).
 
 
+Special cases.
+
+Special code is used to handle some cases in which n, k, or m is small
+(for multiplication of an n x k matrix by a k x m matrix).  This can
+reduce overhead when what would otherwise be the innermost loop would
+be done only a small number of times.  When columns have only two
+elements, it also allows AVX instuctions to operate on all elements in
+two columns at once.
+
+The vector-vector, matrix-vector, vector-matrix, and outer product
+procedure are particular cases of such special-case optimization that
+are made visible in the API, but other special cases are handled by
+non-visible functions (including special cases of the matrix-vector,
+vector-matrix, and outer product operations).
+
+
 Optimizing for cache behaviour.
 
 The code is written assuming that the processor has an L1 data cache
@@ -157,52 +173,6 @@ columns of y in groups, whose size is designed to keep these columns
 of y and z in a last-level cache that can hold DOUBLES_IN_LLC doubles.
 
 
-Special cases.
-
-Special code is used to handle some cases in which n, k, or m is small
-(for multiplication of an n x k matrix by a k x m matrix).  This can
-reduce overhead when what would otherwise be the innermost loop would
-be done only a small number of times.  When columns have only two
-elements, it also allows AVX instuctions to operate on all elements in
-two columns at once.
-
-The vector-vector, matrix-vector, vector-matrix, and outer product
-procedure are particular cases of such special-case optimization that
-are made visible in the API, but other special cases are handled by
-non-visible functions (including special cases of the matrix-vector,
-vector-matrix, and outer product operations).
-
-
-Avoidance of overflow.
-
-The numbers of rows and columns in a matrix have the C "int" type,
-which is typically 32 bits in size, allowing a maximum of 2^31-1 for
-the number of rows or columns.  However, the number of elements in a
-matrix (the product of the number of rows and the number of columns)
-may be greater than 2^32-1.  Care is therefore required to avoid
-overflow when accessing an element.
-
-If an index into a matrix is computed from a row and column index, it
-is necessary to cast the "int" values to "size_t" values - for
-example, if x is a matrix with n rows, and i and j are row and column
-indexes, element i,j should be accessed as x[i+(size_t)j*n], not as
-x[i+j*n].  This form of access is usually avoided, however, in favour
-of accesses using pointers into the matrix.  For example, if p points
-to the first element in a column of x, then p[i] can be used to access
-the element of that column in row i.  The element in row i of the next
-column can be accessed as (p+n)[i], which should not be rewritten as
-p[n+i], since n+i might overflow.
-
-Note also that p += 2*n is not safe, but p += n; p += n; will be safe.
-Similarly, p + 2*n is unsafe, but p + n + n, which means the same as
-(p + n) + n, is safe.
-
-Since the result of overflow with signed arithmetic is undefined in C,
-it is possible that the unsafe code will actually work when overflow
-happens.  But of course this cannot be relied on.  (The possibility of
-code that is unsafe actually working does make testing difficult.)
-
-
 SIMD instructions and alignment.
 
 For Intel/AMD processors, the matprod routines can be compiled so that
@@ -248,3 +218,57 @@ of rows in the matrix is even or odd.
 It is intended that even if no explicit SIMD instructions are used,
 and no alignment information is specified, the matprod routines should
 still be substantially faster than a naive implementation.
+
+
+Parallel operation and pipelining.
+
+For most of the procedures, parallelization is done by splitting the
+operation to be done according to columns of the results matrix, z,
+with the first task scheduled doing the first group of columns, and so
+forth.  Except for the trans2 and trans12 operations, this also
+corresponds to splitting according to columns of the second operand.
+Except for trans12, operations parallelized by columns of the result
+also pipeline the output by column (but do not necessarily make data
+available immediately after every column is computed).
+
+For the vec_vec operation, parallelization of the additions is not
+possible, if the round-off behaviour of simple sequential summation is
+to be preserved.  Code that attempts to parallelize fetches from the
+first operand is present, but disabled since it seems not to help.
+
+For the mat_vec operation, the second operand is a single column, so
+parallelization is done over groups of rows of the first operand,
+which correspond to groups of elements of the result, allowing
+pipelining for the result.  The group boundaries are adjusted to
+correspond to cache lines, to avoid slowdowns due to "false sharing"
+in the result vector when two threads store into the same cache line.
+
+
+Avoidance of overflow.
+
+The numbers of rows and columns in a matrix have the C "int" type,
+which is typically 32 bits in size, allowing a maximum of 2^31-1 for
+the number of rows or columns.  However, the number of elements in a
+matrix (the product of the number of rows and the number of columns)
+may be greater than 2^32-1.  Care is therefore required to avoid
+overflow when accessing an element.
+
+If an index into a matrix is computed from a row and column index, it
+is necessary to cast the "int" values to "size_t" values - for
+example, if x is a matrix with n rows, and i and j are row and column
+indexes, element i,j should be accessed as x[i+(size_t)j*n], not as
+x[i+j*n].  This form of access is usually avoided, however, in favour
+of accesses using pointers into the matrix.  For example, if p points
+to the first element in a column of x, then p[i] can be used to access
+the element of that column in row i.  The element in row i of the next
+column can be accessed as (p+n)[i], which should not be rewritten as
+p[n+i], since n+i might overflow.
+
+Note also that p += 2*n is not safe, but p += n; p += n; will be safe.
+Similarly, p + 2*n is unsafe, but p + n + n, which means the same as
+(p + n) + n, is safe.
+
+Since the result of overflow with signed arithmetic is undefined in C,
+it is possible that the unsafe code will actually work when overflow
+happens.  But of course this cannot be relied on.  (The possibility of
+code that is unsafe actually working does make testing difficult.)

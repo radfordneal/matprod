@@ -2992,17 +2992,17 @@ static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x,
                                    xrows, zn, xcols, add EXTRAN);
 }
 
-/* Multiply the first 'xrows' rows and 'xcols' columns of x with the m
+/* Multiply the first 'xrows' rows and 'xcols' columns of x with m
    columns of y, storing the result in z.  Note that x, y, and z may
    not be the start of the original matrices.  The k argument is the
-   number of columns in the original matrix x and rows in the matrix
-   y, which is the amount to step to go right to an element of y in
-   the same row and the next column.  The n argument is the number of
-   rows in the original matrix x, which is the amount to step to go
-   right to an element of x in the same row and the next column.  The
-   'zn' argument is the number of rows in the full result matrix, z,
-   which is the amount to step to go to the right to an element of in
-   the same row but next column.
+   number of rows in the original matrix y, which is the amount to
+   step to go right to an element of y in the same row and the next
+   column.  The n argument is the number of rows in the original
+   matrix x, which is the amount to step to go right to an element of
+   x in the same row and the next column.  The 'zn' argument is the
+   number of rows in the full result matrix, z, which is the amount to
+   step to go to the right to an element of z in the same row but next
+   column.
 
    If 'add' is non-zero, the results are added to the existing values
    in z, rather than replacing existing values.
@@ -3793,6 +3793,11 @@ static void matprod_mat_mat_sub_xrowscols (double * MATPROD_RESTRICT x,
         }
     }
 }
+
+/* Multiply 2 x k matrix x by k x m matrix y, storing result in z.
+
+   The same alignment assumptions hold for x, y, and z as with the
+   visible procedures. */
 
 static void matprod_mat_mat_n2 (double * MATPROD_RESTRICT x, 
                                 double * MATPROD_RESTRICT y, 
