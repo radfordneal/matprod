@@ -4038,25 +4038,7 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
         return;
     }
 
-    /* The general case with k > 2.
-
-       The definiton of TRANS1_XROWS is designed to keep two columns
-       of y in an L1 cache of 32K bytes or more, given that two
-       columns of y and four columns of x (all of length TRANS1_XROWS)
-       are accessed within the main loop.
-
-       The definiton of TRANS1_XCOLS is designed to keep the submatrix
-       of x with TRANS1_XROWS and TRANS1_XCOLS in an L2 cache of a
-       least 256K bytes, while it is multiplied repeatedly by pairs of
-       columns of y.
-
-       If y is large, and rows of x will be split, the columns of y
-       are done in groups, whose size is designed to keep these
-       columns of y and z in a last-level cache that can hold
-       DOUBLES_IN_LLC doubles.  (But this is not done for the
-       symmetric case, for which only part of z is computed at this
-       point.) */
-
+    /* The general case with k > 2. */
 
 #   define TRANS1_XROWS 512        /* be multiple of 8 to keep any alignment */
 #   define TRANS1_XCOLS 48         /* be multiple of 8 to keep any alignment */
