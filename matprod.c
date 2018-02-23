@@ -2862,10 +2862,9 @@ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x,
     }
 
     /* The general case with n > 2.  Calls matprod_mat_mat_sub_xrow to
-       do parts (only one part for a matrix with fewer than
-       MAT_MAT_XROWS rows and fewer than MAT_MAT_XCOLS columns), or
-       sometimes calls matprod_mat_mat_sub_xrowscols directly, for a
-       matrix which will not be splt by either row or column. */
+       do parts - only one part for a matrix with fewer than
+       MAT_MAT_XROWS rows and fewer than MAT_MAT_XCOLS columns, in
+       which case matprod_mat_mat_sub_xrowscols is called directly. */
 
 #   define MAT_MAT_XROWS (1024-64) /* be multiple of 8 to keep any alignment  */
 #   define MAT_MAT_XCOLS 32        /* be multiple of 8 to keep any alignment  */
@@ -3977,12 +3976,6 @@ static void matprod_mat_mat_n2 (double * MATPROD_RESTRICT x,
 /* Product of the transpose of a k x n matrix (x) and a k x m matrix (y) 
    with result stored in z.  
 
-   Each element of the result is the dot product of a column of x and
-   a column of y.  Eight elements of this result are computed at once,
-   using four consecutive columns of x and two consecutive columns of
-   y (except perhaps for odd columns at the end), thereby reducing the
-   number of memory accesses.
-
    The case of k=2 is handled specially.
 
    When the two operands are the same, the result will be a symmetric
@@ -4871,19 +4864,15 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
     matprod_trans2_sub (x, y, z, n, k, m, m EXTRAN);
 }
 
-/* The general case with n, m, and k greater than 1.  Calls
-   matprod_trans2_sub_xrows to do parts (only one part for a matrix
-   with fewer than TRANS2_XROWS xrows and fewer than TRANS2_XCOLS
-   columns).
+/* Compute 'yrows' columns of the product of x and the transpose of
+   'yrows' of y, storing the result in z.  Note that y and z do not
+   necessarily point to the start of the entire matrix, but m will be
+   the amount to step to the next column of y, and n will be the
+   amount to step to the next column of z.
+  
+   Note that n, m, and k must be greater than 1.
 
-   The definition of TRANS2_XROWS is designed to keep two columns of z
-   in an L1 cache of 32K bytes or more, given that two columns of z
-   and two columns of x (all of length TRANS2_XROWS) are accessed
-   within the main loop.
-
-   The definition of TRANS2_XCOLS is designed to keep the submatrix of
-   x with TRANS2_XROWS and TRANS2_XCOLS in an L2 cache of a least 256K
-   bytes, while it is multiplied repeatedly by rows of y. */
+   Called above and from piped-matprod.c. */
 
 #define TRANS2_XROWS (1024-64)  /* be multiple of 8 to keep any alignment */
 #define TRANS2_XCOLS 32         /* be multiple of 8 to keep any alignment */
@@ -4904,6 +4893,10 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    assert (n >= 2);
+    assert (k >= 2);
+    assert (m >= 2);
 
     if (n == 2) {
         matprod_trans2_n2 (x, y, z, k, m, yrows);
@@ -5537,7 +5530,7 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
     }
 }
 
-/* Product of the transpose of an n x k matrix (x) and the transpose
+/* Product of the transpose of an k x n matrix (x) and the transpose
    of an m x k matrix (y) with the result stored in z. */
 
 static void matprod_trans12_sub (double * MATPROD_RESTRICT x, 
@@ -5588,6 +5581,18 @@ SCOPE void matprod_trans12 (double * MATPROD_RESTRICT x,
     matprod_trans12_sub (x, y, z, n, k, m, m);
 }
 
+/* Store the first 'zcols' columns of the product of the transpose of
+   x and the transpose of y.  Note that y and z do not necessarily
+   point to the start of the original operands, but m gives the amount
+   to step to get to the next column of y, and n gives the amount to
+   step to get to the next column of z.
+
+   Note that n, m, k, and zcols must be at least 2.
+
+   The usual alignment assumptions must hold for x, y, and z.
+
+   Called above and from piped-matprod.c. */
+
 static void matprod_trans12_sub (double * MATPROD_RESTRICT x, 
                                  double * MATPROD_RESTRICT y, 
                                  double * MATPROD_RESTRICT z,
@@ -5603,6 +5608,11 @@ static void matprod_trans12_sub (double * MATPROD_RESTRICT x,
     x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
     y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
     z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+    assert (m >= 2);
+    assert (k >= 2);
+    assert (n >= 2);
+    assert (zcols >= 2);
 
     if (m == 2) {
         assert (zcols == 2);
@@ -5662,6 +5672,11 @@ static void matprod_trans12_sub (double * MATPROD_RESTRICT x,
         j += zzc;
     }
 }
+
+/* Multiply the transpose of the k x n matrix x by the transpose of
+   the 2 x k matrix y, storing the result in the n x 2 matrix z.
+
+   The usual alignment assumptions must hold for x, y, and z. */
 
 static void matprod_trans12_m2 (double * MATPROD_RESTRICT x, 
                                 double * MATPROD_RESTRICT y, 
