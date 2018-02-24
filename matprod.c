@@ -29,10 +29,10 @@
 #include <stdint.h>
 
 
-/* Setup to facilitate inclusion and use in piped-matprod.c.  If
-   PIPED_MATPROD is defined, SCOPE, AMTOUT, EXTRAD, and EXTRAN will be
-   defined before matprod.c is included.  Otherwise, they are defined
-   here as nothing.
+/* SETUP TO FACILITATE INCLUSION AND USE OF MATPROD.C IN PIPED-MATPROD.C.
+   If PIPED_MATPROD is defined, SCOPE, AMTOUT, EXTRAD, and EXTRAN will
+   be defined before matprod.c is included.  Otherwise, they are
+   defined here as nothing.
 
    Also, matprod.h and perhaps matprod-app.h are included only if
    PIPED_MATPROD is not defined. */
@@ -54,7 +54,7 @@
 #endif
 
 
-/* Debugging facilities. */
+/* DEBUGGING FACILITIES. */
 
 #define DEBUG_PRINTF 0     /* Set to 1 to enable printf of procedure args */
 
@@ -73,7 +73,7 @@
 #define CHK_ALIGN(p) assert (((uintptr_t)(p)&(ALIGN-1)) == ALIGN_OFFSET)
 
 
-/* Set up alignment definitions. */
+/* SET UP ALIGNMENT DEFINITIONS. */
 
 #ifndef ALIGN
 # define ALIGN 1
@@ -106,7 +106,7 @@
 #endif
 
 
-/* Set up SIMD definitions. */
+/* SET UP SIMD DEFINITIONS. */
 
 #if __SSE2__ && !defined(DISABLE_SIMD_CODE)
 # define CAN_USE_SSE2 1
@@ -137,7 +137,7 @@
 #endif
 
 
-/* Versions of load and store that take advantage of known alignment.
+/* VERSIONS OF LOAD AND STORE TAKING ADVANTAGE OF KNOWN ALIGNMENT.
    The loadA and storeA macros do an aligned load/store if ALIGN is
    suitably large, assuming that any offset has been compensated for.
    The loadAA and storeAA macro do an unalign load/store only if ALIGN
@@ -164,9 +164,10 @@
   (ALIGN>=32 && ALIGN_OFFSET==0 ? _mm256_store_pd(w,v) : _mm256_storeu_pd(w,v))
 
 
-/* Macro to cast a variable to __m128d if it is __m256d, which does nothing
-   when AVX is not available, and hence the variable will already be __m128d.
-   This facilitates sharing of code in AVX and SSE2 sections.
+/* CONDITIONAL CAST FOR AVX VS. SSE.  Macro to cast a variable to
+   __m128d if it is __m256d, which does nothing when AVX is not
+   available, and hence the variable will already be __m128d.  This
+   facilitates sharing of code in AVX and SSE sections.
 
    The cast128a version is for use when the AVX code is enabled only if
    ENABLE_ALL_AVX_CODE is defined. */
@@ -184,8 +185,8 @@
 #endif
 
 
-/* Constant given the number of doubles that are assumed to fit in the
-   last-level cache (with some extra to spare). */
+/* NUMBER OF DOUBLES ASSUMED TO FIT IN THE LAST-LEVEL CACHE.  With
+   some extra to spare. */
 
 #define DOUBLES_IN_LLC 100000
 
@@ -202,9 +203,10 @@ static void set_to_zeros (double * MATPROD_RESTRICT z, size_t s)
 }
 
 /* -------------------------------------------------------------------------- */
+/*                              FILL_LOWER                                    */
 
 /* Fill the lower triangle of an n-by-n matrix from the upper
-   triangle. Fills two rows at once to improve cache performance. */
+   triangle.  Fills two rows at once to improve cache performance. */
 
 SCOPE void matprod_fill_lower (double * MATPROD_RESTRICT z, int n)
 {
@@ -288,6 +290,7 @@ SCOPE void matprod_fill_lower (double * MATPROD_RESTRICT z, int n)
 }
 
 /* -------------------------------------------------------------------------- */
+/*                              SCALAR_VEC                                    */
 
 /* Multiply vector y of length m by scalar x, storing result in vector z. */
 
@@ -373,6 +376,7 @@ SCOPE void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                VEC_VEC                                     */
 
 /* Dot product of vectors x and y of length k, with result returned as the
    function value. */
@@ -551,6 +555,7 @@ static double matprod_vec_vec_sub (double * MATPROD_RESTRICT x,
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                VEC_MAT                                     */
 
 /* Product of row vector (x) of length k and k x m matrix (y), result
    stored in z.
@@ -1436,6 +1441,7 @@ static void matprod_vec_mat_k2 (double * MATPROD_RESTRICT x,
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                MAT_VEC                                     */
 
 /* Product of n x k matrix (x) and column vector of length k (y) with result
    stored in z.
@@ -2314,6 +2320,7 @@ static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x,
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                 OUTER                                      */
 
 /* Outer product - n x 1 matrix x times 1 x m matrix y, with result stored
    in the n x m matrix z.
@@ -2811,6 +2818,7 @@ static void matprod_outer_n2 (double * MATPROD_RESTRICT x,
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                MAT_MAT                                     */
 
 /* Product of an n x k matrix (x) and a k x m matrix (y) with result stored
    in z.
@@ -3966,6 +3974,7 @@ static void matprod_mat_mat_n2 (double * MATPROD_RESTRICT x,
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                 TRANS1                                     */
 
 /* Product of the transpose of a k x n matrix (x) and a k x m matrix (y)
    with result stored in z.
@@ -4789,6 +4798,7 @@ void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                 TRANS2                                     */
 
 /* Product of an n x k matrix (x) and the transpose of an m x k matrix (y)
    with the result stored in z.
@@ -5538,6 +5548,9 @@ static void matprod_trans2_n2 (double * MATPROD_RESTRICT x,
 #   endif
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                TRANS12                                     */
 
 /* Product of the transpose of an k x n matrix (x) and the transpose
    of an m x k matrix (y) with the result stored in z. */
