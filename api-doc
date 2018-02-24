@@ -345,11 +345,11 @@ limited by 'split', but possibly reduced according to heuristics used
 by the par_matprod procedure).  That is, if 'split' is non-zero, the
 par_matprod procedure will always schedule a task or tasks, regardless
 of how small the operation is (even if it is so small that the time
-required to schedule the task is greater than the time to just do the
-operation).  This is because the best decision may depend on factors
-such as whether the master thread has any other work to do currently,
-and whether the operands of the operation have not yet been computed,
-so trying to do it immediately would require waiting.
+required to schedule the task is greater than the time to just do it).
+This is because the best decision may depend on factors such as
+whether the master thread has any other work to do currently, and
+whether the operands of the operation have not yet been computed, so
+trying to do it immediately would require waiting.
 
 Note also that the par_matprod procedures do not check for special
 cases (for example, par_matprod_mat_mat does not check whether the
@@ -357,10 +357,18 @@ operation is actually a dot product doable with par_matprod_vec_vec).
 These special cases will instead be detected only after the task
 procedure has started.  Accordingly, some non-negligible overhead can
 be avoided if the appropriate par_matprod procedure is called
-originally.  Also, the decisions taken regarding splitting into
-multiple tasks may not be optimal for special cases.
+originally.  Also, the decisions taken by the par_matprod procedures
+regarding splitting into multiple tasks may not be optimal when a
+special case applies.
 
 The following par_matprod procedures are available:
+
+    void par_matprod_scalar_vec (helpers_var_ptr z, helpers_var_ptr x, 
+                                 helpers_var_ptr y, int split)
+
+      Schedules a task to perform a scalar-vector dot product, of the
+      scalar stored in x and the vector stored in y, with pipelining
+      of the input y and of the output.
 
     void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x, 
                               helpers_var_ptr y, int split)
@@ -444,8 +452,14 @@ output pipelining, though this is potentially inefficient for the
 vec_vec, mat_vec, and trans12 operations, since they do not do any
 output pipelining.
 
-The task procedures (found in piped-matprod.c) correspond to the
-non-pipelined procedures above, and are as follows:
+The following task procedures (found in piped-matprod.c) are provided,
+corresponding to the direct matprod procedures above (except for
+matprod_fill_lower):
+
+    task_piped_matprod_scalar_vec
+
+      Scalar-vector multiply, with element-by-element pipelining of
+      the second operand and of the output.
 
     task_piped_matprod_vec_vec
 

@@ -94,6 +94,61 @@
   }
 
 
+/* Scalar-vector product, with pipelining of input y and output z. */
+
+void task_piped_matprod_scalar_vec (helpers_op_t op, helpers_var_ptr sz,
+                                    helpers_var_ptr sx, helpers_var_ptr sy)
+{
+  double x = *REAL(sx);
+  double * MATPROD_RESTRICT y = REAL(sy);
+  double * MATPROD_RESTRICT z = REAL(sz);
+
+  helpers_size_t m = LENGTH(sy);
+
+  if (m <= 0)
+  { return;
+  }
+
+  SETUP_SPLIT (4*s > m)
+
+  if (s > 1)
+  { 
+    int t0 = (int) ((double)m * w / s);
+    int t1 = (int) ((double)m * (w+1) / s);
+
+    helpers_size_t a = t0;
+
+    while (a < t1)
+    { 
+      helpers_size_t oa = a;
+      helpers_size_t na = t1-a <= 4 ? t1 : a+4;
+      HELPERS_WAIT_IN2 (a, na-1, m);
+      if (a > t1) a = t1;
+      else if (a < t1) a &= ~3;
+
+      matprod_scalar_vec (x, y+oa, z+oa, a-oa);
+    }
+
+    if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
+  }
+
+  else  /* only one thread */
+  { 
+    helpers_size_t a = 0;
+
+    while (a < m)
+    { 
+      helpers_size_t oa = a;
+      helpers_size_t na = m-a <= 4 ? m : a+4;
+      HELPERS_WAIT_IN2 (a, na-1, m);
+      if (a < m) a &= ~3;
+
+      matprod_scalar_vec (x, y+oa, z+oa, a-oa);
+    }
+  }
+}
+
+
 /* Dot product of two vectors, with pipelining of input y. */
 
 void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
@@ -720,6 +775,36 @@ void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
 
 #define MINMUL 8192   /* Desired minimum number of multiplies per thread
                          (not used for vec_vec) */
+
+
+void par_matprod_scalar_vec (helpers_var_ptr z, helpers_var_ptr x,
+                             helpers_var_ptr y, int split)
+{
+  helpers_size_t m = LENGTH(z);
+
+  if (split == 0)
+  { helpers_wait_until_not_being_computed(y);
+    matprod_scalar_vec (*REAL(x), REAL(y), REAL(z), m);
+    return;
+  }
+
+  DECIDE_SPLIT (m, MINMUL*s > m)
+
+  if (s > 1)
+  { int w;
+    for (w = 0; w < s; w++)
+    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT :
+                                HELPERS_PIPE_IN02_OUT,
+                       task_piped_matprod_scalar_vec,
+                       MAKE_OP(w,s,0), z, x, y);
+    }
+  }
+  else
+  { helpers_do_task (HELPERS_PIPE_IN2,
+                     task_piped_matprod_scalar_vec,
+                     0, z, x, y);
+  }
+}
 
 
 #define DISABLE_VEC_VEC_SPLIT 1  /* Splitting dot products may be undesirable */

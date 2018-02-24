@@ -31,6 +31,7 @@
 #endif
 
 
+helpers_task_proc task_piped_matprod_scalar_vec;
 helpers_task_proc task_piped_matprod_vec_vec;
 helpers_task_proc task_piped_matprod_vec_mat;
 helpers_task_proc task_piped_matprod_mat_vec;
@@ -39,6 +40,9 @@ helpers_task_proc task_piped_matprod_outer;
 helpers_task_proc task_piped_matprod_trans1;
 helpers_task_proc task_piped_matprod_trans2;
 helpers_task_proc task_piped_matprod_trans12;
+
+void par_matprod_scalar_vec (helpers_var_ptr z, helpers_var_ptr x, 
+                             helpers_var_ptr y, int split);
 
 void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x, 
                           helpers_var_ptr y, int split);
