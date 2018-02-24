@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 3241a2359b262f67349ce9f4d815665da7f3207c
+commit b229d2ebc8e07c7b7e112335abbc1cf62d7d33ba
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Feb 17 22:09:59 2018 -0500
+Date:   Fri Feb 23 20:02:55 2018 -0500
 
-    Set OMP_NUM_THREADS as well as OPENBLAS_NUM_THREADS in run-blas-linux...
+    do-blas and do-matprod for haswell
