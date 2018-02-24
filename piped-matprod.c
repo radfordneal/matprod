@@ -113,8 +113,8 @@ void task_piped_matprod_scalar_vec (helpers_op_t op, helpers_var_ptr sz,
 
   if (s > 1)
   { 
-    int t0 = (int) ((double)m * w / s);
-    int t1 = (int) ((double)m * (w+1) / s);
+    int t0 = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
+    int t1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
 
     helpers_size_t a = t0;
 

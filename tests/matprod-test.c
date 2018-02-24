@@ -34,7 +34,11 @@ void do_test (int rep)
   { v = vec[nmat];
     for (i = nmat-2; i>=0; i--)
     { v |= vec[i+1];
-      if (vec[i] && v && matrows[i]==1 && matcols[nmat-1]==1) 
+      if (vec[i] && vec[i+1])
+      { matprod_scalar_vec (*matrix[i], product[i+1], product[i],
+                            matcols[i+1]);
+      }
+      else if (vec[i] && v && matrows[i]==1 && matcols[nmat-1]==1) 
       { *product[i] = matprod_vec_vec (matrix[i], product[i+1], matcols[i]);
       }
       else if (v && matcols[nmat-1]==1)

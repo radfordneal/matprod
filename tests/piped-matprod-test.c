@@ -97,7 +97,10 @@ void helpers_master (void)
       { if ((double)n * k * matcols[nmat-1] >= min) split0 = helpers+1;
       }
       v |= vec[i+1];
-      if (vec[i] && v && matrows[i]==1 && matcols[nmat-1]==1) 
+      if (vec[i] && vec[i+1])
+      { par_matprod_scalar_vec (op0, op1, op2, split0);
+      }
+      else if (vec[i] && v && matrows[i]==1 && matcols[nmat-1]==1) 
       { par_matprod_vec_vec (op0, op1, op2, split0);
       }
       else if (vec[i] && matrows[i]==1)

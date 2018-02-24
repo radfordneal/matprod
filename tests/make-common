@@ -220,7 +220,8 @@ piped-matprod-norestrict-test:	../test.h ../test.c ../piped-matprod-test.c ../..
 blas0-test:		../test.h ../test.c ../../matprod.c ../blas-test.c \
 			../ddot.f ../dgemm.f ../dgemv.f ../dsyrk.f ../lsame.f
 	$(CC) $(II) $(CFLAGS) $(ALIGN) \
-		../test.c ../../matprod.c ../blas-test.c ../ddot.f ../dgemm.f ../dgemv.f ../dsyrk.f ../lsame.f \
+		../test.c ../../matprod.c ../blas-test.c \
+		../ddot.f ../dgemm.f ../dgemv.f ../dsyrk.f ../lsame.f \
 		-o blas0-test
 
 blas1-test:		../test.h ../test.c ../../matprod.c ../blas-test.c ../blas1.f

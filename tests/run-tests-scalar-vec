@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
-#           Shell File to Run a Series of Tests
+#           Shell File to Run a Series of Tests (for vec_vec)
 #
 # Copyright (c) 2013, 2017, 2018 Radford M. Neal.
 # 
@@ -20,21 +20,10 @@
 #   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 
-# Usage:
-#
-#     run-tests program
-#
-# Uses the given test program (with -test appended) for a variety of
-# tests, displaying timing information, along with some headers.
+prog=$1-test
 
-../run-tests-scalar-vec $1
-../run-tests-vec-vec $1
-../run-tests-vec-mat $1
-../run-tests-mat-vec $1
-../run-tests-outer $1
-../run-tests-mat-mat $1
-../run-tests-trans1 $1
-../run-tests-trans2 $1
-../run-tests-trans12 $1
-../run-tests-special $1
-../run-tests-seq $1
+echo " "; echo SCALAR_VEC
+
+echo " "; time $prog 30000000$Z v v 23
+echo " "; time $prog 700000$Z v v 1901
+echo " "; time $prog 200$Z v v 1234567

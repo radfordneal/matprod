@@ -64,14 +64,15 @@ multiply will be symmetric, and hence may perhaps be computed faster.
 
 An argument after rep with the value "1" may be replaced with the
 argument "v" or "V", which has the same effect as "1", except that the
-appropriate mat_vec, vec_mat, vec_vec, or outer procedure is used for
-some or all products, rather than the general matrix multiplication
-procedure.  This applies both to the vectors specified in this way,
-and the vectors that result from multiplying such a vector by a
-matrix.  For example, if the last argument is "v", all the products
-will use the mat_vec procedure, except if the first operand was also
-specified using "v" or "V", in which case the vec_vec procedure will
-be used.
+appropriate scalar_vec, vec_vec, vec_mat, mat_vec, or outer procedure
+is used for some or all products, rather than the general matrix
+multiplication procedure.  This applies both to the vectors specified
+in this way, and the vectors that result from multiplying such a
+vector by a matrix.  For example, if the last argument is "v", all the
+products will use the mat_vec procedure, except if the first operand
+was also specified using "v" or "V", in which case the vec_vec
+procedure will be used.  The scalar_vec procedure is used when both
+dimensions of the left operand are specified with "v".
 
 The matrices created by the test programs have elements that are set
 to 0.1 times the sum of the number of rows and columns in the matrix,
@@ -82,14 +83,6 @@ will be initialized so that this is its value after transposition, so
 the results obtained should be the same with or without the "t"
 option, on either the left or right.  Since the initialization is
 invariant to transposition, the result with "T" instead of "t" is also
-the same.
-
-If the environment variable CHECK is defined (as anything), the
-results are checked against simple code implementing the naive
-algorithm, resulting in either "Check OK" being printed, or an error
-message followed by an abort.  Note that these checks take time, and
-so should not be done when running the test programs for performance
-evaluation.
 
 If the last argument to piped-matprod-test (see below) is "V" (only,
 not "v"), the final matrix (a column vector) will be supplied as
@@ -99,6 +92,14 @@ This allows pipelining to be tested for the mat_vec and vec_vec
 procedures, for which pipelined input cannot otherwise be arranged.
 (Of course, this is slower than just accessing the already-initialized
 matrix.)
+the same.
+
+If the environment variable CHECK is defined (as anything), the
+results are checked against simple code implementing the naive
+algorithm, resulting in either "Check OK" being printed, or an error
+message followed by an abort.  Note that these checks take time, and
+so should not be done when running the test programs for performance
+evaluation.
 
 
 Makefile for compiling program versions.
@@ -140,8 +141,8 @@ including the following:
       triangle of the matrix from the upper triangle.  
 
       The versions of these files distributed here were downloaded on
-      2017-11-27 from www.netlib.org/blas.  They are known as the
-      "reference BLAS" routines.
+      2018-02-24 from www.netlib.org/blas (BLAS-3.8.0).  They are
+      known as the "reference BLAS" routines.
 
     blas1-test
 

@@ -20,13 +20,14 @@ The file COPYING contains the text of the GNU General Public License,
 version 2.
 
 
-The matprod library contains procedures for vector-vector,
-matrix-vector, vector-matrix, and matrix-matrix multiplication (plus
-version of matrix-matrix multiplication where one or both operands are
-transposed).  These procedures are written to produce exactly the same
-result as the naive procedures that sum products sequentially.
-Subject to this restriction, they are written to be reasonably fast,
-and can take advantage of SIMD instructions on Intel/AMD processors.
+The matprod library contains procedures for doing scalar-vector,
+vector-vector, matrix-vector, vector-matrix, vector outer product, and
+matrix-matrix multiplication, plus version of matrix-matrix
+multiplication where one or both operands are transposed.  These
+procedures are written to produce exactly the same result as the naive
+procedures that sum products sequentially.  Subject to this
+restriction, they are written to be reasonably fast, and can take
+advantage of SIMD instructions on Intel/AMD processors.
 
 The file matprod.c (interface defined in matprod.h) contains direct
 versions of these procedures.  The file piped-matprod.c (interface
