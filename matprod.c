@@ -294,8 +294,10 @@ SCOPE void matprod_fill_lower (double * MATPROD_RESTRICT z, int n)
 
 /* Multiply vector y of length m by scalar x, storing result in vector z. */
 
+#define SCALAR_VEC_THRESH 1024  /* amount threshold for output pipelining */
+
 SCOPE void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
-                               double * MATPROD_RESTRICT z, int m)
+                               double * MATPROD_RESTRICT z, int m EXTRAD)
 {
 # if DEBUG_PRINTF
     debug_printf("scalar_vec %f %p %p - %d\n",
@@ -323,7 +325,7 @@ SCOPE void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
   int i = 0;  /* indexes y and z */
 
 # if CAN_USE_SSE2 || CAN_USE_AVX
-
+  {
 #   if CAN_USE_AVX
       __m256d X = _mm256_set1_pd (x);
 #   else
@@ -343,13 +345,39 @@ SCOPE void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
 #   endif
 
 #   if CAN_USE_AVX
-    { while (i <= m-4)
+    { 
+#     ifdef PIPED_MATPROD
+      { while (i < m-SCALAR_VEC_THRESH)
+        { int e = i+SCALAR_VEC_THRESH;
+          while (i < e)
+          { _mm256_storeA_pd (z+i, _mm256_mul_pd (X, _mm256_loadA_pd(y+i)));
+            i += 4;
+          }
+          AMTOUT(z+i);
+        }
+      }
+#     endif
+      while (i <= m-4)
       { _mm256_storeA_pd (z+i, _mm256_mul_pd (X, _mm256_loadA_pd(y+i)));
         i += 4;
       }
     }
 #   else  /* CAN_USE_SSE2 */
-    { while (i <= m-4)
+    { 
+#     ifdef PIPED_MATPROD
+      { while (i < m-SCALAR_VEC_THRESH)
+        { int e = i+SCALAR_VEC_THRESH;
+          while (i < e)
+          { _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X), _mm_loadA_pd(y+i)));
+            i += 2;
+            _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X), _mm_loadA_pd(y+i)));
+            i += 2;
+          }
+          AMTOUT(z+i);
+        }
+      }
+#     endif
+      while (i <= m-4)
       { _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X), _mm_loadA_pd(y+i)));
         i += 2;
         _mm_storeA_pd (z+i, _mm_mul_pd (cast128(X), _mm_loadA_pd(y+i)));
@@ -366,12 +394,26 @@ SCOPE void matprod_scalar_vec (double x, double * MATPROD_RESTRICT y,
     if (i < m)
     { _mm_store_sd (z+i, _mm_mul_sd (cast128(X), _mm_load_sd(y+i)));
     }
+  }
 
 # else  /* non-SIMD code */
+  {
+#   ifdef PIPED_MATPROD
+    { while (i < m-SCALAR_VEC_THRESH)
+      { int e = i+SCALAR_VEC_THRESH;
+        while (i < e)
+        { z[i] = x * y[i];
+          i += 1;
+        }
+        AMTOUT(z+i);
+      }
+    }
+#   endif
     while (i < m)
     { z[i] = x * y[i];
       i += 1;
     }
+  }
 # endif
 }
 
@@ -401,7 +443,7 @@ SCOPE double matprod_vec_vec (double * MATPROD_RESTRICT x,
 }
 
 static double matprod_vec_vec_sub (double * MATPROD_RESTRICT x,
-                       double * MATPROD_RESTRICT y, int k, double s)
+                                   double * MATPROD_RESTRICT y, int k, double s)
 {
 # if DEBUG_PRINTF
     debug_printf("vec_vec_sub %p %p %f - %d\n",
@@ -600,7 +642,7 @@ SCOPE void matprod_vec_mat (double * MATPROD_RESTRICT x,
     if (k == 2)
       matprod_vec_mat_k2 (x, y, z, m);
     else if (k == 1)
-      matprod_scalar_vec (x[0], y, z, m);
+      matprod_scalar_vec (x[0], y, z, m EXTRAN);
     else  /* k == 0 */
       set_to_zeros (z, m);
 
@@ -1529,7 +1571,7 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
         for (i = 0; i < n; i++) z[i] += t * x[i];
       }
       else
-        matprod_scalar_vec (y[0], x, z, n);
+        matprod_scalar_vec (y[0], x, z, n EXTRAZ);
     }
     else  /* k == 0 */
     { if (!add) set_to_zeros (z, n);
@@ -2363,7 +2405,7 @@ SCOPE void matprod_outer (double * MATPROD_RESTRICT x,
 
   if (m <= 1)
   { if (m == 1)
-    { matprod_scalar_vec (y[0], x, z, n);
+    { matprod_scalar_vec (y[0], x, z, n EXTRAN);
     }
     return;
   }
@@ -2379,7 +2421,7 @@ SCOPE void matprod_outer (double * MATPROD_RESTRICT x,
     { matprod_outer_n2 (x, y, z, m);
     }
     else if (n == 1)
-    { matprod_scalar_vec (x[0], y, z, m);
+    { matprod_scalar_vec (x[0], y, z, m EXTRAN);
     }
     return;
   }

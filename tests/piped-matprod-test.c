@@ -109,7 +109,7 @@ void helpers_master (void)
       else if (v && matcols[nmat-1]==1)
       { par_matprod_mat_vec (op0, op1, op2, split0);
       }
-      else if (vec[i+1] && matcols[i]==1 && matrows[nmat-1]==1)
+      else if (vec[i+1] && matcols[i]==1 && matrows[i+1]==1)
       { par_matprod_outer (op0, op1, op2, split0);
       }
       else 

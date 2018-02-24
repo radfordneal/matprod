@@ -64,7 +64,7 @@
     } \
   } while (0)
 
-#define THRESH 64
+#define THRESH 64  /* keep a multiple of 8 to avoid possible alignment issues */
 
 #include "matprod.c"
 
@@ -126,7 +126,7 @@ void task_piped_matprod_scalar_vec (helpers_op_t op, helpers_var_ptr sz,
       if (a > t1) a = t1;
       else if (a < t1) a &= ~3;
 
-      matprod_scalar_vec (x, y+oa, z+oa, a-oa);
+      matprod_scalar_vec (x, y+oa, z+oa, a-oa, z, z+oa, w);
     }
 
     if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
@@ -143,7 +143,7 @@ void task_piped_matprod_scalar_vec (helpers_op_t op, helpers_var_ptr sz,
       HELPERS_WAIT_IN2 (a, na-1, m);
       if (a < m) a &= ~3;
 
-      matprod_scalar_vec (x, y+oa, z+oa, a-oa);
+      matprod_scalar_vec (x, y+oa, z+oa, a-oa, z, z+oa, 0);
     }
   }
 }
@@ -784,7 +784,7 @@ void par_matprod_scalar_vec (helpers_var_ptr z, helpers_var_ptr x,
 
   if (split == 0)
   { helpers_wait_until_not_being_computed(y);
-    matprod_scalar_vec (*REAL(x), REAL(y), REAL(z), m);
+    matprod_scalar_vec (*REAL(x), REAL(y), REAL(z), m EXTRAZ);
     return;
   }
 
@@ -793,14 +793,14 @@ void par_matprod_scalar_vec (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT :
-                                HELPERS_PIPE_IN02_OUT,
+    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT
+                              : HELPERS_PIPE_IN02_OUT,
                        task_piped_matprod_scalar_vec,
                        MAKE_OP(w,s,0), z, x, y);
     }
   }
   else
-  { helpers_do_task (HELPERS_PIPE_IN2,
+  { helpers_do_task (HELPERS_PIPE_IN2_OUT,
                      task_piped_matprod_scalar_vec,
                      0, z, x, y);
   }
@@ -826,9 +826,9 @@ void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0   ? HELPERS_PIPE_IN2_OUT :
-                       w == s-1 ? HELPERS_PIPE_IN02 :
-                                  HELPERS_PIPE_IN02_OUT,
+    { helpers_do_task (w == 0  ? HELPERS_PIPE_IN2_OUT :
+                       w < s-1 ? HELPERS_PIPE_IN02_OUT
+                               : HELPERS_PIPE_IN02,
                        task_piped_matprod_vec_vec,
                        MAKE_OP(w,s,0), z, x, y);
     }
@@ -860,14 +860,14 @@ void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT :
-                                HELPERS_PIPE_IN02_OUT,
+    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT
+                              : HELPERS_PIPE_IN02_OUT,
                        task_piped_matprod_vec_mat,
                        MAKE_OP(w,s,0), z, x, y);
     }
   }
   else
-  { helpers_do_task (HELPERS_PIPE_IN2,
+  { helpers_do_task (HELPERS_PIPE_IN2_OUT,
                      task_piped_matprod_vec_mat,
                      0, z, x, y);
   }
@@ -895,8 +895,8 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
   { int w;
     for (w = 0; w < s; w++)
     { helpers_do_task (w == 0  ? HELPERS_PIPE_IN2_OUT :
-                       w < s-1 ? HELPERS_PIPE_IN02_OUT :
-                                 HELPERS_PIPE_IN02,
+                       w < s-1 ? HELPERS_PIPE_IN02_OUT
+                               : HELPERS_PIPE_IN02,
                        task_piped_matprod_mat_vec,
                        MAKE_OP(w,s,0), z, x, y);
     }
@@ -928,8 +928,8 @@ void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT :
-                                HELPERS_PIPE_IN02_OUT,
+    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT
+                              : HELPERS_PIPE_IN02_OUT,
                        task_piped_matprod_outer,
                        MAKE_OP(w,s,0), z, x, y);
     }
@@ -961,8 +961,8 @@ void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT :
-                                HELPERS_PIPE_IN02_OUT,
+    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT
+                              : HELPERS_PIPE_IN02_OUT,
                        task_piped_matprod_mat_mat,
                        MAKE_OP(w,s,k), z, x, y);
     }
@@ -998,8 +998,8 @@ void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT :
-                                HELPERS_PIPE_IN02_OUT,
+    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT
+                              : HELPERS_PIPE_IN02_OUT,
                        task_piped_matprod_trans1,
                        MAKE_OP(w,s,k), z, x, y);
     }
@@ -1035,8 +1035,8 @@ void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0 ? HELPERS_PIPE_OUT :
-                                HELPERS_PIPE_IN0_OUT,
+    { helpers_do_task (w == 0 ? HELPERS_PIPE_OUT
+                              : HELPERS_PIPE_IN0_OUT,
                        task_piped_matprod_trans2,
                        MAKE_OP(w,s,k), z, x, y);
     }
@@ -1068,9 +1068,9 @@ void par_matprod_trans12 (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0   ? HELPERS_PIPE_OUT :
-                       w == s-1 ? HELPERS_PIPE_IN0
-                                : HELPERS_PIPE_IN0_OUT,
+    { helpers_do_task (w == 0  ? HELPERS_PIPE_OUT :
+                       w < s-1 ? HELPERS_PIPE_IN0_OUT
+                               : HELPERS_PIPE_IN0,
                        task_piped_matprod_trans12,
                        MAKE_OP(w,s,k), z, x, y);
     }
