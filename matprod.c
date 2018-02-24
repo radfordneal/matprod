@@ -4767,17 +4767,19 @@ void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
   {
     double *e = y + m + m;
     while (y < e)
-    { double *p = x;
+    { double t0 = y[0];
+      double t1 = y[1];
+      double *p = x;
       int i = 0;
       while (i <= n-2)
-      { z[0] = p[0] * y[0] + p[1] * y[1];
-        z[1] = p[2] * y[2] + p[3] * y[3];
+      { z[0] = p[0] * t0 + p[1] * t1;
+        z[1] = p[2] * t0 + p[3] * t1;
         z += 2;
         p += 4;
         i += 2;
       }
       if (i < n)
-      { z[0] = p[0] * y[0] + p[1] * y[1];
+      { z[0] = p[0] * t0 + p[1] * t1;
         z += 1;
       }
       y += 2;
