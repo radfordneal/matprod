@@ -217,45 +217,45 @@ piped-matprod-norestrict-test:	../test.h ../test.c ../piped-matprod-test.c ../..
 
 # -----------------------------------------------------------------------------
 
-blas0-test:		../test.h ../test.c ../blas-test.c \
+blas0-test:		../test.h ../test.c ../../matprod.c ../blas-test.c \
 			../ddot.f ../dgemm.f ../dgemv.f ../dsyrk.f ../lsame.f
 	$(CC) $(II) $(CFLAGS) $(ALIGN) \
-		../test.c ../blas-test.c ../ddot.f ../dgemm.f ../dgemv.f ../dsyrk.f ../lsame.f \
+		../test.c ../../matprod.c ../blas-test.c ../ddot.f ../dgemm.f ../dgemv.f ../dsyrk.f ../lsame.f \
 		-o blas0-test
 
-blas1-test:		../test.h ../test.c ../blas-test.c ../blas1.f
-	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c ../blas-test.c ../blas1.f \
+blas1-test:		../test.h ../test.c ../../matprod.c ../blas-test.c ../blas1.f
+	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c ../../matprod.c ../blas-test.c ../blas1.f \
 		-lm -o blas1-test
 
-blas1-off-test:		../test.h ../test.c ../blas-test.c ../blas1.f
-	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c ../blas-test.c ../blas1.f \
+blas1-off-test:		../test.h ../test.c ../../matprod.c ../blas-test.c ../blas1.f
+	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c ../../matprod.c ../blas-test.c ../blas1.f \
 		-lm -o blas1-off-test
 
-blas2-test:		../test.h ../test.c ../blas-test.c ../blas2.f
-	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c ../blas-test.c ../blas2.f \
+blas2-test:		../test.h ../test.c ../../matprod.c ../blas-test.c ../blas2.f
+	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c ../../matprod.c ../blas-test.c ../blas2.f \
 		-lm -o blas2-test
 
-blas2-off-test:		../test.h ../test.c ../blas-test.c ../blas2.f
-	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c ../blas-test.c ../blas2.f \
+blas2-off-test:		../test.h ../test.c ../../matprod.c ../blas-test.c ../blas2.f
+	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c ../../matprod.c ../blas-test.c ../blas2.f \
 		-lm -o blas2-off-test
 
-blas3-test:		../test.h ../test.c ../blas-test.c
-	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c ../blas-test.c \
+blas3-test:		../test.h ../test.c ../../matprod.c ../blas-test.c
+	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c ../../matprod.c ../blas-test.c \
 		/usr/lib/libblas.so.3 \
 		-lm -o blas3-test
 
-blas3-off-test:		../test.h ../test.c ../blas-test.c
-	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c ../blas-test.c \
+blas3-off-test:		../test.h ../test.c ../../matprod.c ../blas-test.c
+	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c ../../matprod.c ../blas-test.c \
 		/usr/lib/libblas.so.3 \
 		-lm -o blas3-off-test
 
-blas4-test:		../test.h ../test.c ../blas-test.c
-	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c ../blas-test.c \
+blas4-test:		../test.h ../test.c ../../matprod.c ../blas-test.c
+	$(CC) $(II) $(CFLAGS) $(ALIGN) ../test.c ../../matprod.c ../blas-test.c \
 		-framework Accelerate \
 		-lm -o blas4-test
 
-blas4-off-test:		../test.h ../test.c ../blas-test.c
-	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c ../blas-test.c \
+blas4-off-test:		../test.h ../test.c ../../matprod.c ../blas-test.c
+	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) ../test.c ../../matprod.c ../blas-test.c \
 		-framework Accelerate \
 		-lm -o blas4-off-test
 

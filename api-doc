@@ -258,7 +258,8 @@ can be stored in an int.
     void matprod_fill_lower (double *z, int n)
 
       Fills the lower triangle of the n x n matrix z with the symetric
-      elements from the upper triangle.
+      elements from the upper triangle.  This is useful when computing
+      a symmetrical matrix product using the BLAS routine DSYRK.
 
 For the above procedures, the result matrix, z, must have no overlap
 with the operands, x and y.  However, the operands may be the same or
