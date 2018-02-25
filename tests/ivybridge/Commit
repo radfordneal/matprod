@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit a81513c5be4e829a7e1d03b1228da679142f6bb5
+commit eacf0382be0b974ad5fad5cf1fc33a3885ccc63d
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Feb 22 12:40:38 2018 -0500
+Date:   Sat Feb 24 20:53:09 2018 -0500
 
-    more doc work
+    misc cleanup and doc additions
