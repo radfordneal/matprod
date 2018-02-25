@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 7c023d2a706e6278b55c90dd57f6ef529ccbf88e
+commit eacf0382be0b974ad5fad5cf1fc33a3885ccc63d
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Feb 17 20:44:34 2018 -0500
+Date:   Sat Feb 24 20:53:09 2018 -0500
 
-    results for jaguar
+    misc cleanup and doc additions
