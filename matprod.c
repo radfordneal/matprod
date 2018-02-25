@@ -455,7 +455,7 @@ static double matprod_vec_vec_sub (double * MATPROD_RESTRICT x,
   if (k <= 2)
   { if (k == 2)
       return s + x[0] * y[0] + x[1] * y[1];
-    if (k == 1)
+    else if (k == 1)
       return s + x[0] * y[0];
     else  /* k <= 0 */
       return s;
@@ -631,7 +631,8 @@ SCOPE void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
   if (m <= 1)
   { if (m == 1)
-      z[0] = matprod_vec_vec (x, y, k);
+    { z[0] = matprod_vec_vec (x, y, k);
+    }
     return;
   }
 
@@ -640,11 +641,14 @@ SCOPE void matprod_vec_mat (double * MATPROD_RESTRICT x,
   if (k <= 2)
   { 
     if (k == 2)
-      matprod_vec_mat_k2 (x, y, z, m);
+    { matprod_vec_mat_k2 (x, y, z, m);
+    }
     else if (k == 1)
-      matprod_scalar_vec (x[0], y, z, m EXTRAN);
+    { matprod_scalar_vec (x[0], y, z, m EXTRAN);
+    }
     else  /* k == 0 */
-      set_to_zeros (z, m);
+    { set_to_zeros (z, m);
+    }
 
     return;
   }
@@ -1571,10 +1575,13 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
         for (i = 0; i < n; i++) z[i] += t * x[i];
       }
       else
-        matprod_scalar_vec (y[0], x, z, n EXTRAZ);
+      { matprod_scalar_vec (y[0], x, z, n EXTRAZ);
+      }
     }
     else  /* k == 0 */
-    { if (!add) set_to_zeros (z, n);
+    { if (!add)
+      { set_to_zeros (z, n);
+      }
     }
     return;
   }
@@ -1583,13 +1590,17 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
 
   if (n <= 4)
   { if (n == 4)
-      matprod_mat_vec_n4 (x, y, z, k, add);
+    { matprod_mat_vec_n4 (x, y, z, k, add);
+    }
     else if (n == 3)
-      matprod_mat_vec_n3 (x, y, z, k, add);
+    { matprod_mat_vec_n3 (x, y, z, k, add);
+    }
     else if (n == 2)
-      matprod_mat_vec_n2 (x, y, z, k, add);
+    { matprod_mat_vec_n2 (x, y, z, k, add);
+    }
     else if (n == 1)
-      z[0] = matprod_vec_vec_sub (x, y, k, add ? z[0] : 0.0);
+    { z[0] = matprod_vec_vec_sub (x, y, k, add ? z[0] : 0.0);
+    }
     return;
   }
 

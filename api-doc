@@ -87,7 +87,7 @@ The matprod routines can be used via task procedures that can run in
 https://github.com/radfordneal/helpers).
 
 One option is to use a single helper thread for each matrix
-multiplication operation, allowing this operation to exectute in
+multiplication operation, allowing this operation to execute in
 parallel with other operations done by the application (including
 other matrix multiplication operations).  In many situations, the
 output of one such operation can be pipledlined as the input for
@@ -112,9 +112,11 @@ multiplication routines in optimized BLAS libraries.  A general design
 goal is for the non-parallel version of the routines to be no more
 than a factor of two slower than the best non-parallel implementation
 of matrix multiply (without the constraints on reproducibility).  This
-goal is met for the most part.  For some operands, the matprod
-routines are actually faster than the routines provided in some
-optimized BLAS libraries, in some cases substantially faster.
+goal is met for the most part.  The speed-up from parallelization is
+also comparable.  For some operands, the matprod routines are actually
+faster than the routines provided in some optimized BLAS libraries, in
+some cases substantially faster - primarily when at least one operand
+has at least one small dimension.
 
 See imp-doc and the comments in matprod.c and piped-matprod.c for
 details on the algorithms used.
@@ -123,17 +125,19 @@ details on the algorithms used.
 Building and using the procedures.
 
 The non-parallel routines, in matprod.c, are called in ordinary C
-fashion.  The parallel, pipelined routines, in piped-matprod.c, are
-task procedures for use with the helpers library for parallel
-computation (available at https://github.com/radfordneal/helpers).
+fashion.  The parallel, pipelined routines, in piped-matprod.c, take
+the form of task procedures for use with the helpers library for
+parallel computation (see https://github.com/radfordneal/helpers),
+though convenient procedures for scheduling these task procedures are
+also provided.
 
 The matprod.c and/or piped-matprod.c source files should be compiled
-and linked with the program using the routines in the usual fashion.
-Some options can be set by pre-processor symbols defined with
-arguments to the compiler, or alternatively, by defining the symbol
-MATPROD_APP_INCLUDED (as anything), which will cause the file
-matprod-app.h to be included at the start of matprod.c and
-piped-matprod.c, which may then define symbols that set these options.
+and linked with the program that usies the routines in the usual
+fashion.  Some options can be set by pre-processor symbols defined
+with arguments to the compiler, or alternatively, by defining the
+symbol MATPROD_APP_INCLUDED (as anything), which will cause matprod.c
+and piped-matprod.c to include the file matprod-app.h, which may
+define symbols that set these options.
 
 These options include the following:
 
@@ -170,15 +174,16 @@ These options include the following:
 
 Some special code has been written to take advantage of the SSE2,
 SSE3, AVX, AVX2 instructions available on some Intel/AMD processors.
-It is used only if gcc or a gcc look-alike is used, since this code
-uses the builtin intrinsic functions that gcc provides.  This SIMD
-code can be disabled by defining the symbol DISABLE_SIMD_CODE.  Just
-the AVX or AVX2 code can be disabled by defining DISABLE_AVX_CODE (in
-which case SSE2 or SSE3 code may still be used).  Some AVX or AVX2
-code appears to not be better than the corresponding SSE2, SSE3, or
-non-SIMD code; it is disabled unless the symbol ENABLE_ALL_AVX_CODE is
-defined (and DISABLE_AVX_CODE is not defined).  The SIMD code sections
-are automatically disabled when the routines are compiled for an
+It is used only if symbols __SSE2__, __SSE3__, etc. are pre-defined,
+indicating that the builtin intrinsic functions that access the
+corresponding instructons are available.  This SIMD code can be
+disabled by defining the symbol DISABLE_SIMD_CODE.  Just the AVX or
+AVX2 code can be disabled by defining DISABLE_AVX_CODE (in which case
+SSE2 or SSE3 code may still be used).  Some AVX or AVX2 code appears
+to not be better than the corresponding SSE2, SSE3, or non-SIMD code;
+it is disabled unless the symbol ENABLE_ALL_AVX_CODE is defined (and
+DISABLE_AVX_CODE is not defined).  The SIMD code sections are
+automatically disabled when the routines are compiled for an
 architecture without the required instructions.
 
 Note that disabling the explicit SIMD code does not prevent the
@@ -194,12 +199,12 @@ specified level of SIMD instructions, if compiled for that processor.
 Matrix operations using procedures in matprod.c.
 
 The procedures below are in matprod.c, with declarations in matprod.h.
-They are written with pointers declared as simply "double *", but, the
-actual declaration will be "double * restrict" unless the matprod
-source is compiled with -DMATPROD_NO_RESTRICT.  Note that the
-dimensions of the matrices (numbers or rows and columns) have C int
-type, but the total number of elements in a matrix may be larger than
-can be stored in an int.
+Their prototypes below are written with pointers declared as simply
+"double *", but, the actual declaration will be "double * restrict"
+unless the matprod source is compiled with -DMATPROD_NO_RESTRICT.
+Note that the dimensions of the matrices (numbers or rows and columns)
+have C int type, but the total number of elements in a matrix may be
+larger than can be stored in an int.
 
     void matprod_scalar_vec (double x, double *y, double *z, int m)
 

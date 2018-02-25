@@ -100,15 +100,15 @@ Special cases.
 Special code is used to handle some cases in which n, k, or m is small
 (for multiplication of an n x k matrix by a k x m matrix).  This can
 reduce overhead when what would otherwise be the innermost loop would
-be done only a small number of times.  When columns have only two
-elements, it also allows AVX instuctions to operate on all elements in
-two columns at once.
+be done only a small number of times.  Other special tricks may also
+be possible - for example, when columns have only two elements, AVX
+instructions can operate on all elements in two columns at once.
 
-The vector-vector, matrix-vector, vector-matrix, and outer product
-procedure are particular cases of such special-case optimization that
-are made visible in the API, but other special cases are handled by
-non-visible functions (including special cases of the matrix-vector,
-vector-matrix, and outer product operations).
+The scalar-vector, vector-vector, matrix-vector, vector-matrix, and
+outer product procedures are particular cases of such special-case
+optimization that are made visible in the API, but other special cases
+are handled by non-visible functions (including special cases of the
+matrix-vector, vector-matrix, and outer product operations).
 
 
 Optimizing for cache behaviour.
@@ -276,6 +276,18 @@ corresponds to splitting according to columns of the second operand.
 Except for trans12, operations parallelized by columns of the result
 also pipeline the output by column (but do not necessarily make data
 available immediately after every column is computed).
+
+To allow the parallel/pipelined routines to access the non-visible
+procedures in matprod.c for operating on parts of matrices, the
+piped-matprod.c source file includes the matprod.c source file.  This
+also allows the apparatus for output pipelining to be implemented in
+the procedures in matprod.c using macros that are defined to do
+nothing when matprod.c is compiled separately - eliminating any
+overhead for pipelining when it is not used.  When included in
+piped-matprod.c, the normally-visible procedures in maptrod.c are made
+"static", allowing them to co-exist with procedures of the same name
+obtained by compiling matprod.c separately (which will not have the
+pipelining code, and could perhaps have other alignment settings).
 
 VEC_VEC... For the vec_vec operation, parallelization of the additions
 is not possible, if the round-off behaviour of simple sequential
