@@ -1,7 +1,6 @@
 #!/bin/bash
 
 time ../run-matprod
-time ../run-piped
-time ../run-piped-par 0 2
-time ../run-piped-parm 2 3 4 8
-time ../run-piped-hlp 1 2
+time ../run-matprod-par 0 1 2
+time ../run-matprod-min 2 3 4 8
+time ../run-matprod-nop 1 2
