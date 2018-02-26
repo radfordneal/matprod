@@ -340,8 +340,10 @@ of zero for "split" indicates that the corresponding matprod procedure
 should be called immediately without scheduling a task, after waiting
 for the second operand to be computed if it has not been already.
 
-The tasks scheduled by the par_matprod procedures use pipelining for
-the second operand and the output, if this is possible. 
+If the final 'pipe' argument is non-zero, the tasks scheduled by the
+par_matprod procedures use pipelining for the second operand and the
+output, if this is possible.  This argument is present (but ignored)
+even for procedures for which pipelining is currently never possible.
 
 Note that it has deliberately been left to the application to choose
 whether to do an operation immediately (setting 'split' to zero) or to
@@ -363,66 +365,66 @@ These special cases will instead be detected only after the task
 procedure has started.  Accordingly, some non-negligible overhead can
 be avoided if the appropriate par_matprod procedure is called
 originally.  Also, the decisions taken by the par_matprod procedures
-regarding splitting into multiple tasks may not be optimal when a
-special case applies.
+regarding splitting into multiple tasks may not be optimal for such
+special cases.
 
 The following par_matprod procedures are available:
 
     void par_matprod_scalar_vec (helpers_var_ptr z, helpers_var_ptr x, 
-                                 helpers_var_ptr y, int split)
+                                 helpers_var_ptr y, int split, int pipe)
 
       Schedules a task to perform a scalar-vector dot product, of the
-      scalar stored in x and the vector stored in y, with pipelining
-      of the input y and of the output.
+      scalar stored in x and the vector stored in y, with possible
+      pipelining of the input y and of the output.
 
     void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x, 
-                              helpers_var_ptr y, int split)
+                              helpers_var_ptr y, int split, int pipe)
 
       Schedules a task to perform a vector-vector dot product, with
-      pipelining of input y.  The result is stored in the scalar
-      operand z.
+      possible pipelining of input y.  The result is stored in the
+      scalar operand z.
 
     void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x, 
-                              helpers_var_ptr y, int split)
+                              helpers_var_ptr y, int split, int pipe)
 
       Schedules a task to perform a vector-matrix product, with
-      pipelining of input y and of the output.
+      possible pipelining of input y and of the output.
 
     void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x, 
-                              helpers_var_ptr y, int split)
+                              helpers_var_ptr y, int split, int pipe)
 
       Schedules a task to perform a matrix-vector product, with
-      pipelining of input y, but not of the output.
+      possible pipelining of input y, but not of the output.
 
     void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x, 
-                            helpers_var_ptr y, int split)
+                            helpers_var_ptr y, int split, int pipe)
 
       Schedules a task to perform a vector outer product, with
-      pipelining of input y and of the output.
+      possible pipelining of input y and of the output.
 
     void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x, 
-                              helpers_var_ptr y, int k, int split)
+                              helpers_var_ptr y, int k, int split, int pipe)
 
       Schedules a task to perform a matrix-matrix product, with k
-      being the number of columns in x and rows in y, with pipelining
-      of input y and of the output.
+      being the number of columns in x and rows in y, with possible
+      pipelining of input y and of the output.
 
     void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x, 
-                             helpers_var_ptr y, int k, int split)
+                             helpers_var_ptr y, int k, int split, int pipe)
 
       Schedules a task to perform a matrix-matrix product with first
       operand transposed, with k being the number of rows in x and y,
-      with pipelining of input y and of the output.
+      with possible pipelining of input y and of the output.
 
     void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x, 
-                             helpers_var_ptr y, int k, int split)
+                             helpers_var_ptr y, int k, int split, int pipe)
 
       Schedules a task to perform a matrix-matrix product with second
       operand transposed, with k being the number of columns in x and
-      y, with pipelining of the output, but not of the input.
+      y, with possible pipelining of the output, but not of the input.
 
     void par_matprod_trans12 (helpers_var_ptr z, helpers_var_ptr x, 
-                             helpers_var_ptr y, int k, int split)
+                              helpers_var_ptr y, int k, int split, int pipe)
 
       Schedules a task to perform a matrix-matrix product with both
       operands transposed, with k being the number of rows in x and

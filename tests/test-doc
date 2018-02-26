@@ -105,7 +105,8 @@ evaluation.
 Makefile for compiling program versions.
 
 Several test programs can be compiled using the supplied Makefile,
-including the following:
+including the following (some other versions are also compiled, see
+make-common for details):
 
     matprod-test
 
@@ -122,12 +123,14 @@ including the following:
       is 0, and the environment variable MIN exists and is not 0, the
       split will be set to HELPERS plus 1 if the number of multiplies
       is at least MIN; otherwise 0 for SPLIT results in the operation
-      being done directly in the master thread.
+      being done directly in the master thread.  Pipelining will be
+      done if possible unless the environment variable NOPIPE is
+      defined (as anything).
+
+      See below for the special role of a last argument of "V".
 
       If an environment variable TRACE is defined, trace output from
-      the helpers library is enabled.  See below for the special role
-      of a last argument of "V".  Some other versions are also
-      compiled; see the Makefile for details.
+      the helpers library is enabled.  
 
     blas0-test
 

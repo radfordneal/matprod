@@ -77,6 +77,7 @@ void task_output_vector (helpers_op_t op, helpers_var_ptr out,
 void helpers_master (void)
 {
   int r, i, v;
+  int pipe = getenv("NOPIPE") == 0;
 
   for (r = 0; r<repeat; r++)
   { 
@@ -98,34 +99,34 @@ void helpers_master (void)
       }
       v |= vec[i+1];
       if (vec[i] && vec[i+1])
-      { par_matprod_scalar_vec (op0, op1, op2, split0);
+      { par_matprod_scalar_vec (op0, op1, op2, split0, pipe);
       }
       else if (vec[i] && v && matrows[i]==1 && matcols[nmat-1]==1) 
-      { par_matprod_vec_vec (op0, op1, op2, split0);
+      { par_matprod_vec_vec (op0, op1, op2, split0, pipe);
       }
       else if (vec[i] && matrows[i]==1)
-      { par_matprod_vec_mat (op0, op1, op2, split0);
+      { par_matprod_vec_mat (op0, op1, op2, split0, pipe);
       }
       else if (v && matcols[nmat-1]==1)
-      { par_matprod_mat_vec (op0, op1, op2, split0);
+      { par_matprod_mat_vec (op0, op1, op2, split0, pipe);
       }
       else if (vec[i+1] && matcols[i]==1 && matrows[i+1]==1)
-      { par_matprod_outer (op0, op1, op2, split0);
+      { par_matprod_outer (op0, op1, op2, split0, pipe);
       }
       else 
       { int t1 = trans[i];
         int t2 = i==nmat-2 ? trans[i+1] : 0;
         if (t1 && t2)
-        { par_matprod_trans12 (op0, op1, op2, k, split0);
+        { par_matprod_trans12 (op0, op1, op2, k, split0, pipe);
         }
         else if (t1)
-        { par_matprod_trans1 (op0, op1, op2, k, split0);
+        { par_matprod_trans1 (op0, op1, op2, k, split0, pipe);
         }
         else if (t2)
-        { par_matprod_trans2 (op0, op1, op2, k, split0);
+        { par_matprod_trans2 (op0, op1, op2, k, split0, pipe);
         }
         else
-        { par_matprod_mat_mat (op0, op1, op2, k, split0);
+        { par_matprod_mat_mat (op0, op1, op2, k, split0, pipe);
         }
       }
     }

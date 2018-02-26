@@ -778,7 +778,7 @@ void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
 
 
 void par_matprod_scalar_vec (helpers_var_ptr z, helpers_var_ptr x,
-                             helpers_var_ptr y, int split)
+                             helpers_var_ptr y, int split, int pipe)
 {
   helpers_size_t m = LENGTH(z);
 
@@ -793,14 +793,15 @@ void par_matprod_scalar_vec (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT
-                              : HELPERS_PIPE_IN02_OUT,
+    { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
+                       w < s-1 ? HELPERS_PIPE_IN02_OUT
+                               : (pipe?HELPERS_PIPE_IN02_OUT:HELPERS_PIPE_IN0),
                        task_piped_matprod_scalar_vec,
                        MAKE_OP(w,s,0), z, x, y);
     }
   }
   else
-  { helpers_do_task (HELPERS_PIPE_IN2_OUT,
+  { helpers_do_task (pipe ? HELPERS_PIPE_IN2_OUT : 0,
                      task_piped_matprod_scalar_vec,
                      0, z, x, y);
   }
@@ -810,7 +811,7 @@ void par_matprod_scalar_vec (helpers_var_ptr z, helpers_var_ptr x,
 #define DISABLE_VEC_VEC_SPLIT 1  /* Splitting dot products may be undesirable */
 
 void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x,
-                          helpers_var_ptr y, int split)
+                          helpers_var_ptr y, int split, int pipe)
 {
   helpers_size_t k = LENGTH(x);
 
@@ -826,15 +827,15 @@ void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0  ? HELPERS_PIPE_IN2_OUT :
+    { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
                        w < s-1 ? HELPERS_PIPE_IN02_OUT
-                               : HELPERS_PIPE_IN02,
+                               : (pipe?HELPERS_PIPE_IN02:HELPERS_PIPE_IN0),
                        task_piped_matprod_vec_vec,
                        MAKE_OP(w,s,0), z, x, y);
     }
   }
   else
-  { helpers_do_task (HELPERS_PIPE_IN2,
+  { helpers_do_task (pipe ? HELPERS_PIPE_IN2 : 0,
                      task_piped_matprod_vec_vec,
                      0, z, x, y);
   }
@@ -842,7 +843,7 @@ void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x,
 
 
 void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x,
-                          helpers_var_ptr y, int split)
+                          helpers_var_ptr y, int split, int pipe)
 {
   helpers_size_t k = LENGTH(x);
   helpers_size_t m = LENGTH(z);
@@ -860,14 +861,15 @@ void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT
-                              : HELPERS_PIPE_IN02_OUT,
+    { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
+                       w < s-1 ? HELPERS_PIPE_IN02_OUT
+                               : (pipe?HELPERS_PIPE_IN02_OUT:HELPERS_PIPE_IN0),
                        task_piped_matprod_vec_mat,
                        MAKE_OP(w,s,0), z, x, y);
     }
   }
   else
-  { helpers_do_task (HELPERS_PIPE_IN2_OUT,
+  { helpers_do_task (pipe ? HELPERS_PIPE_IN2_OUT : 0,
                      task_piped_matprod_vec_mat,
                      0, z, x, y);
   }
@@ -875,7 +877,7 @@ void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x,
 
 
 void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
-                          helpers_var_ptr y, int split)
+                          helpers_var_ptr y, int split, int pipe)
 {
   helpers_size_t n = LENGTH(z);
   helpers_size_t k = LENGTH(y);
@@ -894,15 +896,15 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0  ? HELPERS_PIPE_IN2_OUT :
+    { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
                        w < s-1 ? HELPERS_PIPE_IN02_OUT
-                               : HELPERS_PIPE_IN02,
+                               : (pipe?HELPERS_PIPE_IN02:HELPERS_PIPE_IN0),
                        task_piped_matprod_mat_vec,
                        MAKE_OP(w,s,0), z, x, y);
     }
   }
   else
-  { helpers_do_task (HELPERS_PIPE_IN2,
+  { helpers_do_task (pipe ? HELPERS_PIPE_IN2 : 0,
                      task_piped_matprod_mat_vec,
                      0, z, x, y);
   }
@@ -910,7 +912,7 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
 
 
 void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x,
-                        helpers_var_ptr y, int split)
+                        helpers_var_ptr y, int split, int pipe)
 {
   helpers_size_t n = LENGTH(x);
   helpers_size_t m = LENGTH(y);
@@ -928,14 +930,15 @@ void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT
-                              : HELPERS_PIPE_IN02_OUT,
+    { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
+                       w < s-1 ? HELPERS_PIPE_IN02_OUT
+                               : (pipe?HELPERS_PIPE_IN02_OUT:HELPERS_PIPE_IN0),
                        task_piped_matprod_outer,
                        MAKE_OP(w,s,0), z, x, y);
     }
   }
   else
-  { helpers_do_task (HELPERS_PIPE_IN2_OUT,
+  { helpers_do_task (pipe ? HELPERS_PIPE_IN2_OUT : 0,
                      task_piped_matprod_outer,
                      0, z, x, y);
   }
@@ -943,7 +946,7 @@ void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x,
 
 
 void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x,
-                          helpers_var_ptr y, int k, int split)
+                          helpers_var_ptr y, int k, int split, int pipe)
 {
   helpers_size_t n = LENGTH(x) / k;
   helpers_size_t m = LENGTH(y) / k;
@@ -961,14 +964,15 @@ void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT
-                              : HELPERS_PIPE_IN02_OUT,
+    { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
+                       w < s-1 ? HELPERS_PIPE_IN02_OUT
+                               : (pipe?HELPERS_PIPE_IN02_OUT:HELPERS_PIPE_IN0),
                        task_piped_matprod_mat_mat,
                        MAKE_OP(w,s,k), z, x, y);
     }
   }
   else
-  { helpers_do_task (HELPERS_PIPE_IN2_OUT,
+  { helpers_do_task (pipe ? HELPERS_PIPE_IN2_OUT : 0,
                      task_piped_matprod_mat_mat,
                      k, z, x, y);
   }
@@ -976,7 +980,7 @@ void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x,
 
 
 void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
-                         helpers_var_ptr y, int k, int split)
+                         helpers_var_ptr y, int k, int split, int pipe)
 {
   helpers_size_t n = LENGTH(x) / k;
   helpers_size_t m = LENGTH(y) / k;
@@ -998,14 +1002,15 @@ void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0 ? HELPERS_PIPE_IN2_OUT
-                              : HELPERS_PIPE_IN02_OUT,
+    { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
+                       w < s-1 ? HELPERS_PIPE_IN02_OUT
+                               : (pipe?HELPERS_PIPE_IN02_OUT:HELPERS_PIPE_IN0),
                        task_piped_matprod_trans1,
                        MAKE_OP(w,s,k), z, x, y);
     }
   }
   else
-  { helpers_do_task (HELPERS_PIPE_IN2_OUT,
+  { helpers_do_task (pipe ? HELPERS_PIPE_IN2_OUT : 0,
                      task_piped_matprod_trans1,
                      k, z, x, y);
   }
@@ -1013,7 +1018,7 @@ void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
 
 
 void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x,
-                         helpers_var_ptr y, int k, int split)
+                         helpers_var_ptr y, int k, int split, int pipe)
 {
   helpers_size_t n = LENGTH(x) / k;
   helpers_size_t m = LENGTH(y) / k;
@@ -1035,14 +1040,15 @@ void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x,
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
-    { helpers_do_task (w == 0 ? HELPERS_PIPE_OUT
-                              : HELPERS_PIPE_IN0_OUT,
+    { helpers_do_task (w == 0  ? HELPERS_PIPE_OUT :
+                       w < s-1 ? HELPERS_PIPE_IN0_OUT
+                               : (pipe?HELPERS_PIPE_IN0_OUT:HELPERS_PIPE_IN0),
                        task_piped_matprod_trans2,
                        MAKE_OP(w,s,k), z, x, y);
     }
   }
   else
-  { helpers_do_task (HELPERS_PIPE_OUT,
+  { helpers_do_task (pipe ? HELPERS_PIPE_OUT : 0,
                      task_piped_matprod_trans2,
                      k, z, x, y);
   }
@@ -1050,7 +1056,7 @@ void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x,
 
 
 void par_matprod_trans12 (helpers_var_ptr z, helpers_var_ptr x,
-                          helpers_var_ptr y, int k, int split)
+                          helpers_var_ptr y, int k, int split, int pipe)
 {
   helpers_size_t n = LENGTH(x) / k;
   helpers_size_t m = LENGTH(y) / k;

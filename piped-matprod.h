@@ -42,28 +42,28 @@ helpers_task_proc task_piped_matprod_trans2;
 helpers_task_proc task_piped_matprod_trans12;
 
 void par_matprod_scalar_vec (helpers_var_ptr z, helpers_var_ptr x, 
-                             helpers_var_ptr y, int split);
+                             helpers_var_ptr y, int split, int pipe);
 
 void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x, 
-                          helpers_var_ptr y, int split);
+                          helpers_var_ptr y, int split, int pipe);
 
 void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x, 
-                          helpers_var_ptr y, int split);
+                          helpers_var_ptr y, int split, int pipe);
 
 void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x, 
-                          helpers_var_ptr y, int split);
+                          helpers_var_ptr y, int split, int pipe);
 
 void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x, 
-                        helpers_var_ptr y, int split);
+                        helpers_var_ptr y, int split, int pipe);
 
 void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x, 
-                          helpers_var_ptr y, int k, int split);
+                          helpers_var_ptr y, int k, int split, int pipe);
 
 void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x, 
-                         helpers_var_ptr y, int k, int split);
+                         helpers_var_ptr y, int k, int split, int pipe);
 
 void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x, 
-                         helpers_var_ptr y, int k, int split);
+                         helpers_var_ptr y, int k, int split, int pipe);
 
 void par_matprod_trans12 (helpers_var_ptr z, helpers_var_ptr x, 
-                          helpers_var_ptr y, int k, int split);
+                          helpers_var_ptr y, int k, int split, int pipe);
