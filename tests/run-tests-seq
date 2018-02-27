@@ -28,6 +28,7 @@ echo " "; echo SEQUENCE
 echo " "; time $prog 40000$Z 2 2 40 381
 
 echo " "; time $prog 20000$Z 25 36 38 29 28
+echo " "; time $prog 2000$Z 50 300 8 12 200
 echo " "; time $prog 1000$Z 55 145 81 93
 
 echo " "; time $prog 30$Z 215 201 308 270 230
