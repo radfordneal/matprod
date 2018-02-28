@@ -1,7 +1,8 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 52728e570e5cd0dd7ba129350fd996d47b2cb6c7
+commit 76129fa34d4606d1002b5e370dc83269c7b5f789
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Tue Feb 27 19:45:11 2018 -0500
+Date:   Wed Feb 28 10:40:56 2018 -0500
 
-    tweak when splits are done
+    Check special cases for scalar_vec and vec_vec in task_piped_matprod_vec_mat,
+    mat_vec, and outer.
