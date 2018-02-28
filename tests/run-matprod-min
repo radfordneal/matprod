@@ -8,7 +8,8 @@ for thr in $@; do
   export MIN=16384
   unset NOPIPE
   for i in piped-matprod piped-matprod-off; do
-    echo RUNNING TESTS FOR $i WITH $HELPERS HELPERS, SPLIT BY MIN, PIPELINING
+    echo RUNNING TESTS FOR $i WITH $HELPERS HELPERS, \
+         SPLIT BY MIN $MIN, PIPELINING
     ../run-tests $i >& $i-min$thr.out
     ../tim $i-min$thr
   done

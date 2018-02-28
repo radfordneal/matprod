@@ -8,7 +8,8 @@ for thr in $@; do
   unset NOPIPE
   unset MIN
   for i in piped-matprod piped-matprod-off; do
-    echo RUNNING TESTS FOR $i WITH $HELPERS HELPERS, SPLIT BY $SPLIT, PIPELINING
+    echo RUNNING TESTS FOR $i WITH $HELPERS HELPERS, \
+         SPLIT BY $SPLIT, PIPELINING
     ../run-tests $i >& $i-par$thr.out
     ../tim $i-par$thr
   done
