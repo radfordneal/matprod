@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit eacf0382be0b974ad5fad5cf1fc33a3885ccc63d
+commit 6cad2e7e0ec55eb6893cc130c9c52e3c231238f3
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sat Feb 24 20:53:09 2018 -0500
+Date:   Tue Feb 27 21:02:10 2018 -0500
 
-    misc cleanup and doc additions
+    results for skylake
