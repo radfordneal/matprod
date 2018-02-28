@@ -4869,7 +4869,7 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y,
                                 double * MATPROD_RESTRICT z,
                                 int n, int k, int m,
-                                int yrows EXTRAD);
+                                int yrows, double *sym EXTRAD);
 
 static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
                                       double * MATPROD_RESTRICT y,
@@ -4929,14 +4929,19 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
     return;
   }
 
-  matprod_trans2_sub (x, y, z, n, k, m, m EXTRAN);
+  double *sym = x==y && n==m && (n>8 || k>8) ? z : 0;
+
+  matprod_trans2_sub (x, y, z, n, k, m, m, sym EXTRAN);
 }
 
-/* Compute 'yrows' columns of the product of x and the transpose of
-   'yrows' of y, storing the result in z.  Note that y and z do not
-   necessarily point to the start of the entire matrix, but m will be
-   the amount to step to the next column of y, and n will be the
-   amount to step to the next column of z.
+/* Compute 'yrows' columns of the product of x and the transpose of y,
+   storing the result in z.  Note that y and z do not necessarily
+   point to the start of the entire matrix, but m will be the amount
+   to step to the next column of y, and n will be the amount to step
+   to the next column of z.
+
+   If 'sym' is non-zero, the result stored in z is symmetric, and
+   'sym' points to the first (upper left) element of z.
 
    Note that n, m, and k must be greater than 1.
 
@@ -4949,7 +4954,7 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y,
                                 double * MATPROD_RESTRICT z,
                                 int n, int k, int m,
-                                int yrows EXTRAD)
+                                int yrows, double *sym EXTRAD)
 {
 # if DEBUG_PRINTF
     debug_printf("trans2_sub %p %p %p - %d %d %d - %d\n",
@@ -4971,17 +4976,14 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
     return;
   }
 
-  int sym = x==y && n==m        /* if operands same, result is symmetric, */
-        && (n>8 || k>8);    /*    but faster to ignore if n & k small */
-
   if (n <= TRANS2_XROWS && k <= TRANS2_XCOLS)  /* do small cases quickly */
   { matprod_trans2_sub_xrowscols (x, y, z, n, k, m,
-                          sym, n, yrows, k, 0 EXTRAN);
+                                  sym != 0, n, yrows, k, 0 EXTRAN);
     goto fill;
   }
 
   int cachable = sym || n <= TRANS2_XROWS ? yrows
-         : 1 + (int) (DOUBLES_IN_LLC / (TRANS2_XROWS+(double)k));
+               : 1 + (int) (DOUBLES_IN_LLC / (TRANS2_XROWS+(double)k));
 
   int mm = yrows;
 
@@ -5004,7 +5006,7 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
     { 
       while (xrows >= 2*TRANS2_XROWS)
       { matprod_trans2_sub_xrows (xx, y, zz, n, k, m,
-                              sym, TRANS2_XROWS, yr EXTRAZ);
+                                  sym != 0, TRANS2_XROWS, yr EXTRAZ);
         xx += TRANS2_XROWS;
         zz += TRANS2_XROWS;
         xrows -= TRANS2_XROWS;
@@ -5018,7 +5020,7 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
       if (xrows > TRANS2_XROWS)
       { int nr = ((xrows+1)/2) & ~7;  /* keep any alignment of x, z */
         matprod_trans2_sub_xrows (xx, y, zz, n, k, m,
-                              sym, nr, yr EXTRAZ);
+                                  sym != 0, nr, yr EXTRAZ);
         xx += nr;
         zz += nr;
         xrows -= nr;
@@ -5030,7 +5032,8 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
       }
     }
 
-    matprod_trans2_sub_xrows (xx, y, zz, n, k, m, sym, xrows, yr EXTRAN);
+    matprod_trans2_sub_xrows (xx, y, zz, n, k, m, 
+                              sym != 0, xrows, yr EXTRAN);
 
     mm -= m1;
     if (mm == 0)

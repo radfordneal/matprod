@@ -684,7 +684,9 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
     d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
     d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
 
-    matprod_trans2_sub (x, y+d, z+d*n, n, k, m, d1-d, z, z+d*n, w);
+    double *sym = x==y && n==m && (n>8 || k>8) ? z : 0;
+
+    matprod_trans2_sub (x, y+d, z+d*n, n, k, m, d1-d, sym, z, z+d*n, w);
 
     if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
   }
