@@ -4941,7 +4941,8 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
    to the next column of z.
 
    If 'sym' is non-zero, the result stored in z is symmetric, and
-   'sym' points to the first (upper left) element of z.
+   'sym' points to the element on the diagonal of the full matrix
+   that is in the first column of z.
 
    Note that n, m, and k must be greater than 1.
 
@@ -5038,6 +5039,16 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
   }
 }
 
+/* Compute 'xrows' rows and 'yrows' columns of the product of x and
+   the transpose of y, storing the result in z.  Note that y and z do
+   not necessarily point to the start of the entire matrix, but m will
+   be the amount to step to the next column of y, and n will be the
+   amount to step to the next column of z.
+
+   If 'sym' is non-zero, the result stored in z is symmetric, and
+   'sym' points to the element on the diagonal of the full matrix
+   that is in the first column of z. */
+
 static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
                                       double * MATPROD_RESTRICT y,
                                       double * MATPROD_RESTRICT z,
@@ -5089,6 +5100,18 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
   matprod_trans2_sub_xrowscols (x, y, z, n, k, m,
                                 xrows, yrows, xcols, add, sym EXTRAN);
 }
+
+/* Compute 'xcols' products of the sums that give the values of the
+   elements in 'xrows' rows and 'yrows' columns of the product of x
+   and the transpose of y, storing the result in z if 'add' is 0, or
+   adding to it if 'add' is non-zero.  Note that y and z do not
+   necessarily point to the start of the entire matrix, but m will be
+   the amount to step to the next column of y, and n will be the
+   amount to step to the next column of z.
+
+   If 'sym' is non-zero, the result stored in z is symmetric, and
+   'sym' points to the element on the diagonal of the full matrix
+   that is in the first column of z. */
 
 static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
                                           double * MATPROD_RESTRICT y,
