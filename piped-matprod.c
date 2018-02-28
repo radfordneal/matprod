@@ -236,13 +236,23 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
   double * MATPROD_RESTRICT y = REAL(sy);
   double * MATPROD_RESTRICT z = REAL(sz);
 
-  helpers_size_t k_times_m = LENGTH(sy);
-  helpers_size_t k = LENGTH(sx);
   helpers_size_t m = LENGTH(sz);
 
-  if (m <= 0)
-  { return;
+  if (m <= 1)
+  { if (m == 1)
+    { task_piped_matprod_vec_vec (op, sz, sx, sy);
+    }
+    return;
   }
+
+  helpers_size_t k = LENGTH(sx);
+
+  if (k == 1)
+  { task_piped_matprod_scalar_vec (op, sz, sx, sy);
+    return;
+  }
+
+  helpers_size_t k_times_m = LENGTH(sy);
 
   SETUP_SPLIT (4*s > m)
 
@@ -308,11 +318,20 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
   double * MATPROD_RESTRICT y = REAL(sy);
   double * MATPROD_RESTRICT z = REAL(sz);
 
-  helpers_size_t k = LENGTH(sy);
   helpers_size_t n = LENGTH(sz);
 
-  if (n <= 0)
-  { return;
+  if (n <= 1)
+  { if (n == 1)
+    { task_piped_matprod_vec_vec (op, sz, sx, sy);
+    }
+    return;
+  }
+
+  helpers_size_t k = LENGTH(sy);
+
+  if (k == 1)
+  { task_piped_matprod_scalar_vec (op, sz, sy, sx);
+    return;
   }
 
   SETUP_SPLIT (8*s > n)
@@ -395,10 +414,21 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
   double * MATPROD_RESTRICT z = REAL(sz);
 
   helpers_size_t n = LENGTH(sx);
+
+  if (n <= 1)
+  { if (n == 1)
+    { task_piped_matprod_scalar_vec (op, sz, sx, sy);
+    }
+    return;
+  }
+
   helpers_size_t m = LENGTH(sy);
 
-  if (n == 0 || m == 0)
-  { return;
+  if (m <= 1)
+  { if (m == 1)
+    { task_piped_matprod_scalar_vec (op, sz, sy, sx);
+    }
+    return;
   }
 
   SETUP_SPLIT (4*s > m)
