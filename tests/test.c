@@ -82,6 +82,18 @@ void print_result (void)
       printf("\n");
     }
   }
+
+  if (getenv("PRINTNEG") != 0)
+  { int i, j;
+    for (i = 0; i<matrows[0]; i++)
+    { for (j = 0; j<matcols[nmat-1]; j++)
+      { double v = product[0][i+matrows[0]*(size_t)j];
+        if (v < 0)
+        { printf (" negative at %4d,%4d: %f\n", i, j, v);
+        }
+      }
+    }
+  }
 }
 
 /* Check that results are correct. */

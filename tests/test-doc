@@ -43,6 +43,9 @@ first, second, second-to-last, and last elements of the result are
 then printed on standard output, except that fewer elements are
 printed when only fewer exist.  If the environment variable PRINTWHOLE
 is defined (as anything), the entire result matrix is also printed.
+If the environment variable PRINTNEG is defined (as anything), a list
+of negative values and their locations is printed (which will indicate
+values left unchanged from their initialization).
 
 If an argument after "rep" is "t" or "T", the matrix whose dimensions
 follow is stored in transposed form, and the trans1, trans2, or
