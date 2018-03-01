@@ -56,7 +56,7 @@
 
 /* DEBUGGING FACILITIES. */
 
-#define DEBUG_PRINTF 1     /* Set to 1 to enable printf of procedure args */
+#define DEBUG_PRINTF 0     /* Set to 1 to enable printf of procedure args */
 
 #if DEBUG_PRINTF
 # ifdef PIPED_MATPROD
@@ -5110,8 +5110,11 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
    amount to step to the next column of z.
 
    If 'sym' is non-zero, the result stored in z is symmetric, and
-   'sym' points to the element on the diagonal of the full matrix
-   that is in the first column of z. */
+   'sym' points to the element on the diagonal of the full matrix that
+   is in the first column of z.  This information is used to shrink
+   the number of rows and columns of z that are computed (sometimes to
+   none) and to find the symmetrical counterpart to which computed
+   elements should be copied.  */
 
 static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
                                           double * MATPROD_RESTRICT y,
@@ -5129,6 +5132,28 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
   assert (m >= 2);
   assert (xcols >= 2);
 
+  /* For symmetric computations, shrink 'xrows' and 'yrows' (which are
+     also the number of rows and columns of z that are computed) to
+     eliminate parts over the diagonal.  If nothing is left, return.
+     Also updates z and x accordingly.  Maintains alignment. */
+
+  if (sym)
+  { if (z+xrows <= sym)
+    { return;
+    }
+    if (z < sym)
+    { int d = (sym-z) & ~3;
+      z += d;
+      x += d;
+      xrows -= d;
+    }
+    double *s = sym + (size_t)n*(yrows-1) + (yrows-1);
+    double *t = z + (xrows-1);
+    if ((size_t)n * (yrows-1) > s - t)
+    { yrows = 1 + (s - t) / n;
+    }
+  }
+
   CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
   x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -5144,7 +5169,7 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
   while (m2 > 1)
   { 
     double *ez = z + xrows - 1; /* Last place to store a sum */
-    double *xs = x;
+    double *xs = z >= sym ? x : x + ((z-sym) & ~3);
     double *q = y;
 
     /* Unless we're adding, initialize sums in next two columns of
@@ -5332,6 +5357,19 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
       } while (t <= ez);
     }
 
+    /* Copy to symmetric elements. */
+
+    if (sym)
+    { double *s = sym + (size_t)n * (z-sym);
+      double *t = z;
+      while (t <= ez) 
+      { s[0] = t[0];
+        s[1] = (t+n)[0];
+        s += n;
+        t += 1;
+      }
+    }
+
     /* Move forward by two, to the next column of the result and the
        next row of y. */
 
@@ -5340,14 +5378,24 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
     m2 -= 2;
 
     AMTOUT(z);
+
+    if (sym) 
+    { sym += n; sym += n;
+      if (z <= sym)
+      { xrows -= 2;
+        x += 2;
+        z += 2;
+      }
+      sym += 2;
+    }
   }
 
-  /* If yrows is odd, compute the last column of the result. */
+  /* If 'yrows' is odd, compute the last column of the result. */
 
   if (m2 >= 1)
   { 
-    double *ez = z + xrows - 1;
-    double *xs = x;
+    double *ez = z + xrows - 1; /* Last place to store a sum */
+    double *xs = z >= sym ? x : x + ((z-sym) & ~3);
     double *q = y;
 
     /* Unless we're adding, initialize sums in z to the product of
@@ -5409,6 +5457,18 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
       }
       if (t <= ez)
       { t[0] += r[0] * b;
+      }
+    }
+
+    /* Copy to symmetric elements. */
+
+    if (sym)
+    { double *s = sym + (size_t)n * (z-sym);
+      double *t = z;
+      while (t <= ez) 
+      { s[0] = t[0];
+        s += n;
+        t += 1;
       }
     }
   }
