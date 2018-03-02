@@ -1066,10 +1066,6 @@ void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x,
 
   DECIDE_SPLIT (m, s > 3 && k < 4 || 4*s > m || MINMUL*s > multiplies)
 
-  if (REAL(x) == REAL(y) && LENGTH(x) == LENGTH(y))
-  { s = 1;  /* For now, don't split for the symmetric case */
-  }
-
   if (s > 1)
   { int w;
     for (w = 0; w < s; w++)
