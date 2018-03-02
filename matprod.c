@@ -670,7 +670,7 @@ SCOPE void matprod_vec_mat (double * MATPROD_RESTRICT x,
       add = 1;
     }
     if (yrows > VEC_MAT_YROWS)
-    { int nr = ((yrows+1)/2) & ~7; /* keep any alignment of x, y */
+    { int nr = ((yrows+1)/2) & ~3; /* keep any alignment of x, y */
       matprod_vec_mat_sub_yrows(x, y, z, k, m, nr, add EXTRAZ);
       x += nr;
       y += nr;
@@ -1649,7 +1649,7 @@ static void matprod_mat_vec_sub_xrows0 (double * MATPROD_RESTRICT x,
       xrows -= MAT_VEC_XROWS;
     }
     if (xrows > MAT_VEC_XROWS)
-    { int nr = ((xrows+1)/2) & ~7; /* keep any alignment of x, z */
+    { int nr = ((xrows+1)/2) & ~3; /* keep any alignment of x, z */
       matprod_mat_vec_sub_xrows (x, y, z, n, k, nr, add);
       x += nr;
       z += nr;
@@ -2452,7 +2452,7 @@ SCOPE void matprod_outer (double * MATPROD_RESTRICT x,
   }
 
   if (rows > OUTER_ROWS)
-  { int nr = ((rows+1)/2) & ~7;
+  { int nr = ((rows+1)/2) & ~3;
     matprod_outer_sub (x, y, z, n, m, nr EXTRAN);
     x += nr;
     z += nr;
@@ -2982,7 +2982,7 @@ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x,
         xrows -= MAT_MAT_XROWS;
       }
       if (xrows > MAT_MAT_XROWS)
-      { int nr = ((xrows+1)/2) & ~7; /* keep any alignment of x, z */
+      { int nr = ((xrows+1)/2) & ~3; /* keep any alignment of x, z */
         matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1,
                                    nr, n EXTRAZ);
         xx += nr;
@@ -3058,7 +3058,7 @@ static void matprod_mat_mat_sub_xrows (double * MATPROD_RESTRICT x,
   }
 
   if (xcols > chunk)
-  { int nc = ((xcols+1)/2) & ~7;  /* keep any alignment of x */
+  { int nc = ((xcols+1)/2) & ~3;  /* keep any alignment of x */
     matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m,
                                    xrows, zn, nc, add EXTRAZ);
     x += nc*n;
@@ -4141,7 +4141,7 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
         add = 1;
       }
       if (xrows > TRANS1_XROWS)
-      { int nr = ((xrows+1)/2) & ~7;  /* keep any alignment of x */
+      { int nr = ((xrows+1)/2) & ~3;  /* keep any alignment of x */
         matprod_trans1_sub_xrows (xx, yy, z, n, k, m1,
                               sym, add, nr EXTRAZ);
         xx += nr;
@@ -4207,7 +4207,7 @@ static void matprod_trans1_sub_xrows (double * MATPROD_RESTRICT x,
   }
 
   if (xcols > chunk)
-  { int nc = ((xcols+1)/2) & ~7;  /* keep any alignment of x, z */
+  { int nc = ((xcols+1)/2) & ~3;  /* keep any alignment of x, z */
     matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, nc
                           EXTRAZ);
     x += (size_t)nc*k;
@@ -5002,7 +5002,7 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
     double *zz = z;
     int xrows = n;
 
-    if (xrows > TRANS2_XROWS && k > 2)
+    if (xrows > TRANS2_XROWS)
     { 
       while (xrows >= 2*TRANS2_XROWS)
       { matprod_trans2_sub_xrows (xx, y, zz, n, k, m,
@@ -5013,7 +5013,7 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
       }
 
       if (xrows > TRANS2_XROWS)
-      { int nr = ((xrows+1)/2) & ~7;  /* keep any alignment of x, z */
+      { int nr = ((xrows+1)/2) & ~3;  /* keep any alignment of x, z */
         matprod_trans2_sub_xrows (xx, y, zz, n, k, m,
                                   nr, m1, sym EXTRAZ);
         xx += nr;
@@ -5045,6 +5045,8 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
    be the amount to step to the next column of y, and n will be the
    amount to step to the next column of z.
 
+   'xrows' must be no larger than TRANS2_XROWS.
+
    If 'sym' is non-zero, the result stored in z is symmetric, and
    'sym' points to the element on the diagonal of the full matrix
    that is in the first column of z. */
@@ -5065,6 +5067,8 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
   x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
   y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
   z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+  assert (xrows <= TRANS2_XROWS);
 
   int chunk;
 
@@ -5088,7 +5092,7 @@ static void matprod_trans2_sub_xrows (double * MATPROD_RESTRICT x,
   }
 
   if (xcols > chunk)
-  { int nc = ((xcols+1)/2) & ~7;  /* keep any alignment of x */
+  { int nc = ((xcols+1)/2) & ~3;  /* keep any alignment of x */
     matprod_trans2_sub_xrowscols (x, y, z, n, k, m,
                                   xrows, yrows, nc, add, sym EXTRAZ);
     x += (size_t)nc*n;
@@ -5134,8 +5138,8 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
 
   /* For symmetric computations, shrink 'xrows' and 'yrows' (which are
      also the number of rows and columns of z that are computed) to
-     eliminate parts over the diagonal.  If nothing is left, return.
-     Also updates z and x accordingly.  Maintains alignment. */
+     eliminate parts that are above the diagonal.  If nothing is left,
+     return.  Also updates z and x accordingly.  Maintains alignment. */
 
   if (sym)
   { if (z+xrows <= sym)
@@ -5147,8 +5151,8 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
       x += d;
       xrows -= d;
     }
-    double *s = sym + (size_t)n*(yrows-1) + (yrows-1);
     double *t = z + (xrows-1);
+    double *s = sym + (size_t)n * (t-sym) + (t-sym);
     if ((size_t)n * (yrows-1) > s - t)
     { yrows = 1 + (s - t) / n;
     }
