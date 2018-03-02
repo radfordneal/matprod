@@ -770,7 +770,7 @@ void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
 
   if (k == 0)
   { if (w == s-1)  /* do in only the last thread */
-    { matprod_trans2 (x, y, z, n, k, m, z, z, 0);
+    { matprod_trans12 (x, y, z, n, k, m);
     }
     return;
   }
