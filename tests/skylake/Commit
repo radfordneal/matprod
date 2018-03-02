@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 14b2a758e237f9e77c2597bb2810c598b55b9227
+commit 927c90cdb66b6af98fa3bd7a27d892af327e7256
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Thu Mar 1 19:28:54 2018 -0500
+Date:   Fri Mar 2 17:00:25 2018 -0500
 
-    bug fixes.  new version of trans2 now seems to work
+    bug fix
