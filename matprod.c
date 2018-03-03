@@ -4091,11 +4091,8 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
     return;
   }
 
-  if (k <= 2)
-  { if (k == 2)
-    { matprod_trans1_k2 (x, y, z, n, m);
-    }
-    else if (k == 1)
+  if (k <= 1)
+  { if (k == 1)
     { matprod_outer (x, y, z, n, m EXTRAN);
     }
     else
@@ -4109,7 +4106,20 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
   matprod_trans1_sub (x, y, z, n, k, m, sym EXTRAN);
 }
 
-/* The general case with k > 2. */
+/* Product of the transpose of a k x n matrix (x) and a k x m matrix
+   (y) with result stored in z.  Note that x, y, and z may not be the
+   full original matrix.
+
+   If 'sym' is non-zero, the result stored in z is symmetric, and
+   'sym' points to the element on the diagonal of the full matrix that
+   is in the first column of z.
+
+   Note that n, m, and k must be greater than 1.
+
+   The case of k=2 is handled specially, ignoring any symmetry (which may
+   not be advantegeious to exploit, given each element is quick to compute).
+
+   Called above and from piped-matprod.c. */
 
 # define TRANS1_XROWS 512        /* be multiple of 8 to keep any alignment */
 # define TRANS1_XCOLS 48         /* be multiple of 8 to keep any alignment */
@@ -4134,6 +4144,11 @@ static void matprod_trans1_sub (double * MATPROD_RESTRICT x,
   assert (k >= 2);
   assert (m >= 2);
 
+  if (k == 2)
+  { matprod_trans1_k2 (x, y, z, n, m);
+    return;
+  }
+    
   if (k <= TRANS1_XROWS && n <= TRANS1_XCOLS)  /* do small cases quickly */
   { matprod_trans1_sub_xrowscols (x, y, z, n, k, m,
                                   0, k, n, sym EXTRAN);
@@ -4188,6 +4203,10 @@ static void matprod_trans1_sub (double * MATPROD_RESTRICT x,
 
     y += (size_t)m1*k;
     z += (size_t)m1*n;
+    if (sym)
+    { sym += (size_t)m1*n;
+      sym += m1;
+    }
   }
 }
 
@@ -4266,7 +4285,7 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
 
   while (j < me)
   { 
-    int nn = sym ? xcols : xcols;
+    int nn = sym ? xcols : xcols;  /* FOR NOW... */
     double *xs = x;
     double *zs = z;
     double *rz;
