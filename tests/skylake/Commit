@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 927c90cdb66b6af98fa3bd7a27d892af327e7256
+commit 906857dba5d931dcc7f05a9640e32a758423a3cb
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Mar 2 17:00:25 2018 -0500
+Date:   Sat Mar 3 03:46:01 2018 -0500
 
-    bug fix
+    results for haswell
