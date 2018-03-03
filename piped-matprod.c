@@ -633,7 +633,9 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
       if (d < m) d &= ~3;
       if (d > d1) d = d1;
 
-      matprod_trans1 (x, y+od*k, z+od*n, n, k, d-od, z, z+od*n, w);
+      double *sym = x==y && n==m && (n>8 || k>8) ? z+od*n+od : 0;
+
+      matprod_trans1_sub (x, y+od*k, z+od*n, n, k, d-od, sym, z, z+od*n, w);
     }
 
     if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
@@ -652,7 +654,9 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
       d = a/k;
       if (d < m) d &= ~3;
 
-      matprod_trans1 (x, y+od*k, z+od*n, n, k, d-od, z, z+od*n, 0);
+      double *sym = x==y && n==m && (n>8 || k>8) ? z+od*n+od : 0;
+
+      matprod_trans1_sub (x, y+od*k, z+od*n, n, k, d-od, sym, z, z+od*n, 0);
     }
   }
 }
@@ -710,20 +714,22 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
 
   if (s > 1)
   { 
-    helpers_size_t d, d1;
-    d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
-    d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
+    helpers_size_t od, d;
+    od = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
+    d = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
 
-    double *sym = x==y && n==m && (n>8 || k>8) ? z+d*n+d : 0;
+    double *sym = x==y && n==m && (n>8 || k>8) ? z+od*n+od : 0;
 
-    matprod_trans2_sub (x, y+d, z+d*n, n, k, m, d1-d, sym, z, z+d*n, w);
+    matprod_trans2_sub (x, y+od, z+od*n, n, k, m, d-od, sym, z, z+od*n, w);
 
     if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
   }
 
   else  /* only one thread */
   { 
-    matprod_trans2 (x, y, z, n, k, m, z, z, 0);
+    double *sym = x==y && n==m && (n>8 || k>8) ? z : 0;
+
+    matprod_trans2_sub (x, y, z, n, k, m, m, sym, z, z, 0);
   }
 }
 
