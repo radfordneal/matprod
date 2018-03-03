@@ -4043,14 +4043,14 @@ static void matprod_trans1_sub_xrows (double * MATPROD_RESTRICT x,
                                       double * MATPROD_RESTRICT y,
                                       double * MATPROD_RESTRICT z,
                                       int n, int k, int m,
-                                      int sym, int add, int xrows EXTRAD);
+                                      int add, int xrows, double *sym EXTRAD);
 
 static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                                           double * MATPROD_RESTRICT y,
                                           double * MATPROD_RESTRICT z,
                                           int n, int k, int m,
-                                          int sym, int add,
-                                          int xrows, int xcols EXTRAD);
+                                          int add, int xrows, int xcols,
+                                          double *sym EXTRAD);
 
 static void matprod_trans1_k2 (double * MATPROD_RESTRICT x,
                                double * MATPROD_RESTRICT y,
@@ -4104,16 +4104,16 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
 # define TRANS1_XROWS 512        /* be multiple of 8 to keep any alignment */
 # define TRANS1_XCOLS 48         /* be multiple of 8 to keep any alignment */
 
-  int sym = x==y && n==m        /* if operands same, result is symmetric, */
-        && (n>8 || k>8);    /*    but faster to ignore if n & k small */
+  double *sym = x==y && n==m && (n>8 || k>8) ? z : 0;
 
   if (k <= TRANS1_XROWS && n <= TRANS1_XCOLS)  /* do small cases quickly */
-  { matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, 0, k, n EXTRAN);
-    goto fill;
+  { matprod_trans1_sub_xrowscols (x, y, z, n, k, m,
+                                  0, k, n, sym EXTRAN);
+    return;
   }
 
   int cachable = sym || n <= TRANS1_XCOLS || n <= TRANS1_XCOLS*TRANS1_XROWS/k
-           ? m : 1 + (DOUBLES_IN_LLC / (TRANS1_XROWS + TRANS1_XCOLS));
+                  ? m : 1 + (DOUBLES_IN_LLC / (TRANS1_XROWS + TRANS1_XCOLS));
 
   int mm = m;
 
@@ -4134,7 +4134,7 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
     if (xrows > TRANS1_XROWS && n > 2)
     { while (xrows >= 2*TRANS1_XROWS)
       { matprod_trans1_sub_xrows (xx, yy, z, n, k, m1,
-                              sym, add, TRANS1_XROWS EXTRAZ);
+                                  add, TRANS1_XROWS, sym EXTRAZ);
         xx += TRANS1_XROWS;
         yy += TRANS1_XROWS;
         xrows -= TRANS1_XROWS;
@@ -4143,7 +4143,7 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
       if (xrows > TRANS1_XROWS)
       { int nr = ((xrows+1)/2) & ~3;  /* keep any alignment of x */
         matprod_trans1_sub_xrows (xx, yy, z, n, k, m1,
-                              sym, add, nr EXTRAZ);
+                                  add, nr, sym EXTRAZ);
         xx += nr;
         yy += nr;
         xrows -= nr;
@@ -4151,7 +4151,8 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
       }
     }
 
-    matprod_trans1_sub_xrows (xx, yy, z, n, k, m1, sym, add, xrows EXTRAN);
+    matprod_trans1_sub_xrows (xx, yy, z, n, k, m1,
+                              add, xrows, sym EXTRAN);
 
     mm -= m1;
     if (mm == 0)
@@ -4160,21 +4161,17 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
     y += (size_t)m1*k;
     z += (size_t)m1*n;
   }
-
-  fill:
-  if (sym)
-    matprod_fill_lower (z, n);
 }
 
 static void matprod_trans1_sub_xrows (double * MATPROD_RESTRICT x,
                                       double * MATPROD_RESTRICT y,
                                       double * MATPROD_RESTRICT z,
                                       int n, int k, int m,
-                                      int sym, int add, int xrows EXTRAD)
+                                      int add, int xrows, double *sym EXTRAD)
 {
 # if DEBUG_PRINTF
-    debug_printf("trans1_sub_xrows %p %p %p - %d %d %d - %d %d %d\n",
-                                    x, y, z,   n, k, m,   sym, add, xrows);
+    debug_printf("trans1_sub_xrows %p %p %p - %d %d %d - %d %d %p\n",
+                                    x, y, z,   n, k, m,   add, xrows, sym);
 # endif
 
   CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
@@ -4188,53 +4185,43 @@ static void matprod_trans1_sub_xrows (double * MATPROD_RESTRICT x,
 
   if (xcols <= TRANS1_XCOLS
    || xcols <= (chunk = (TRANS1_XCOLS*TRANS1_XROWS/xrows) & ~7))
-  { matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, xcols
-                          EXTRAN);
+  { matprod_trans1_sub_xrowscols (x, y, z, n, k, m,
+                                  add, xrows, xcols, sym EXTRAN);
     return;
   }
 
   while (xcols > 2*chunk)
-  { matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, chunk
-                          EXTRAZ);
+  { matprod_trans1_sub_xrowscols (x, y, z, n, k, m, 
+                                  add, xrows, chunk, sym EXTRAZ);
     x += (size_t)chunk*k;
     z += chunk;
     xcols -= chunk;
-    if (sym)
-    { y += (size_t)chunk*k;
-      z += (size_t)chunk*n;
-      m -= chunk;
-    }
   }
 
   if (xcols > chunk)
   { int nc = ((xcols+1)/2) & ~3;  /* keep any alignment of x, z */
-    matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, nc
-                          EXTRAZ);
+    matprod_trans1_sub_xrowscols (x, y, z, n, k, m, 
+                                  add, xrows, nc, sym EXTRAZ);
     x += (size_t)nc*k;
     z += nc;
     xcols -= nc;
-    if (sym)
-    { y += (size_t)nc*k;
-      z += (size_t)nc*n;
-      m -= nc;
-    }
   }
 
-  matprod_trans1_sub_xrowscols (x, y, z, n, k, m, sym, add, xrows, xcols
-                      EXTRAN);
+  matprod_trans1_sub_xrowscols (x, y, z, n, k, m, 
+                                add, xrows, xcols, sym EXTRAN);
 }
 
 static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                                           double * MATPROD_RESTRICT y,
                                           double * MATPROD_RESTRICT z,
                                           int n, int k, int m,
-                                          int sym, int add,
-                                          int xrows, int xcols EXTRAD)
+                                          int add, int xrows, int xcols,
+                                          double *sym EXTRAD)
 {
 # if DEBUG_PRINTF
-    debug_printf("trans1_sub_xrowscols %p %p %p - %d %d %d - %d %d %d %d\n",
-                                        x, y, z,   n, k, m,  sym, add,
-                                                             xrows, xcols);
+    debug_printf("trans1_sub_xrowscols %p %p %p - %d %d %d - %d %d %d %p\n",
+                                        x, y, z,   n, k, m,  add, xrows, xcols,
+                                                             sym);
 # endif
 
   CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
@@ -4251,7 +4238,7 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
 
   while (j < me)
   { 
-    int nn = sym && sym < xcols ? sym+1 : xcols;
+    int nn = sym ? xcols : xcols;
     double *xs = x;
     double *zs = z;
     double *rz;
@@ -4494,7 +4481,7 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
       xs += k; xs += k; xs += k; xs += k;
       nn -= 4;
 
-      /* if (!sym) AMTOUT(z); */
+      AMTOUT(z);
     }
 
     /* Compute the remaining elements of the columns here. */
@@ -4688,7 +4675,6 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
 
     /* Go on to next two columns of y and z. */
 
-    if (sym) sym += 2;
     z = zs + n + n;
     y += k; y += k;
     j += 2;
