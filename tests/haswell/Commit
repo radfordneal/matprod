@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit f7e2509d21f1f95a10ca8e85c5279054e738cc7b
+commit e5fdb9d87f818dd9a751d85152fe7c0cda5523e8
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Mar 2 18:11:06 2018 -0500
+Date:   Fri Mar 2 22:06:47 2018 -0500
 
-    results for skylake
+    results for haswell
