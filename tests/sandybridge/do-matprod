@@ -1,0 +1,6 @@
+#!/bin/bash
+
+time ../run-matprod
+time ../run-matprod-par 0 1 2
+time ../run-matprod-min 2 3 4
+time ../run-matprod-nop 2

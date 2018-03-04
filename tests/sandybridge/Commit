@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit d11c2734e8c2935260b31ab81dea33b1ecc5e893
+commit 2f9a17d6c246e799ad71935e38f63df9fe958534
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Wed Jan 31 18:11:38 2018 -0500
+Date:   Sun Mar 4 11:30:20 2018 -0500
 
-    adjust MINMUL
+    results for skylake
