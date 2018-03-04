@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 2f9a17d6c246e799ad71935e38f63df9fe958534
+commit 3a7f443d9b205f6a2d811179e2bf5eaffca85861
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Mar 4 11:30:20 2018 -0500
+Date:   Sun Mar 4 14:51:43 2018 -0500
 
-    results for skylake
+    use non-uniform split for symmetric trans1 and trans2
