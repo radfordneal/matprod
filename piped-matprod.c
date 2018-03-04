@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #ifdef MATPROD_APP_INCLUDED
 # include "matprod-app.h"
@@ -614,12 +615,21 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
     return;
   }
 
+  int dosym = x==y && n==m && k>4 && (n>8 || k>8);
+
   if (s > 1)  /* do in more than one thread */
   { 
     helpers_size_t d, d1, a, a1;
 
-    d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
-    d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
+    if (dosym)
+    { d = w == 0 ? 0 : (helpers_size_t) (m*(1-sqrt(1-(double)w/s))) & ~3;
+      d1 = w == s-1 ? m : (helpers_size_t) (m*(1-sqrt(1-(double)(w+1)/s))) & ~3;
+    }
+    else
+    { d = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
+      d1 = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
+    }
+
     a = d * k;
     a1 = d1 * k;
 
@@ -633,7 +643,7 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
       if (d < m) d &= ~3;
       if (d > d1) d = d1;
 
-      double *sym = x==y && n==m && (n>8 || k>8) ? z+od*n+od : 0;
+      double *sym = dosym ? z+od*n+od : 0;
 
       matprod_trans1_sub (x, y+od*k, z+od*n, n, k, d-od, sym, z, z+od*n, w);
     }
@@ -654,7 +664,7 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
       d = a/k;
       if (d < m) d &= ~3;
 
-      double *sym = x==y && n==m && (n>8 || k>8) ? z+od*n+od : 0;
+      double *sym = dosym ? z+od*n+od : 0;
 
       matprod_trans1_sub (x, y+od*k, z+od*n, n, k, d-od, sym, z, z+od*n, 0);
     }
@@ -710,24 +720,34 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
 
   helpers_size_t a = 0;
 
+  int dosym = x==y && n==m && k>4 && (n>8 || k>8);
+
   HELPERS_WAIT_IN2 (a, k_times_m-1, k_times_m);
 
   if (s > 1)
   { 
     helpers_size_t od, d;
-    od = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
-    d = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
 
-    double *sym = x==y && n==m && (n>8 || k>8) ? z+od*n+od : 0;
+    if (dosym)
+    { od = w == 0 ? 0 : (helpers_size_t) (m*(1-sqrt(1-(double)w/s))) & ~3;
+      d = w == s-1 ? m : (helpers_size_t) (m*(1-sqrt(1-(double)(w+1)/s))) & ~3;
+    }
+    else
+    { od = w == 0 ? 0 : (helpers_size_t) ((double)m * w / s) & ~3;
+      d = w == s-1 ? m : (helpers_size_t) ((double)m * (w+1) / s) & ~3;
+    }
 
-    matprod_trans2_sub (x, y+od, z+od*n, n, k, m, d-od, sym, z, z+od*n, w);
+    if (d > od)
+    { double *sym = dosym ? z+od*n+od : 0;
+      matprod_trans2_sub (x, y+od, z+od*n, n, k, m, d-od, sym, z, z+od*n, w);
+    }
 
     if (w != 0) WAIT_FOR_EARLIER_TASKS(sz);
   }
 
   else  /* only one thread */
   { 
-    double *sym = x==y && n==m && (n>8 || k>8) ? z : 0;
+    double *sym = dosym ? z : 0;
 
     matprod_trans2_sub (x, y, z, n, k, m, m, sym, z, z, 0);
   }

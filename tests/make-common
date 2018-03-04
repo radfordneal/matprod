@@ -195,25 +195,25 @@ piped-matprod-test:	../test.h ../test.c ../piped-matprod-test.c ../../piped-matp
 			../../piped-matprod.c ../helpers-app.h ../helpers.h ../helpers.c
 	$(CC) $(II) $(CFLAGS) $(ALIGN) -fopenmp \
 		../test.c ../piped-matprod-test.c ../../piped-matprod.c ../helpers.c \
-		-o piped-matprod-test
+		-lm -o piped-matprod-test
 
 piped-matprod-off-test:	../test.h ../test.c ../piped-matprod-test.c ../../piped-matprod.h ../../matprod.c \
 			../../piped-matprod.c ../helpers-app.h ../helpers.h ../helpers.c
 	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) -fopenmp \
 		../test.c ../piped-matprod-test.c ../../piped-matprod.c ../helpers.c \
-		-o piped-matprod-off-test
+		-lm -o piped-matprod-off-test
 
 piped-matprod-nohelpers-test:	../test.h ../test.c ../piped-matprod-test.c ../../piped-matprod.h ../../matprod.c \
 			../../piped-matprod.c ../helpers-app.h ../helpers.h ../helpers.c
 	$(CC) $(II) $(CFLAGS) $(ALIGN) -fopenmp -DHELPERS_DISABLED \
 		../test.c ../piped-matprod-test.c ../../piped-matprod.c ../helpers.c \
-		-o piped-matprod-nohelpers-test
+		-lm -o piped-matprod-nohelpers-test
 
 piped-matprod-norestrict-test:	../test.h ../test.c ../piped-matprod-test.c ../../piped-matprod.h ../../matprod.c \
 			../../piped-matprod.c ../helpers-app.h ../helpers.h ../helpers.c
 	$(CC) $(II) $(CFLAGS) $(ALIGN) -fopenmp -DMATPROD_NO_RESTRICT \
 		../test.c ../piped-matprod-test.c ../../piped-matprod.c ../helpers.c \
-		-o piped-matprod-norestrict-test
+		-lm -o piped-matprod-norestrict-test
 
 # -----------------------------------------------------------------------------
 
