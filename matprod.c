@@ -56,7 +56,7 @@
 
 /* DEBUGGING FACILITIES. */
 
-#define DEBUG_PRINTF 1     /* Set to 1 to enable printf of procedure args */
+#define DEBUG_PRINTF 0     /* Set to 1 to enable printf of procedure args */
 
 #if DEBUG_PRINTF
 # ifdef PIPED_MATPROD
@@ -4129,13 +4129,9 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
    not be advantegeious to exploit, given each element is quick to compute).
 
    Called above and from piped-matprod.c. */
-#if 1
+
 # define TRANS1_XROWS 512        /* be multiple of 8 to keep any alignment */
 # define TRANS1_XCOLS 48         /* be multiple of 8 to keep any alignment */
-#else
-# define TRANS1_XROWS 8
-# define TRANS1_XCOLS 8
-#endif
 
 static void matprod_trans1_sub (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y,
@@ -4302,7 +4298,7 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
     if (z < sym)
     { int d = (sym-z) & ~3;
       z += d;
-      x += d;
+      x += (size_t)d*k;
       xcols -= d;
     }
     double *t = z + (xcols-1);
@@ -4341,7 +4337,7 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
         double *r = xs;
         double *q, *qe;
         __m256d S0, /* sums for first two cols of x times 2 cols of y */
-            S1; /* sums for last two cols of x times 2 cols of y */
+                S1; /* sums for last two cols of x times 2 cols of y */
         if (add)
         { S0 = _mm256_set_pd ((z+n)[1], (z+n)[0], z[1], z[0]);
           S1 = _mm256_set_pd ((z+n)[3], (z+n)[2], z[3], z[2]);
