@@ -56,7 +56,7 @@
 
 /* DEBUGGING FACILITIES. */
 
-#define DEBUG_PRINTF 0     /* Set to 1 to enable printf of procedure args */
+#define DEBUG_PRINTF 1     /* Set to 1 to enable printf of procedure args */
 
 #if DEBUG_PRINTF
 # ifdef PIPED_MATPROD
@@ -189,6 +189,13 @@
    some extra to spare. */
 
 #define DOUBLES_IN_LLC 100000
+
+
+/* MACRO TO SPLIT COUNT, ALIGNED.  Given that M < c < 2*M, with M a
+   multiple of 4, finds a value v s.t. v <= M and c-v <= M, and v is 
+   a multiple of 4. */
+
+#define SPLITC(c,M) M  /* trivial method for now, not necessarily best */
 
 
 /* Set vector/matrix z with s elements to all zeros.  This is a
@@ -670,7 +677,7 @@ SCOPE void matprod_vec_mat (double * MATPROD_RESTRICT x,
       add = 1;
     }
     if (yrows > VEC_MAT_YROWS)
-    { int nr = ((yrows+1)/2) & ~3; /* keep any alignment of x, y */
+    { int nr = SPLITC (yrows, VEC_MAT_YROWS); 
       matprod_vec_mat_sub_yrows(x, y, z, k, m, nr, add EXTRAZ);
       x += nr;
       y += nr;
@@ -1649,7 +1656,7 @@ static void matprod_mat_vec_sub_xrows0 (double * MATPROD_RESTRICT x,
       xrows -= MAT_VEC_XROWS;
     }
     if (xrows > MAT_VEC_XROWS)
-    { int nr = ((xrows+1)/2) & ~3; /* keep any alignment of x, z */
+    { int nr = SPLITC (xrows, MAT_VEC_XROWS);
       matprod_mat_vec_sub_xrows (x, y, z, n, k, nr, add);
       x += nr;
       z += nr;
@@ -2452,7 +2459,7 @@ SCOPE void matprod_outer (double * MATPROD_RESTRICT x,
   }
 
   if (rows > OUTER_ROWS)
-  { int nr = ((rows+1)/2) & ~3;
+  { int nr = SPLITC (rows, OUTER_ROWS);
     matprod_outer_sub (x, y, z, n, m, nr EXTRAN);
     x += nr;
     z += nr;
@@ -2982,7 +2989,7 @@ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x,
         xrows -= MAT_MAT_XROWS;
       }
       if (xrows > MAT_MAT_XROWS)
-      { int nr = ((xrows+1)/2) & ~3; /* keep any alignment of x, z */
+      { int nr = SPLITC (xrows, MAT_MAT_XROWS);
         matprod_mat_mat_sub_xrows (xx, y, zz, n, k, m1,
                                    nr, n EXTRAZ);
         xx += nr;
@@ -4122,9 +4129,13 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
    not be advantegeious to exploit, given each element is quick to compute).
 
    Called above and from piped-matprod.c. */
-
+#if 1
 # define TRANS1_XROWS 512        /* be multiple of 8 to keep any alignment */
 # define TRANS1_XCOLS 48         /* be multiple of 8 to keep any alignment */
+#else
+# define TRANS1_XROWS 8
+# define TRANS1_XCOLS 8
+#endif
 
 static void matprod_trans1_sub (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y,
@@ -4157,7 +4168,7 @@ static void matprod_trans1_sub (double * MATPROD_RESTRICT x,
     return;
   }
 
-  int cachable = sym || n <= TRANS1_XCOLS || n <= TRANS1_XCOLS*TRANS1_XROWS/k
+  int cachable = n <= TRANS1_XCOLS || n <= TRANS1_XCOLS*TRANS1_XROWS/k
                   ? m : 1 + (DOUBLES_IN_LLC / (TRANS1_XROWS + TRANS1_XCOLS));
 
   int mm = m;
@@ -4176,7 +4187,7 @@ static void matprod_trans1_sub (double * MATPROD_RESTRICT x,
       if (m1 > mm) m1 = mm;
     }
 
-    if (xrows > TRANS1_XROWS && n > 2)
+    if (xrows > TRANS1_XROWS)
     { while (xrows >= 2*TRANS1_XROWS)
       { matprod_trans1_sub_xrows (xx, yy, z, n, k, m1,
                                   add, 0, TRANS1_XROWS, sym EXTRAZ);
@@ -4186,7 +4197,7 @@ static void matprod_trans1_sub (double * MATPROD_RESTRICT x,
         add = 1;
       }
       if (xrows > TRANS1_XROWS)
-      { int nr = ((xrows+1)/2) & ~3;  /* keep any alignment of x */
+      { int nr = SPLITC (xrows, TRANS1_XROWS);
         matprod_trans1_sub_xrows (xx, yy, z, n, k, m1,
                                   add, 0, nr, sym EXTRAZ);
         xx += nr;
@@ -4230,6 +4241,8 @@ static void matprod_trans1_sub_xrows (double * MATPROD_RESTRICT x,
   x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
   y = ASSUME_ALIGNED (y, ALIGN, ALIGN_OFFSET);
   z = ASSUME_ALIGNED (z, ALIGN, ALIGN_OFFSET);
+
+  assert (xrows <= TRANS1_XROWS);
 
   int xcols = n;
   int chunk;
@@ -4277,6 +4290,28 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
                                                              sym);
 # endif
 
+  /* For symmetric computations, shrink 'xcols' and m (which are the
+     number of rows and columns of z that are computed) to eliminate
+     parts that are above the diagonal.  If nothing is left, return.
+     Also updates z and x accordingly.  Maintains alignment. */
+
+  if (sym)
+  { if (z+xcols <= sym)
+    { return;
+    }
+    if (z < sym)
+    { int d = (sym-z) & ~3;
+      z += d;
+      x += d;
+      xcols -= d;
+    }
+    double *t = z + (xcols-1);
+    double *s = sym + (size_t)n * (t-sym) + (t-sym);
+    if ((size_t)n * (m-1) > s - t)
+    { m = 1 + (s - t) / n;
+    }
+  }
+
   CHK_ALIGN(x); CHK_ALIGN(y); CHK_ALIGN(z);
 
   x = ASSUME_ALIGNED (x, ALIGN, ALIGN_OFFSET);
@@ -4291,8 +4326,8 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
 
   while (j < me)
   { 
-    int nn = sym ? xcols : xcols;  /* FOR NOW... */
-    double *xs = x;
+    double *xs = sym == 0 || z >= sym ? x : x + ((z-sym) & ~3);
+    int nn = x + xcols - xs;
     double *zs = z;
     double *rz;
 
@@ -4722,8 +4757,21 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
       } while (--i > 0);
       z[0] = s0;
       (z+n)[0] = s1;
-      /* z += 1; */
-      /* nn -= 1; */
+      z += 1;
+      nn -= 1;
+    }
+
+    /* Copy to symmetric elements. */
+
+    if (sym && final)
+    { double *s = sym + (size_t)n * (zs-sym);
+      double *t = zs;
+      while (t < z)
+      { s[0] = t[0];
+        s[1] = (t+n)[0];
+        s += n;
+        t += 1;
+      }
     }
 
     /* Go on to next two columns of y and z. */
@@ -4731,14 +4779,25 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
     z = zs + n + n;
     y += k; y += k;
     j += 2;
+
+    if (sym)
+    { sym += n; sym += n;
+      if (z <= sym)
+      { xcols -= 2;
+        x += k; x += k;
+        z += 2;
+      }
+      sym += 2;
+    }
   }
 
   /* If m is odd, compute the final column of the result. */
 
   if (m & 1)
   { 
-    double *xs = x;
+    double *xs = sym == 0 || z >= sym ? x : x + ((z-sym) & ~3);
     double *e = z+xcols;
+    double *zs = z;
 
     /* If xcols is odd, compute the first element of the column here. */
 
@@ -4789,6 +4848,18 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
       z[1] = s1;
       xs += k; xs += k;
       z += 2;
+    }
+
+    /* Copy to symmetric elements. */
+
+    if (sym && final)
+    { double *s = sym + (size_t)n * (zs-sym);
+      double *t = zs;
+      while (t < z)
+      { s[0] = t[0];
+        s += n;
+        t += 1;
+      }
     }
   }
 }
@@ -5053,7 +5124,7 @@ static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
       }
 
       if (xrows > TRANS2_XROWS)
-      { int nr = ((xrows+1)/2) & ~3;  /* keep any alignment of x, z */
+      { int nr = SPLITC (xrows, TRANS2_XROWS);
         matprod_trans2_sub_xrows (xx, y, zz, n, k, m,
                                   nr, m1, sym EXTRAZ);
         xx += nr;
@@ -5215,7 +5286,7 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
   while (m2 > 1)
   { 
     double *ez = z + xrows - 1; /* Last place to store a sum */
-    double *xs = z >= sym ? x : x + ((z-sym) & ~3);
+    double *xs = sym == 0 || z >= sym ? x : x + ((z-sym) & ~3);
     double *q = y;
 
     /* Unless we're adding, initialize sums in next two columns of
@@ -5441,7 +5512,7 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
   if (m2 >= 1)
   { 
     double *ez = z + xrows - 1; /* Last place to store a sum */
-    double *xs = z >= sym ? x : x + ((z-sym) & ~3);
+    double *xs = sym == 0 || z >= sym ? x : x + ((z-sym) & ~3);
     double *q = y;
 
     /* Unless we're adding, initialize sums in z to the product of
