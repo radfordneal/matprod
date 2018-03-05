@@ -54,7 +54,7 @@
 
 #define TRANS12_ZELEM 2048       /* # of elements can store locally on stack */
 
-#define DOUBLES_IN_LLC 100000    /* # of doubles assumed to fit in the
+#define DOUBLES_IN_LLC 95000     /* # of doubles assumed to fit in the
                                     last-level cache with some space to spare */
 
 
