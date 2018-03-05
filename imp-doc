@@ -34,7 +34,7 @@ General algorithmic approaches.
 This section describes the general algorithms used when computations
 are done in a single thread, the matrices are small enough that the
 computation is not split into parts to improve cache performance, and
-special case code for small values of n or k does not apply.
+special case code for small values of n, k, or m does not apply.
 
 VEC_VEC... The matprod_vec_vec procedure uses what is essentially the
 naive algorithm, successively adding products of elements, since any
@@ -44,7 +44,7 @@ MAT_MAT... When matprod_mat_mat multiplies matrices x and y to produce
 result z, it computes columns of z in succession.  To compute a column
 of z, the column is first set to the sum of the products of the first
 two columns of x and the first two elements of the column of y
-corresponding that of z.  Then, the product of another column of x
+corresponding to that of z.  Then, the product of another column of x
 with another element of y is added to this column of z - this being
 done for two columns of x together (unless only one column remains),
 in order to reduce accesses to elements of z.  Two columns of z are
@@ -55,8 +55,8 @@ the L1 data cache, and so will be quickly accessible when products
 with columns of x are added repeatedly to it (even if not all of x, y,
 and z fit in the L1 cache).  Note that this should generally be faster
 than the naive method of computing each element of the result as a dot
-product of a row and column, since accesses to the elements of the row
-will be non-sequential.
+product of a row of x and column of y, since the naive method accesses
+elements of the row of x non-sequentially, with worse cache behaviour.
 
 OUTER... For matprod_outer, there is only one column of x, which is
 multiplied by successive elements of y to give successive columns of
@@ -90,9 +90,9 @@ procedures used for matprod_mat_mat are used here, storing the result
 in a local variable (on the stack), the transpose of which is then
 copied to z.  For large matrices, this is done repeatedly for portions
 of z, in order to limit the amount of stack space used to no more than
-TRANS12_ZELEM (currently 2048) doubles (each 8 bytes in size), both
-for cache performance reasons and because stack space may be limited
-in some environments.
+TRANS12_ZELEM doubles (each 8 bytes in size), both for cache
+performance reasons and because stack space may be limited in some
+environments.
 
 
 Special cases.
@@ -105,10 +105,10 @@ be possible - for example, when columns have only two elements, AVX
 instructions can operate on all elements in two columns at once.
 
 The scalar-vector, vector-vector, matrix-vector, vector-matrix, and
-outer product procedures are particular cases of such special-case
-optimization that are made visible in the API, but other special cases
-are handled by non-visible functions (including special cases of the
-matrix-vector, vector-matrix, and outer product operations).
+outer product routines are instances of such special-case optimization
+that are made visible in the API, but other special cases are handled
+by non-visible routines (including special cases of the matrix-vector,
+vector-matrix, and outer product operations).
 
 
 Optimizing for cache behaviour.
@@ -122,11 +122,10 @@ that 4K 8-byte double values fit in the L1 data cache, but it is best
 to rely only on somewhat fewer fitting, since the L1 cache will
 contain some other values (eg, top entries in the stack) as well.
 
-A last-level cache holding at least DOUBLES_IN_LLC doubles (currently
-100000) is also assumed to possibly exist (though perhaps be the same
-as the L2 cache).  If such a large last-level cache does not exist,
-there is only a small penalty for using the code that assumes it does
-exist.
+A last-level cache holding at least DOUBLES_IN_LLC doubles is also
+assumed to possibly exist (though perhaps be the same as the L2
+cache).  If such a large last-level cache does not exist, there is
+only a small penalty for using the code that assumes it does exist.
 
 VEC_VEC... For matprod_vec_vec, there is no apparent way of improving
 on the obvious method that accesses memory sequentially.
@@ -135,23 +134,23 @@ VEC_MAT... For matprod_vec_mat, if y has more than VEC_MAT_YROWS rows,
 the operation is done on successive parts of the matrix, each
 consisting of at most VEC_MAT_YROWS of the rows.  The second and later
 parts add to the result found by earlier parts.  The value for
-VEC_MAT_YROWS, currently 512, is designed to keep the vector x in the
-L1 cache, given that x and four columns of y (all of length
-VEC_MAT_YROWS) are accessed within the main loop.
+VEC_MAT_YROWS is designed to keep the relevant part of the vector x in
+the L1 cache, given that this part of x and of four columns of y (all
+of length VEC_MAT_YROWS) are accessed within the main loop.
 
 MAT_VEC... For matprod_mat_vec, if x has more than MAT_VEC_XROWS rows,
 the operation is done on successive parts of the matrix, each
 consisting of at most MAT_VEC_XROWS of the rows.  The definition of
-MAT_VEC_XROWS, currently 1024, is designed to keep the vector z in the
-L1 cache, given that z and two columns of x (all of length
-MAT_VEC_XROWS) are accessed within the main loop.
+MAT_VEC_XROWS is designed to keep that part of the vector z in the L1
+cache, given that that part of z and of two columns of x (all of
+length MAT_VEC_XROWS) are accessed within the main loop.
 
 OUTER... For matprod_outer, if x has more than OUTER_ROWS elements
 (and hence z has more than OUTER_ROWS rows), the operation is done on
 successive parts of x, each consisting of at most OUTER_ROWS elements.
-The definition of OUTER_ROWS, currently 2048-128, is designed to keep
-that part of x in the L1 cache, given that it and the corresponding
-part of a column of z are accessed within the main loop.
+The definition of OUTER_ROWS is designed to keep that part of x in the
+L1 cache, given that it and the corresponding part of a column of z
+are accessed within the main loop.
 
 MAT_MAT... For matprod_mat_mat, if x has more than MAT_MAT_XROWS rows,
 the operation is done on successive groups of rows of the matrix, each
@@ -160,17 +159,17 @@ operations on each set of up to MAT_MAT_XROWS may be split into parts
 by columns of x, with all except for the first of these split
 operations adding to the sum from the operations on previous columns.
 
-The definition of MAT_MAT_XROWS, currently 1024-64, is designed to
-keep two columns of z in the L1 cache, given that two columns of z and
-two columns of x (all of length MAT_MAT_XROWS) are accessed within the
-outer loop over columns of y and z.
+The definition of MAT_MAT_XROWS is designed to keep two columns of z
+in the L1 cache, given that two columns of z and two columns of x (all
+of length MAT_MAT_XROWS) are accessed within the outer loop over
+columns of y and z.
 
 The splitting according to columns of x is designed to keep the
 sub-matrix of x that is multiplied repeatedly by columns of y in the
 L2 cache.  If the sub-matrix has the maximum MAT_MAT_XROWS, the number
-of columns will be MAT_MAT_XCOLS, currently 32.  If the number of rows
-is less than MAT_MAT_XROWS, the number of columns may be larger, while
-limiting the number of elements to MAT_MAT_XCOLS*MAT_MAT_XROWS.
+of columns will be MAT_MAT_XCOLS.  If the number of rows is less than
+MAT_MAT_XROWS, the number of columns may be larger, while limiting the
+number of elements to MAT_MAT_XCOLS*MAT_MAT_XROWS.
 
 If y is large, and rows of x will be split, matprod_mat_mat accesses
 columns of y, and computes corresponding columns of z, in groups,
@@ -185,17 +184,17 @@ added to the sums from the previous groups of row.  Furthermore,
 operations on each set of up to MAT_MAT_XROWS may be split into parts
 by columns of x.
 
-The definition of TRANS1_XROWS, currently 512, is designed to keep two
-columns of y in the L1 cache, given that two columns of y and four
-columns of x (all of length TRANS1_XROWS) are accessed within the loop
+The definition of TRANS1_XROWS is designed to keep two columns of y in
+the L1 cache, given that parts of two columns of y and of four columns
+of x (all of length TRANS1_XROWS) are accessed within the loop
 computing (or adding to) elements of z.
 
 The splitting according to columns of x is designed to keep the
 sub-matrix of x that is multiplied repeatedly by columns of y in the
 L2 cache.  If the sub-matrix has the maximum TRANS1_XROWS, the number
-of columns will be TRANS1_XCOLS, currently 48.  If the number of rows
-is less than TRANS1_XROWS, the number of columns may be larger, while
-limiting the number of elements to TRANS1_XCOLS*TRANS1_XROWS.
+of columns will be TRANS1_XCOLS.  If the number of rows is less than
+TRANS1_XROWS, the number of columns may be larger, while limiting the
+number of elements to TRANS1_XCOLS*TRANS1_XROWS.
 
 As for matprod_mat_mat, if y is large, and rows of x will be split,
 matprod_trans1 accesses columns of y, and computes corresponding
@@ -216,7 +215,18 @@ Symmetric cases for trans1 and trans2.
 When the operands for the trans1 or trans2 operations are identical
 (same pointers, and same dimensions), the result is a symmetrical
 matrix, only half (including diagonal) of which needs to be computed,
-with the remainder being copied from the other half.
+with the remainder being copied from the other half.  This is not done
+for small matrices, or when k is very small, however, since ignoring
+the symmetry in such cases may be faster.
+
+Columns of the result are computed sequentially, so that output
+pipelining can be done.  Elements at and below the diagonal are
+computed, and their values are then copied to the symmetric elements,
+ensuring that the elements of a column above the diagonal have already
+been computed when the elements below the diagonal are computed.  The
+bad cache behaviour for these non-sequential copies is somewhat
+reduced by two columns being computed at once, which results in two
+adjacent doubles being stored when copying.
 
 
 SIMD instructions and alignment.
@@ -283,11 +293,16 @@ par-matprod.c source file includes the matprod.c source file.  This
 also allows the apparatus for output pipelining to be implemented in
 the procedures in matprod.c using macros that are defined to do
 nothing when matprod.c is compiled separately - eliminating any
-overhead for pipelining when it is not used.  When included in
-par-matprod.c, the normally-visible procedures in maptrod.c are made
-"static", allowing them to co-exist with procedures of the same name
-obtained by compiling matprod.c separately (which will not have the
-pipelining code, and could perhaps have other alignment settings).
+overhead for pipelining when it is not used.  There are also macros
+that allow the matprod procedures to have additional arguments
+relating to pipelining, which are not present when matprod.c is
+compiled on its own.
+
+When included in par-matprod.c, the normally-visible procedures in
+maptrod.c are made "static", allowing them to co-exist with procedures
+of the same name obtained by compiling matprod.c separately (which
+will not have the pipelining code, and could perhaps have other
+alignment settings).
 
 VEC_VEC... For the vec_vec operation, parallelization of the additions
 is not possible, if the round-off behaviour of simple sequential

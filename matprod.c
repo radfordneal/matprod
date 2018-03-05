@@ -29,6 +29,35 @@
 #include <stdint.h>
 
 
+/* TUNABLE CACHE OPTIMIZATION CONSTANTS.  These values are used to
+   divide computations into parts, so as to improve cache behaviour.
+   They are chosen based on the assumed sizes of the L1 and L2 caches.
+   See imp-doc for more information.
+
+   The values below should all be multiples of 8 in order to avoid any
+   changes to alignment. */
+
+#define VEC_MAT_YROWS (512+256)  /* # of rows to look at at once */
+
+#define MAT_VEC_XROWS (1024+512) /* # of elements to compute in a part */
+
+#define OUTER_ROWS (2048-128)    /* # of rows to compute in a part */
+
+#define MAT_MAT_XROWS (1024-64)  /* # of rows to compute in a part */
+#define MAT_MAT_XCOLS 32         /* # of columns in part, if # of rows is max */
+
+#define TRANS1_XROWS (512+128)   /* # of rows to look at at once */
+#define TRANS1_XCOLS 48          /* # of columns in part, if # of rows is max */
+
+#define TRANS2_XROWS (1024-64)   /* # of rows to compute in a part */
+#define TRANS2_XCOLS 32          /* # of columns in part, if # of rows is max */
+
+#define TRANS12_ZELEM 2048       /* # of elements can store locally on stack */
+
+#define DOUBLES_IN_LLC 100000    /* # of doubles assumed to fit in the
+                                    last-level cache with some space to spare */
+
+
 /* SETUP TO FACILITATE INCLUSION AND USE OF MATPROD.C IN PIPED-MATPROD.C.
    If PIPED_MATPROD is defined, SCOPE, AMTOUT, EXTRAD, and EXTRAN will
    be defined before matprod.c is included.  Otherwise, they are
@@ -183,12 +212,6 @@
 #else
 # define cast128a(x) (x)
 #endif
-
-
-/* NUMBER OF DOUBLES ASSUMED TO FIT IN THE LAST-LEVEL CACHE.  With
-   some extra to spare. */
-
-#define DOUBLES_IN_LLC 100000
 
 
 /* MACRO TO SPLIT COUNT, ALIGNED.  Given that M < c < 2*M, with M a
@@ -662,8 +685,6 @@ SCOPE void matprod_vec_mat (double * MATPROD_RESTRICT x,
 
   /* The general case with k > 2.  Calls matprod_vec_mat_sub_yrows to do parts
      (only one part if y is a matrix with fewer than VEC_MAT_YROWS). */
-
-# define VEC_MAT_YROWS 512  /* be multiple of 8 to keep any alignment*/
 
   int yrows = k;
   int add = 0;
@@ -1646,8 +1667,6 @@ static void matprod_mat_vec_sub_xrows0 (double * MATPROD_RESTRICT x,
   /* Call matprod_mat_vec_sub_xrows to do parts (only one part if x
      has fewer than MAT_VEC_XROWS rows). */
 
-# define MAT_VEC_XROWS 1024  /* be multiple of 8 to keep any alignment */
-
   if (xrows > MAT_VEC_XROWS && k > 2)
   { while (xrows >= 2*MAT_VEC_XROWS)
     { matprod_mat_vec_sub_xrows (x, y, z, n, k, MAT_VEC_XROWS, add);
@@ -2447,8 +2466,6 @@ SCOPE void matprod_outer (double * MATPROD_RESTRICT x,
   /* The general case with n > 4.  Calls matprod_outer_sub to do
      parts (only one part if z has fewer than OUTER_ROWS rows). */
 
-# define OUTER_ROWS (2048-128)  /* be multiple of 8 to preserve alignment */
-
   int rows = n;
 
   while (rows > 2*OUTER_ROWS)
@@ -2952,9 +2969,6 @@ SCOPE void matprod_mat_mat (double * MATPROD_RESTRICT x,
      do parts - only one part for a matrix with fewer than
      MAT_MAT_XROWS rows and fewer than MAT_MAT_XCOLS columns, in
      which case matprod_mat_mat_sub_xrowscols is called directly. */
-
-# define MAT_MAT_XROWS (1024-64) /* be multiple of 8 to keep any alignment  */
-# define MAT_MAT_XCOLS 32        /* be multiple of 8 to keep any alignment  */
 
   if (n <= MAT_MAT_XROWS && k <= MAT_MAT_XCOLS)  /* do small cases quickly */
   { matprod_mat_mat_sub_xrowscols (x, y, z, n, k, m,
@@ -4130,9 +4144,6 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
 
    Called above and from par-matprod.c. */
 
-# define TRANS1_XROWS 512        /* be multiple of 8 to keep any alignment */
-# define TRANS1_XCOLS 48         /* be multiple of 8 to keep any alignment */
-
 static void matprod_trans1_sub (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y,
                                 double * MATPROD_RESTRICT z,
@@ -4326,8 +4337,7 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
     int nn = x + xcols - xs;
     double *zs = z;
 
-    /* Compute sets of four elements in the two columns being
-       computed. */
+    /* Compute sets of four elements in the two columns being computed. */
 
     while (nn >= 4)
     { 
@@ -5053,9 +5063,6 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
    Note that n, m, and k must be greater than 1.
 
    Called above and from par-matprod.c. */
-
-#define TRANS2_XROWS (1024-64)  /* be multiple of 8 to keep any alignment */
-#define TRANS2_XCOLS 32         /* be multiple of 8 to keep any alignment */
 
 static void matprod_trans2_sub (double * MATPROD_RESTRICT x,
                                 double * MATPROD_RESTRICT y,
@@ -5884,8 +5891,6 @@ static void matprod_trans12_sub (double * MATPROD_RESTRICT x,
     matprod_trans12_m2 (x, y, z, n, k);
     return;
   }
-
-# define TRANS12_ZELEM 2048
 
   int zr, zc;
 
