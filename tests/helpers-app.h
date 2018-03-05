@@ -39,9 +39,12 @@ typedef unsigned int helpers_size_t;
 typedef int helpers_var_ptr;  
 
 
-/* Now include the helpers.h file, after the above declarations. */
+/* Define ENABLE_DEBUG as 1 to make helpers_debug do something. */
 
 #define ENABLE_DEBUG 0
+
+
+/* Now include the helpers.h file, after the above declarations. */
 
 #include "helpers.h"
 
@@ -62,7 +65,7 @@ extern helpers_task_proc task_output_vector;
   p==task_par_matprod_trans1     ? "matprod_trans1" : \
   p==task_par_matprod_trans2     ? "matprod_trans2" : \
   p==task_par_matprod_trans12    ? "matprod_trans12" : \
-  p==task_output_vector            ? "output_vector" : "?" \
+  p==task_output_vector          ? "output_vector" : "?" \
 )
 
 /* Macro giving the name of a variable. */

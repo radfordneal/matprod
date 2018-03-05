@@ -66,7 +66,7 @@ void print_result (void)
   double *m = product[0];
   size_t s = prodlen[0];
 
-  printf ("%.16g", m[0]);
+  if (s>0) printf ("%.16g", m[0]);
   if (s>1) printf (" %.16g", m[1]);
   if (s>3) printf (" %.16g", m[s-2]);
   if (s>2) printf (" %.16g", m[s-1]);
