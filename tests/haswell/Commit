@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit e5fdb9d87f818dd9a751d85152fe7c0cda5523e8
+commit 3edbb39f40078e50391df9399c9bab40605f4f1f
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Mar 2 22:06:47 2018 -0500
+Date:   Sun Mar 4 15:28:38 2018 -0500
 
-    results for haswell
+    results for sandybridge
