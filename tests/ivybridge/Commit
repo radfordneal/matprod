@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 3edbb39f40078e50391df9399c9bab40605f4f1f
+commit 1fcf30767933e1c473cc0a3a59c057be85cf7ef0
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Mar 4 15:28:38 2018 -0500
+Date:   Mon Mar 5 11:25:55 2018 -0500
 
-    results for sandybridge
+    tweak DOUBLES_IN_LLC
