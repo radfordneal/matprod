@@ -1,7 +1,9 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 3a7f443d9b205f6a2d811179e2bf5eaffca85861
+commit 072f8497e55e0a048fec092df50b5a4ab46f4fae
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Mar 4 14:51:43 2018 -0500
+Date:   Sun Mar 4 20:07:36 2018 -0500
 
-    use non-uniform split for symmetric trans1 and trans2
+    change piped-matprod to par-matprod (similarly, piped_matprod to
+    par_matprod) thoughout.  Also remove pipelining from summary line
+    describing the library.
