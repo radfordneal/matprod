@@ -1,4 +1,4 @@
-MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
+MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION
           Documentation for Application Program Interface to Library Procedures
 
 Copyright (C) 2013, 2014, 2017, 2018 Radford M. Neal.
@@ -118,31 +118,31 @@ faster than the routines provided in some optimized BLAS libraries, in
 some cases substantially faster - primarily when at least one operand
 has at least one small dimension.
 
-See imp-doc and the comments in matprod.c and piped-matprod.c for
+See imp-doc and the comments in matprod.c and par-matprod.c for
 details on the algorithms used.
 
 
 Building and using the procedures.
 
 The non-parallel routines, in matprod.c, are called in ordinary C
-fashion.  The parallel, pipelined routines, in piped-matprod.c, take
-the form of task procedures for use with the helpers library for
-parallel computation (see https://github.com/radfordneal/helpers),
-though convenient procedures for scheduling these task procedures are
-also provided.
+fashion.  The parallel, pipelined routines, in par-matprod.c, take the
+form of task procedures for use with the helpers library for parallel
+computation (see https://github.com/radfordneal/helpers), though
+convenient procedures for scheduling these task procedures are also
+provided.
 
-The matprod.c and/or piped-matprod.c source files should be compiled
-and linked with the program that usies the routines in the usual
-fashion.  Some options can be set by pre-processor symbols defined
-with arguments to the compiler, or alternatively, by defining the
-symbol MATPROD_APP_INCLUDED (as anything), which will cause matprod.c
-and piped-matprod.c to include the file matprod-app.h, which may
-define symbols that set these options.
+The matprod.c and/or par-matprod.c source files should be compiled and
+linked with the program that usies the routines in the usual fashion.
+Some options can be set by pre-processor symbols defined with
+arguments to the compiler, or alternatively, by defining the symbol
+MATPROD_APP_INCLUDED (as anything), which will cause matprod.c and
+par-matprod.c to include the file matprod-app.h, which may define
+symbols that set these options.
 
 These options include the following:
 
     ALIGN                If defined (must be a power of 2), the matprod
-                         and piped_matprod functions will assume that
+                         and par_matprod functions will assume that
                          their arguments are aligned to such a
                          boundary (plus ALIGN_OFFSET, if defined).
                          This assumption may allow for faster and
@@ -166,7 +166,7 @@ These options include the following:
                          a gcc look-alike.
 
     MATPROD_NO_RESTRICT  If defined, the arguments of the matprod and
-                         piped_matprod functions will not be declared
+                         par_matprod functions will not be declared
                          with the "restricted" keyword.  This is meant
                          for performance testing - results are not
                          guaranteed correct in any case if the output
@@ -286,11 +286,11 @@ routine directly will of course be slightly faster when it is known
 that it is appropriate.
 
 
-Parallel operation using procedures in piped-matprod.c.
+Parallel operation using procedures in par-matprod.c.
 
-Task procedures are defined in piped-matprod.c (and declared in
-piped-matprod.h) for use with the "helpers" facility.  An operation
-may be scheduled as a single task, potentially allowing it to run
+Task procedures are defined in par-matprod.c (and declared in
+par-matprod.h) for use with the "helpers" facility.  An operation may
+be scheduled as a single task, potentially allowing it to run
 concurrently with the master thread or other task procedures, perhaps
 while pipelining data in or out.  Alternatively, several tasks may be
 scheduled for a single operation, with each task computing a portion
@@ -322,8 +322,8 @@ determine when the result of an operation is available.
 
 The task procedures (described below) can be scheduled to be run by
 the application.  More typically, however, the par_matprod procedures
-described below (also defined in piped-matprod.c and declared in
-piped-matprod.h) will be used to schedule the appropriate tasks.
+described below (also defined in par-matprod.c and declared in
+par-matprod.h) will be used to schedule the appropriate tasks.
 
 
 The par_matprod procedures.
@@ -435,7 +435,7 @@ Task procedures.
 
 An application can instead do its own scheduling of task procedures,
 though this should generally be unnecessary.  These task procedures
-are declared in piped-matprod.h to be of type helpers_task_proc, for
+are declared in par-matprod.h to be of type helpers_task_proc, for
 which the arguments are an op value, a pointer to the result matrix
 (which is possibly a vector or scalar), a pointer to the first operand
 matrix/vector, and a pointer to the second operand matrix/vector.
@@ -459,48 +459,48 @@ output pipelining, though this is potentially inefficient for the
 vec_vec, mat_vec, and trans12 operations, since they do not do any
 output pipelining.
 
-The following task procedures (found in piped-matprod.c) are provided,
+The following task procedures (found in par-matprod.c) are provided,
 corresponding to the direct matprod procedures above (except for
 matprod_fill_lower):
 
-    task_piped_matprod_scalar_vec
+    task_par_matprod_scalar_vec
 
       Scalar-vector multiply, with element-by-element pipelining of
       the second operand and of the output.
 
-    task_piped_matprod_vec_vec
+    task_par_matprod_vec_vec
 
       Vector-vector multiply, with element-by-element pipelining of
       the second operand.
 
-    task_piped_matprod_vec_mat
+    task_par_matprod_vec_mat
 
       Vector-matrix multiply, with column-by-column pipelining of the
       second operand, and element-by-element pipelining of the output.
 
-    task_piped_matprod_mat_vec
+    task_par_matprod_mat_vec
 
       Matrix-vector multiply, with element-by-element pipelining of
       the second operand.
 
-    task_piped_matprod_outer
+    task_par_matprod_outer
 
       Matrix outer product of column vector and row vector, with
       element-by-element pipelining of the second operand, and
       column-by-column pipelining of the output.
 
-    task_piped_matprod_mat_mat
+    task_par_matprod_mat_mat
 
       Matrix-matrix multiply, with column-by-column pipelining of the
       second operand, and column-by-column pipelining of the output.
 
-    task_piped_matprod_trans1
+    task_par_matprod_trans1
 
       Multiplies the transpose of first operand matrix and the second
       operand matrix, with column-by-column pipelining of the second
       operand, and column-by-column pipelining of the output.
 
-    task_piped_matprod_trans2
+    task_par_matprod_trans2
 
       Multiplies the first operand matrix and the transpose of the
       second operand matrix, with column-by-column pipelining of the
@@ -510,7 +510,7 @@ matprod_fill_lower):
       operand, since it is pipelined for many of the other task
       procedures.)
 
-    task_piped_matprod_trans12
+    task_par_matprod_trans12
 
       Multiplies the transpose of the first operand matrix and the
       transpose of the second operand matrix, with no pipelining of

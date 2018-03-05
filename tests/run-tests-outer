@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
+# MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION
 #           Shell File to Run a Series of Tests (for outer)
 #
 # Copyright (c) 2013, 2017, 2018 Radford M. Neal.

@@ -35,7 +35,7 @@
 #endif
 
 #include "helpers-app.h"
-#include "piped-matprod.h"
+#include "par-matprod.h"
 
 /* -------------------------------------------------------------------------- */
 
@@ -97,7 +97,7 @@
 
 /* Scalar-vector product, with pipelining of input y and output z. */
 
-void task_piped_matprod_scalar_vec (helpers_op_t op, helpers_var_ptr sz,
+void task_par_matprod_scalar_vec (helpers_op_t op, helpers_var_ptr sz,
                                     helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double x = *REAL(sx);
@@ -152,7 +152,7 @@ void task_piped_matprod_scalar_vec (helpers_op_t op, helpers_var_ptr sz,
 
 /* Dot product of two vectors, with pipelining of input y. */
 
-void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
+void task_par_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
                                  helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
@@ -230,7 +230,7 @@ void task_piped_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
 /* Product of row vector (x) of length k and k x m matrix (y), result stored
    in z, with pipelining of the input y and of the output. */
 
-void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
+void task_par_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
                                  helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
@@ -241,7 +241,7 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
 
   if (m <= 1)
   { if (m == 1)
-    { task_piped_matprod_vec_vec (op, sz, sx, sy);
+    { task_par_matprod_vec_vec (op, sz, sx, sy);
     }
     return;
   }
@@ -249,7 +249,7 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
   helpers_size_t k = LENGTH(sx);
 
   if (k == 1)
-  { task_piped_matprod_scalar_vec (op, sz, sx, sy);
+  { task_par_matprod_scalar_vec (op, sz, sx, sy);
     return;
   }
 
@@ -312,7 +312,7 @@ void task_piped_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
 /* Product of n x k matrix (x) and column vector of length k (y) with result
    stored in z, with pipelining of input y. */
 
-void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
+void task_par_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
                                  helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
@@ -323,7 +323,7 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
 
   if (n <= 1)
   { if (n == 1)
-    { task_piped_matprod_vec_vec (op, sz, sx, sy);
+    { task_par_matprod_vec_vec (op, sz, sx, sy);
     }
     return;
   }
@@ -331,7 +331,7 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
   helpers_size_t k = LENGTH(sy);
 
   if (k == 1)
-  { task_piped_matprod_scalar_vec (op, sz, sy, sx);
+  { task_par_matprod_scalar_vec (op, sz, sy, sx);
     return;
   }
 
@@ -407,7 +407,7 @@ void task_piped_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
 /* Product of an n x 1 matrix (x) and a 1 x m matrix (y) with result stored
    in z, with pipelining of the input y and the output (by column). */
 
-void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
+void task_par_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
                                helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
@@ -418,7 +418,7 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
 
   if (n <= 1)
   { if (n == 1)
-    { task_piped_matprod_scalar_vec (op, sz, sx, sy);
+    { task_par_matprod_scalar_vec (op, sz, sx, sy);
     }
     return;
   }
@@ -427,7 +427,7 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
 
   if (m <= 1)
   { if (m == 1)
-    { task_piped_matprod_scalar_vec (op, sz, sy, sx);
+    { task_par_matprod_scalar_vec (op, sz, sy, sx);
     }
     return;
   }
@@ -481,7 +481,7 @@ void task_piped_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
 /* Product of an n x k matrix (x) and a k x m matrix (y) with result stored
    in z, with pipelining of the input y and the output (by column). */
 
-void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
+void task_par_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
                                  helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
@@ -491,7 +491,7 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
   helpers_size_t k = OP_K(op);
 
   if (k == 1)
-  { task_piped_matprod_outer (op, sz, sx, sy);
+  { task_par_matprod_outer (op, sz, sx, sy);
     return;
   }
 
@@ -500,7 +500,7 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
 
   if (n <= 1)
   { if (n == 1)
-    { task_piped_matprod_vec_mat (op, sz, sx, sy);
+    { task_par_matprod_vec_mat (op, sz, sx, sy);
     }
     return;
   }
@@ -510,7 +510,7 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
 
   if (m <= 1)
   { if (m == 1)
-    { task_piped_matprod_mat_vec (op, sz, sx, sy);
+    { task_par_matprod_mat_vec (op, sz, sx, sy);
     }
     return;
   }
@@ -572,7 +572,7 @@ void task_piped_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
    with result stored in z, with pipelining of the input y and the output
    (by column). */
 
-void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
+void task_par_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
                                 helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
@@ -582,7 +582,7 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
   helpers_size_t k = OP_K(op);
 
   if (k == 1)
-  { task_piped_matprod_outer (op, sz, sx, sy);
+  { task_par_matprod_outer (op, sz, sx, sy);
     return;
   }
 
@@ -591,7 +591,7 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
 
   if (n <= 1)
   { if (n == 1)
-    { task_piped_matprod_vec_mat (op, sz, sx, sy);
+    { task_par_matprod_vec_mat (op, sz, sx, sy);
     }
     return;
   }
@@ -601,7 +601,7 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
 
   if (m <= 1)
   { if (m == 1)
-    { task_piped_matprod_vec_mat (op, sz, sy, sx);
+    { task_par_matprod_vec_mat (op, sz, sy, sx);
     }
     return;
   }
@@ -675,7 +675,7 @@ void task_piped_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
 /* Product of an n x k matrix (x) and the transpose of an m x k matrix (y)
    with result stored in z, with pipelining of the output (by column). */
 
-void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
+void task_par_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
                                 helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
@@ -685,7 +685,7 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
   helpers_size_t k = OP_K(op);
 
   if (k == 1)
-  { task_piped_matprod_outer (op, sz, sx, sy);
+  { task_par_matprod_outer (op, sz, sx, sy);
     return;
   }
 
@@ -694,7 +694,7 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
 
   if (n <= 1)
   { if (n == 1)
-    { task_piped_matprod_mat_vec (op, sz, sy, sx);
+    { task_par_matprod_mat_vec (op, sz, sy, sx);
     }
     return;
   }
@@ -704,7 +704,7 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
 
   if (m <= 1)
   { if (m == 1)
-    { task_piped_matprod_mat_vec (op, sz, sx, sy);
+    { task_par_matprod_mat_vec (op, sz, sx, sy);
     }
     return;
   }
@@ -758,7 +758,7 @@ void task_piped_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
    of an m x k matrix (y) with result stored in z, with no pipelining
    of inputs or output. */
 
-void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
+void task_par_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
                                  helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
@@ -768,7 +768,7 @@ void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
   helpers_size_t k = OP_K(op);
 
   if (k == 1)
-  { task_piped_matprod_outer (op, sz, sx, sy);
+  { task_par_matprod_outer (op, sz, sx, sy);
     return;
   }
 
@@ -777,7 +777,7 @@ void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
 
   if (n <= 1)
   { if (n == 1)
-    { task_piped_matprod_mat_vec (op, sz, sy, sx);
+    { task_par_matprod_mat_vec (op, sz, sy, sx);
     }
     return;
   }
@@ -787,7 +787,7 @@ void task_piped_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
 
   if (m <= 1)
   { if (m == 1)
-    { task_piped_matprod_vec_mat (op, sz, sy, sx);
+    { task_par_matprod_vec_mat (op, sz, sy, sx);
     }
     return;
   }
@@ -854,13 +854,13 @@ void par_matprod_scalar_vec (helpers_var_ptr z, helpers_var_ptr x,
     { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
                        w < s-1 ? HELPERS_PIPE_IN02_OUT
                                : (pipe?HELPERS_PIPE_IN02_OUT:HELPERS_PIPE_IN0),
-                       task_piped_matprod_scalar_vec,
+                       task_par_matprod_scalar_vec,
                        MAKE_OP(w,s,0), z, x, y);
     }
   }
   else
   { helpers_do_task (pipe ? HELPERS_PIPE_IN2_OUT : 0,
-                     task_piped_matprod_scalar_vec,
+                     task_par_matprod_scalar_vec,
                      0, z, x, y);
   }
 }
@@ -888,13 +888,13 @@ void par_matprod_vec_vec (helpers_var_ptr z, helpers_var_ptr x,
     { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
                        w < s-1 ? HELPERS_PIPE_IN02_OUT
                                : (pipe?HELPERS_PIPE_IN02:HELPERS_PIPE_IN0),
-                       task_piped_matprod_vec_vec,
+                       task_par_matprod_vec_vec,
                        MAKE_OP(w,s,0), z, x, y);
     }
   }
   else
   { helpers_do_task (pipe ? HELPERS_PIPE_IN2 : 0,
-                     task_piped_matprod_vec_vec,
+                     task_par_matprod_vec_vec,
                      0, z, x, y);
   }
 }
@@ -922,13 +922,13 @@ void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x,
     { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
                        w < s-1 ? HELPERS_PIPE_IN02_OUT
                                : (pipe?HELPERS_PIPE_IN02_OUT:HELPERS_PIPE_IN0),
-                       task_piped_matprod_vec_mat,
+                       task_par_matprod_vec_mat,
                        MAKE_OP(w,s,0), z, x, y);
     }
   }
   else
   { helpers_do_task (pipe ? HELPERS_PIPE_IN2_OUT : 0,
-                     task_piped_matprod_vec_mat,
+                     task_par_matprod_vec_mat,
                      0, z, x, y);
   }
 }
@@ -958,13 +958,13 @@ void par_matprod_mat_vec (helpers_var_ptr z, helpers_var_ptr x,
     { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
                        w < s-1 ? HELPERS_PIPE_IN02_OUT
                                : (pipe?HELPERS_PIPE_IN02:HELPERS_PIPE_IN0),
-                       task_piped_matprod_mat_vec,
+                       task_par_matprod_mat_vec,
                        MAKE_OP(w,s,0), z, x, y);
     }
   }
   else
   { helpers_do_task (pipe ? HELPERS_PIPE_IN2 : 0,
-                     task_piped_matprod_mat_vec,
+                     task_par_matprod_mat_vec,
                      0, z, x, y);
   }
 }
@@ -992,13 +992,13 @@ void par_matprod_outer (helpers_var_ptr z, helpers_var_ptr x,
     { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
                        w < s-1 ? HELPERS_PIPE_IN02_OUT
                                : (pipe?HELPERS_PIPE_IN02_OUT:HELPERS_PIPE_IN0),
-                       task_piped_matprod_outer,
+                       task_par_matprod_outer,
                        MAKE_OP(w,s,0), z, x, y);
     }
   }
   else
   { helpers_do_task (pipe ? HELPERS_PIPE_IN2_OUT : 0,
-                     task_piped_matprod_outer,
+                     task_par_matprod_outer,
                      0, z, x, y);
   }
 }
@@ -1026,13 +1026,13 @@ void par_matprod_mat_mat (helpers_var_ptr z, helpers_var_ptr x,
     { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
                        w < s-1 ? HELPERS_PIPE_IN02_OUT
                                : (pipe?HELPERS_PIPE_IN02_OUT:HELPERS_PIPE_IN0),
-                       task_piped_matprod_mat_mat,
+                       task_par_matprod_mat_mat,
                        MAKE_OP(w,s,k), z, x, y);
     }
   }
   else
   { helpers_do_task (pipe ? HELPERS_PIPE_IN2_OUT : 0,
-                     task_piped_matprod_mat_mat,
+                     task_par_matprod_mat_mat,
                      k, z, x, y);
   }
 }
@@ -1060,13 +1060,13 @@ void par_matprod_trans1 (helpers_var_ptr z, helpers_var_ptr x,
     { helpers_do_task (w == 0  ? (pipe?HELPERS_PIPE_IN2_OUT:HELPERS_PIPE_OUT) :
                        w < s-1 ? HELPERS_PIPE_IN02_OUT
                                : (pipe?HELPERS_PIPE_IN02_OUT:HELPERS_PIPE_IN0),
-                       task_piped_matprod_trans1,
+                       task_par_matprod_trans1,
                        MAKE_OP(w,s,k), z, x, y);
     }
   }
   else
   { helpers_do_task (pipe ? HELPERS_PIPE_IN2_OUT : 0,
-                     task_piped_matprod_trans1,
+                     task_par_matprod_trans1,
                      k, z, x, y);
   }
 }
@@ -1094,13 +1094,13 @@ void par_matprod_trans2 (helpers_var_ptr z, helpers_var_ptr x,
     { helpers_do_task (w == 0  ? HELPERS_PIPE_OUT :
                        w < s-1 ? HELPERS_PIPE_IN0_OUT
                                : (pipe?HELPERS_PIPE_IN0_OUT:HELPERS_PIPE_IN0),
-                       task_piped_matprod_trans2,
+                       task_par_matprod_trans2,
                        MAKE_OP(w,s,k), z, x, y);
     }
   }
   else
   { helpers_do_task (pipe ? HELPERS_PIPE_OUT : 0,
-                     task_piped_matprod_trans2,
+                     task_par_matprod_trans2,
                      k, z, x, y);
   }
 }
@@ -1128,13 +1128,13 @@ void par_matprod_trans12 (helpers_var_ptr z, helpers_var_ptr x,
     { helpers_do_task (w == 0  ? HELPERS_PIPE_OUT :
                        w < s-1 ? HELPERS_PIPE_IN0_OUT
                                : HELPERS_PIPE_IN0,
-                       task_piped_matprod_trans12,
+                       task_par_matprod_trans12,
                        MAKE_OP(w,s,k), z, x, y);
     }
   }
   else
   { helpers_do_task (0,
-                     task_piped_matprod_trans12,
+                     task_par_matprod_trans12,
                      k, z, x, y);
   }
 }

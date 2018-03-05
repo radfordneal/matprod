@@ -23,7 +23,7 @@
 #include "helpers-app.h"
 
 
-char *prog_name = "piped-matprod-test";
+char *prog_name = "par-matprod-test";
 
 char * my_var_name (helpers_var_ptr v)
 { char *name = malloc(13);

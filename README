@@ -1,4 +1,4 @@
-MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
+MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION
 
 Files in this directory are Copyright 2013, 2014, 2017, 2018 Radford M. Neal.  
 
@@ -30,10 +30,10 @@ restriction, they are written to be reasonably fast, and can take
 advantage of SIMD instructions on Intel/AMD processors.
 
 The file matprod.c (interface defined in matprod.h) contains direct
-versions of these procedures.  The file piped-matprod.c (interface
-defined in piped-matprod.h) contains versions that are structured as
+versions of these procedures.  The file par-matprod.c (interface
+defined in par-matprod.h) contains versions that are structured as
 task procedures for use with the "helpers" library for parallel
-execution of tasks, with pipelining.
+execution of tasks, with optional pipelining.
 
 The application interface to these procedures is documented in api-doc.
 Some notes on the implementation are in imp-doc.

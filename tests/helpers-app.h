@@ -1,4 +1,4 @@
-/* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
+/* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION
              Application Helpers Header File for Test Program with Pipelining
 
    Copyright (c) 2013, 2014, 2018 Radford M. Neal.
@@ -48,20 +48,20 @@ typedef int helpers_var_ptr;
 
 /* Macro giving the name of a task. */
 
-#include "piped-matprod.h"
+#include "par-matprod.h"
 
 extern helpers_task_proc task_output_vector;
 
 #define helpers_task_name(p) \
-( p==task_piped_matprod_scalar_vec ? "matprod_scalar_vec" : \
-  p==task_piped_matprod_vec_vec    ? "matprod_vec_vec" : \
-  p==task_piped_matprod_mat_vec    ? "matprod_mat_vec" : \
-  p==task_piped_matprod_vec_mat    ? "matprod_vec_mat" : \
-  p==task_piped_matprod_outer      ? "matprod_outer" : \
-  p==task_piped_matprod_mat_mat    ? "matprod_mat_mat" : \
-  p==task_piped_matprod_trans1     ? "matprod_trans1" : \
-  p==task_piped_matprod_trans2     ? "matprod_trans2" : \
-  p==task_piped_matprod_trans12    ? "matprod_trans12" : \
+( p==task_par_matprod_scalar_vec ? "matprod_scalar_vec" : \
+  p==task_par_matprod_vec_vec    ? "matprod_vec_vec" : \
+  p==task_par_matprod_mat_vec    ? "matprod_mat_vec" : \
+  p==task_par_matprod_vec_mat    ? "matprod_vec_mat" : \
+  p==task_par_matprod_outer      ? "matprod_outer" : \
+  p==task_par_matprod_mat_mat    ? "matprod_mat_mat" : \
+  p==task_par_matprod_trans1     ? "matprod_trans1" : \
+  p==task_par_matprod_trans2     ? "matprod_trans2" : \
+  p==task_par_matprod_trans12    ? "matprod_trans12" : \
   p==task_output_vector            ? "output_vector" : "?" \
 )
 
@@ -77,7 +77,7 @@ extern char *my_var_name (helpers_var_ptr v);
 #include "test.h"
 
 
-/* Macros used in piped-matprod for getting the length and data pointers
+/* Macros used in par-matprod for getting the length and data pointers
    for variables. */
 
 #define REAL(v)   (v>0 ? matrix[v-1] : product[-v-1])

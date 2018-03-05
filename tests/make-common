@@ -1,4 +1,4 @@
-# MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
+# MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION
 #           Common Part of Makefile for Compiling Test Programs
 #
 # Copyright (c) 2013, 2017, 2018 Radford M. Neal.
@@ -59,10 +59,10 @@ matprod-extra-progs?=matprod-nosimd-test matprod-off-nosimd-test \
 
 matprod-progs=matprod-test matprod-off-test \
               matprod-noalign-test matprod-off-noalign-test \
-              piped-matprod-test piped-matprod-off-test \
-              piped-matprod-nohelpers-test
+              par-matprod-test par-matprod-off-test \
+              par-matprod-nohelpers-test
 
-matprod-norestrict-progs=matprod-norestrict-test piped-matprod-norestrict-test
+matprod-norestrict-progs=matprod-norestrict-test par-matprod-norestrict-test
 
 blas-progs=blas0-test blas1-test blas1-off-test blas2-test blas2-off-test
 blas-linux-progs=blas3-test blas3-off-test
@@ -81,13 +81,13 @@ blas-mac:	$(blas-progs) $(blas-mac-progs) Commit
 	true
 
 Commit:	Makefile ../make-common \
-	  ../../matprod.c ../../piped-matprod.c \
-	  ../../matprod.h ../../piped-matprod.h \
+	  ../../matprod.c ../../par-matprod.c \
+	  ../../matprod.h ../../par-matprod.h \
 	  ../test.h ../test.c ../matprod-test.c ../blas-test.c
 	echo $(CC) $(CFLAGS) >Commit
 	echo " " >>Commit
 	git log -1 >>Commit
-	git diff ../../matprod.c ../../piped-matprod.c >>Commit
+	git diff ../../matprod.c ../../par-matprod.c >>Commit
 
 # -----------------------------------------------------------------------------
 
@@ -191,29 +191,29 @@ matprod-norestrict-test:	../test.h ../test.c ../matprod-test.c ../../matprod.h .
 
 # -----------------------------------------------------------------------------
 
-piped-matprod-test:	../test.h ../test.c ../piped-matprod-test.c ../../piped-matprod.h ../../matprod.c \
-			../../piped-matprod.c ../helpers-app.h ../helpers.h ../helpers.c
+par-matprod-test:	../test.h ../test.c ../par-matprod-test.c ../../par-matprod.h ../../matprod.c \
+			../../par-matprod.c ../helpers-app.h ../helpers.h ../helpers.c
 	$(CC) $(II) $(CFLAGS) $(ALIGN) -fopenmp \
-		../test.c ../piped-matprod-test.c ../../piped-matprod.c ../helpers.c \
-		-lm -o piped-matprod-test
+		../test.c ../par-matprod-test.c ../../par-matprod.c ../helpers.c \
+		-lm -o par-matprod-test
 
-piped-matprod-off-test:	../test.h ../test.c ../piped-matprod-test.c ../../piped-matprod.h ../../matprod.c \
-			../../piped-matprod.c ../helpers-app.h ../helpers.h ../helpers.c
+par-matprod-off-test:	../test.h ../test.c ../par-matprod-test.c ../../par-matprod.h ../../matprod.c \
+			../../par-matprod.c ../helpers-app.h ../helpers.h ../helpers.c
 	$(CC) $(II) $(CFLAGS) $(ALIGN) $(ALOFF) -fopenmp \
-		../test.c ../piped-matprod-test.c ../../piped-matprod.c ../helpers.c \
-		-lm -o piped-matprod-off-test
+		../test.c ../par-matprod-test.c ../../par-matprod.c ../helpers.c \
+		-lm -o par-matprod-off-test
 
-piped-matprod-nohelpers-test:	../test.h ../test.c ../piped-matprod-test.c ../../piped-matprod.h ../../matprod.c \
-			../../piped-matprod.c ../helpers-app.h ../helpers.h ../helpers.c
+par-matprod-nohelpers-test:	../test.h ../test.c ../par-matprod-test.c ../../par-matprod.h ../../matprod.c \
+			../../par-matprod.c ../helpers-app.h ../helpers.h ../helpers.c
 	$(CC) $(II) $(CFLAGS) $(ALIGN) -fopenmp -DHELPERS_DISABLED \
-		../test.c ../piped-matprod-test.c ../../piped-matprod.c ../helpers.c \
-		-lm -o piped-matprod-nohelpers-test
+		../test.c ../par-matprod-test.c ../../par-matprod.c ../helpers.c \
+		-lm -o par-matprod-nohelpers-test
 
-piped-matprod-norestrict-test:	../test.h ../test.c ../piped-matprod-test.c ../../piped-matprod.h ../../matprod.c \
-			../../piped-matprod.c ../helpers-app.h ../helpers.h ../helpers.c
+par-matprod-norestrict-test:	../test.h ../test.c ../par-matprod-test.c ../../par-matprod.h ../../matprod.c \
+			../../par-matprod.c ../helpers-app.h ../helpers.h ../helpers.c
 	$(CC) $(II) $(CFLAGS) $(ALIGN) -fopenmp -DMATPROD_NO_RESTRICT \
-		../test.c ../piped-matprod-test.c ../../piped-matprod.c ../helpers.c \
-		-lm -o piped-matprod-norestrict-test
+		../test.c ../par-matprod-test.c ../../par-matprod.c ../helpers.c \
+		-lm -o par-matprod-norestrict-test
 
 # -----------------------------------------------------------------------------
 

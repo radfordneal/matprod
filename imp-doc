@@ -1,4 +1,4 @@
-MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
+MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION
           Implementation Documentation 
 
 Copyright (C) 2017, 2018 Radford M. Neal.
@@ -279,12 +279,12 @@ available immediately after every column is computed).
 
 To allow the parallel/pipelined routines to access the non-visible
 procedures in matprod.c for operating on parts of matrices, the
-piped-matprod.c source file includes the matprod.c source file.  This
+par-matprod.c source file includes the matprod.c source file.  This
 also allows the apparatus for output pipelining to be implemented in
 the procedures in matprod.c using macros that are defined to do
 nothing when matprod.c is compiled separately - eliminating any
 overhead for pipelining when it is not used.  When included in
-piped-matprod.c, the normally-visible procedures in maptrod.c are made
+par-matprod.c, the normally-visible procedures in maptrod.c are made
 "static", allowing them to co-exist with procedures of the same name
 obtained by compiling matprod.c separately (which will not have the
 pipelining code, and could perhaps have other alignment settings).

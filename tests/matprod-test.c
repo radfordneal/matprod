@@ -1,4 +1,4 @@
-/* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
+/* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION
              Test Program for Matrix Multiplicaton Without Pipelining
 
    Copyright (c) 2013, 2014, 2018 Radford M. Neal.

@@ -1,7 +1,7 @@
 /* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
-             Interface to Task Procedures With Pipelining
+             Interface to Task Procedures for Parallel Operation
 
-   Copyright (c) 2013, 2014, 2017 Radford M. Neal.
+   Copyright (c) 2013, 2014, 2017, 2018 Radford M. Neal.
 
    The matprod library is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -31,15 +31,15 @@
 #endif
 
 
-helpers_task_proc task_piped_matprod_scalar_vec;
-helpers_task_proc task_piped_matprod_vec_vec;
-helpers_task_proc task_piped_matprod_vec_mat;
-helpers_task_proc task_piped_matprod_mat_vec;
-helpers_task_proc task_piped_matprod_mat_mat;
-helpers_task_proc task_piped_matprod_outer;
-helpers_task_proc task_piped_matprod_trans1;
-helpers_task_proc task_piped_matprod_trans2;
-helpers_task_proc task_piped_matprod_trans12;
+helpers_task_proc task_par_matprod_scalar_vec;
+helpers_task_proc task_par_matprod_vec_vec;
+helpers_task_proc task_par_matprod_vec_mat;
+helpers_task_proc task_par_matprod_mat_vec;
+helpers_task_proc task_par_matprod_mat_mat;
+helpers_task_proc task_par_matprod_outer;
+helpers_task_proc task_par_matprod_trans1;
+helpers_task_proc task_par_matprod_trans2;
+helpers_task_proc task_par_matprod_trans12;
 
 void par_matprod_scalar_vec (helpers_var_ptr z, helpers_var_ptr x, 
                              helpers_var_ptr y, int split, int pipe);

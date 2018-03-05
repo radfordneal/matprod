@@ -1,5 +1,5 @@
-/* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
-             Interface to Procedures Without Pipelining
+/* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION
+             Interface to Single-Thread Procedures 
 
    Copyright (c) 2013, 2014, 2017, 2018 Radford M. Neal.
 

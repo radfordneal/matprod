@@ -1,4 +1,4 @@
-/* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION WITH OPTIONAL PIPELINING
+/* MATPROD - A LIBRARY FOR MATRIX MULTIPLICATION
              C Procedures for Matrix Multiplication Without Pipelining
 
    Copyright (c) 2013, 2014, 2017, 2018 Radford M. Neal.
@@ -1553,7 +1553,7 @@ SCOPE void matprod_mat_vec (double * MATPROD_RESTRICT x,
 /* Matrix-vector product, with result stored in z if 'add' is zero, or
    added to z if 'add' is non-zero.
 
-   Called above and from piped-matprod.c. */
+   Called above and from par-matprod.c. */
 
 static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
                                  double * MATPROD_RESTRICT y,
@@ -1622,7 +1622,7 @@ static void matprod_mat_vec_sub (double * MATPROD_RESTRICT x,
 
    Note that n must be at least 4 and k must be at least 2.
 
-   Called above and from piped-matprod.c. */
+   Called above and from par-matprod.c. */
 
 static void matprod_mat_vec_sub_xrows0 (double * MATPROD_RESTRICT x,
                                         double * MATPROD_RESTRICT y,
@@ -4128,7 +4128,7 @@ SCOPE void matprod_trans1 (double * MATPROD_RESTRICT x,
    The case of k=2 is handled specially, ignoring any symmetry (which may
    not be advantegeious to exploit, given each element is quick to compute).
 
-   Called above and from piped-matprod.c. */
+   Called above and from par-matprod.c. */
 
 # define TRANS1_XROWS 512        /* be multiple of 8 to keep any alignment */
 # define TRANS1_XCOLS 48         /* be multiple of 8 to keep any alignment */
@@ -5052,7 +5052,7 @@ SCOPE void matprod_trans2 (double * MATPROD_RESTRICT x,
 
    Note that n, m, and k must be greater than 1.
 
-   Called above and from piped-matprod.c. */
+   Called above and from par-matprod.c. */
 
 #define TRANS2_XROWS (1024-64)  /* be multiple of 8 to keep any alignment */
 #define TRANS2_XCOLS 32         /* be multiple of 8 to keep any alignment */
@@ -5856,7 +5856,7 @@ SCOPE void matprod_trans12 (double * MATPROD_RESTRICT x,
 
    The usual alignment assumptions must hold for x, y, and z.
 
-   Called above and from piped-matprod.c. */
+   Called above and from par-matprod.c. */
 
 static void matprod_trans12_sub (double * MATPROD_RESTRICT x,
                                  double * MATPROD_RESTRICT y,
