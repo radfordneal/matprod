@@ -89,7 +89,6 @@ void helpers_master (void)
     for (i = nmat-2; i>=0; i--)
     { int n = matrows[i];
       int k = matcols[i];
-      int w;
       int op0 = -(i+1);
       int op1 = i+1;
       int op2 = i+2==nmat ? nmat : -(i+2);

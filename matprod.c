@@ -948,7 +948,7 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
 
 #   if CAN_USE_AVX || CAN_USE_SSE2 && ALIGN >= 16  /* slower unaligned */
     {
-      __m128d S, S2, P;
+      __m128d S, S2;
 
       if (add)
       { S = _mm_loadu_pd(z);
@@ -960,15 +960,15 @@ static void matprod_vec_mat_sub_yrows (double * MATPROD_RESTRICT x,
       }
 
 #     if ALIGN_FORWARD & 8
-        P = _mm_set1_pd(x[i]);
+      { __m128d P = _mm_set1_pd(x[i]);
         S = _mm_add_pd (S, _mm_mul_pd (P, _mm_set_pd ((y+k)[i], y[i])));
         S2 = _mm_add_sd (S2, _mm_mul_sd (P, _mm_set_sd ((y+k+k)[i])));
         i += 1;
+      }
 #     endif
 
 #     if ALIGN_FORWARD & 16
-      {
-        __m128d P = _mm_loadA_pd(x+i);
+      { __m128d P = _mm_loadA_pd(x+i);
         __m128d T0 = _mm_mul_pd (_mm_loadA_pd(y+i), P);
         __m128d T1 = _mm_mul_pd (_mm_loadu_pd(y+i+k), P);
         __m128d T2 = _mm_mul_pd (_mm_loadA_pd(y+i+k+k), P);
@@ -4325,7 +4325,6 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
     double *xs = sym == 0 || z >= sym ? x : x + ((z-sym) & ~3);
     int nn = x + xcols - xs;
     double *zs = z;
-    double *rz;
 
     /* Compute sets of four elements in the two columns being
        computed. */
