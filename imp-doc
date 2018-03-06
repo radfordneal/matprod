@@ -289,14 +289,14 @@ available immediately after every column is computed).
 
 To allow the parallel/pipelined routines to access the non-visible
 procedures in matprod.c for operating on parts of matrices, the
-par-matprod.c source file includes the matprod.c source file.  This
-also allows the apparatus for output pipelining to be implemented in
-the procedures in matprod.c using macros that are defined to do
-nothing when matprod.c is compiled separately - eliminating any
-overhead for pipelining when it is not used.  There are also macros
-that allow the matprod procedures to have additional arguments
-relating to pipelining, which are not present when matprod.c is
-compiled on its own.
+par-matprod.c source file includes the matprod.c source file (rather
+than linking to it).  This also allows the apparatus for output
+pipelining to be implemented in the procedures in matprod.c using
+macros that are defined to do nothing when matprod.c is compiled
+separately - eliminating any overhead for pipelining when it is not
+releant.  There are also macros that allow the matprod procedures to
+have additional arguments relating to pipelining, which are not
+present when matprod.c is compiled on its own.
 
 When included in par-matprod.c, the normally-visible procedures in
 maptrod.c are made "static", allowing them to co-exist with procedures
@@ -306,9 +306,8 @@ alignment settings).
 
 VEC_VEC... For the vec_vec operation, parallelization of the additions
 is not possible, if the round-off behaviour of simple sequential
-summation is to be preserved.  Code that attempts to parallelize
-fetches from the first operand is present, but disabled since it seems
-not to help.
+summation is to be preserved.  Parallelizing just the multiplications
+and/or fetches does not seem helpful, so no parallelization is done.
 
 MAT_VEC... For the mat_vec operation, the second operand is a single
 column, so parallelization is done over groups of rows of the first

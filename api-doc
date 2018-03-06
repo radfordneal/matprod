@@ -382,7 +382,9 @@ The following par_matprod procedures are available:
 
       Schedules a task to perform a vector-vector dot product, with
       possible pipelining of input y.  The result is stored in the
-      scalar operand z.
+      scalar operand z.  At present, this operation is always done in
+      only one thread, so 'split' is relevant only in so far as it is
+      zero or non-zero.
 
     void par_matprod_vec_mat (helpers_var_ptr z, helpers_var_ptr x, 
                               helpers_var_ptr y, int split, int pipe)
@@ -471,7 +473,8 @@ matprod_fill_lower):
     task_par_matprod_vec_vec
 
       Vector-vector multiply, with element-by-element pipelining of
-      the second operand.
+      the second operand.  At present, this operation is always done
+      in only one thread, even if more than one task is scheduled.
 
     task_par_matprod_vec_mat
 
