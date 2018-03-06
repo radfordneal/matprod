@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -v
+
+../run-checks-1 matprod 1 19
+../run-checks-1 matprod-off 1 19
+
+../run-checks-1 matprod-noalign 1 19
+../run-checks-1 matprod-off-noalign 1 19
+
+../run-checks-1 matprod-nosimd 1 19
+../run-checks-1 matprod-off-nosimd 1 19
+
+../run-checks-1 matprod-noavx 1 19
+../run-checks-1 matprod-off-noavx 1 19
+
+HELPERS=1 SPLIT=2 ../run-checks-1 par-matprod 1 19
+HELPERS=1 SPLIT=2 ../run-checks-1 par-matprod-off 1 19
