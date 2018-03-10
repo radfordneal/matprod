@@ -98,7 +98,7 @@
 /* Scalar-vector product, with pipelining of input y and output z. */
 
 void task_par_matprod_scalar_vec (helpers_op_t op, helpers_var_ptr sz,
-                                    helpers_var_ptr sx, helpers_var_ptr sy)
+                                  helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double x = *REAL(sx);
   double * MATPROD_RESTRICT y = REAL(sy);
@@ -153,7 +153,7 @@ void task_par_matprod_scalar_vec (helpers_op_t op, helpers_var_ptr sz,
 /* Dot product of two vectors, with pipelining of input y. */
 
 void task_par_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
-                                 helpers_var_ptr sx, helpers_var_ptr sy)
+                               helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
   double * MATPROD_RESTRICT y = REAL(sy);
@@ -184,7 +184,7 @@ void task_par_matprod_vec_vec (helpers_op_t op, helpers_var_ptr sz,
    in z, with pipelining of the input y and of the output. */
 
 void task_par_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
-                                 helpers_var_ptr sx, helpers_var_ptr sy)
+                               helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
   double * MATPROD_RESTRICT y = REAL(sy);
@@ -266,7 +266,7 @@ void task_par_matprod_vec_mat (helpers_op_t op, helpers_var_ptr sz,
    stored in z, with pipelining of input y. */
 
 void task_par_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
-                                 helpers_var_ptr sx, helpers_var_ptr sy)
+                               helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
   double * MATPROD_RESTRICT y = REAL(sy);
@@ -361,7 +361,7 @@ void task_par_matprod_mat_vec (helpers_op_t op, helpers_var_ptr sz,
    in z, with pipelining of the input y and the output (by column). */
 
 void task_par_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
-                               helpers_var_ptr sx, helpers_var_ptr sy)
+                             helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
   double * MATPROD_RESTRICT y = REAL(sy);
@@ -435,7 +435,7 @@ void task_par_matprod_outer (helpers_op_t op, helpers_var_ptr sz,
    in z, with pipelining of the input y and the output (by column). */
 
 void task_par_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
-                                 helpers_var_ptr sx, helpers_var_ptr sy)
+                               helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
   double * MATPROD_RESTRICT y = REAL(sy);
@@ -526,7 +526,7 @@ void task_par_matprod_mat_mat (helpers_op_t op, helpers_var_ptr sz,
    (by column). */
 
 void task_par_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
-                                helpers_var_ptr sx, helpers_var_ptr sy)
+                              helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
   double * MATPROD_RESTRICT y = REAL(sy);
@@ -629,7 +629,7 @@ void task_par_matprod_trans1 (helpers_op_t op, helpers_var_ptr sz,
    with result stored in z, with pipelining of the output (by column). */
 
 void task_par_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
-                                helpers_var_ptr sx, helpers_var_ptr sy)
+                              helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
   double * MATPROD_RESTRICT y = REAL(sy);
@@ -712,7 +712,7 @@ void task_par_matprod_trans2 (helpers_op_t op, helpers_var_ptr sz,
    of inputs or output. */
 
 void task_par_matprod_trans12 (helpers_op_t op, helpers_var_ptr sz,
-                                 helpers_var_ptr sx, helpers_var_ptr sy)
+                               helpers_var_ptr sx, helpers_var_ptr sy)
 {
   double * MATPROD_RESTRICT x = REAL(sx);
   double * MATPROD_RESTRICT y = REAL(sy);
