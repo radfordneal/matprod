@@ -1,0 +1,4 @@
+#!/bin/bash
+
+time ../run-blas-linux
+time ../run-blas-linux-par 2 3 4 5 6
