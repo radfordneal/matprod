@@ -4573,10 +4573,6 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
       z += 4;
       xs += k; xs += k; xs += k; xs += k;
       nn -= 4;
-
-      if (final)
-      { AMTOUT(z+n);
-      }
     }
 
     /* Compute the remaining elements of the columns here. */
@@ -4779,6 +4775,10 @@ static void matprod_trans1_sub_xrowscols (double * MATPROD_RESTRICT x,
         s += n;
         t += 1;
       }
+    }
+
+    if (final)
+    { AMTOUT(z+n);
     }
 
     /* Go on to next two columns of y and z. */
