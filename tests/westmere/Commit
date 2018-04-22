@@ -1,7 +1,7 @@
 gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -msse3 -mtune=core2
  
-commit 568a05be0d127d060fa3083614facbffc4ec8b48
+commit 3491fea1fe61149eecb4c14d47a84a0f7b1c94e3
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Fri Jan 12 20:49:52 2018 -0500
+Date:   Sun Mar 11 21:14:46 2018 -0400
 
-    revisions to y/z column splitting
+    update commit id in VERSIONS to versions fixing bugs
