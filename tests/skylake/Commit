@@ -1,7 +1,7 @@
-gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
+gcc-8 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 1fcf30767933e1c473cc0a3a59c057be85cf7ef0
+commit ad01b33249267f8e590540570a7b89ed99731773
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Mar 5 11:25:55 2018 -0500
+Date:   Wed Jul 4 09:31:22 2018 -0400
 
-    tweak DOUBLES_IN_LLC
+    updated README, got rid of VERSIONS in favour of just using tags
