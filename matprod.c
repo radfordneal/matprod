@@ -58,10 +58,13 @@
                                     last-level cache with some space to spare */
 
 
-/* SETUP TO FACILITATE INCLUSION AND USE OF MATPROD.C IN PIPED-MATPROD.C.
+/* SETUP TO FACILITATE INCLUSION AND USE OF MATPROD.C IN PAR-MATPROD.C.
    If PAR_MATPROD is defined, SCOPE, AMTOUT, EXTRAD, and EXTRAN will
    be defined before matprod.c is included.  Otherwise, they are
-   defined here as nothing.
+   defined here as nothing.  EXTRAD declares extra arguments to the
+   matprod functions for use by AMTOUT, EXTRAN passes them along, and 
+   EXTRAZ passes along null versions when more output should not be
+   signalled.
 
    Also, matprod.h and perhaps matprod-app.h are included only if
    PAR_MATPROD is not defined. */
@@ -96,7 +99,7 @@
 # endif
 #endif
 
-#define NDEBUG           /* Define to disable assertion check */
+#define NDEBUG             /* Define to disable assertion check */
 #include <assert.h>
 
 #define CHK_ALIGN(p) assert (((uintptr_t)(p)&(ALIGN-1)) == ALIGN_OFFSET)
@@ -2469,7 +2472,7 @@ SCOPE void matprod_outer (double * MATPROD_RESTRICT x,
   int rows = n;
 
   while (rows > 2*OUTER_ROWS)
-  { matprod_outer_sub (x, y, z, n, m, OUTER_ROWS EXTRAN);
+  { matprod_outer_sub (x, y, z, n, m, OUTER_ROWS EXTRAZ);
     x += OUTER_ROWS;
     z += OUTER_ROWS;
     rows -= OUTER_ROWS;
@@ -2477,7 +2480,7 @@ SCOPE void matprod_outer (double * MATPROD_RESTRICT x,
 
   if (rows > OUTER_ROWS)
   { int nr = SPLITC (rows, OUTER_ROWS);
-    matprod_outer_sub (x, y, z, n, m, nr EXTRAN);
+    matprod_outer_sub (x, y, z, n, m, nr EXTRAZ);
     x += nr;
     z += nr;
     rows -= nr;
