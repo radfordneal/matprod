@@ -217,11 +217,11 @@
 #endif
 
 
-/* MACRO TO SPLIT COUNT, ALIGNED.  Given that M < c < 2*M, with M a
+/* MACRO TO SPLIT COUNT, ALIGNED.  Given that M < c <= 2*M, with M a
    multiple of 4, finds a value v s.t. v <= M and c-v <= M, and v is 
    a multiple of 4. */
 
-#define SPLITC(c,M) M  /* trivial method for now, not necessarily best */
+#define SPLITC(c,M) (((c+3)>>1) & ~3) /* reasonable, but not necessarily best */
 
 
 /* Set vector/matrix z with s elements to all zeros.  This is a
