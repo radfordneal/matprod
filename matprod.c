@@ -2408,7 +2408,7 @@ static void matprod_mat_vec_n4 (double * MATPROD_RESTRICT x,
    in the n x m matrix z.
 
    Cases where n is four or less are handled specially, storing all of
-   x in local variables rather thna fetching it to compute each column
+   x in local variables rather than fetching it to compute each column
    of z. */
 
 static void matprod_outer_sub (double * MATPROD_RESTRICT x,
