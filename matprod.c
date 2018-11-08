@@ -5364,7 +5364,7 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
                              _mm_add_pd (_mm_mul_pd (S1, cast128(B11)), T1));
             T2 = _mm_add_pd (_mm_mul_pd (S2, cast128(B22)),
                              _mm_add_pd (_mm_mul_pd (S1, cast128(B21)), T2));
-            _mm_store_pd (t, T1);
+            _mm_storeA_pd (t, T1);
             _mm_storeu_pd (t+n, T2);
             S1 = _mm_loadu_pd(r+2);
             S2 = _mm_loadu_pd(r+n+2);
@@ -5374,7 +5374,7 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
                              _mm_add_pd (_mm_mul_pd (S1, cast128(B11)), T1));
             T2 = _mm_add_pd (_mm_mul_pd (S2, cast128(B22)),
                              _mm_add_pd (_mm_mul_pd (S1, cast128(B21)), T2));
-            _mm_store_pd (t+2, T1);
+            _mm_storeA_pd (t+2, T1);
             _mm_storeu_pd (t+n+2, T2);
           }
 #         endif
@@ -5391,7 +5391,7 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
                            _mm_add_pd (_mm_mul_pd (S1, cast128(B11)), T1));
           T2 = _mm_add_pd (_mm_mul_pd (S2, cast128(B22)),
                            _mm_add_pd (_mm_mul_pd (S1, cast128(B21)), T2));
-          _mm_store_pd (t, T1);
+          _mm_storeA_pd (t, T1);
           _mm_storeu_pd (t+n, T2);
           t += 2;
           r += 2;
@@ -5562,11 +5562,11 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
             T = _mm_loadu_pd(t);       
             T = _mm_add_pd (T, _mm_mul_pd(_mm_loadu_pd(r),B1));
             T = _mm_add_pd (T, _mm_mul_pd(_mm_loadu_pd(r+n),B2));
-            _mm_store_pd(t,T);
+            _mm_storeA_pd(t,T);
             T = _mm_loadu_pd(t+2);
             T = _mm_add_pd (T, _mm_mul_pd(_mm_loadu_pd(r+2),B1));
             T = _mm_add_pd (T, _mm_mul_pd(_mm_loadu_pd(r+n+2),B2));
-            _mm_store_pd(t+2,T);
+            _mm_storeA_pd(t+2,T);
           }
 #         endif
           r += 4;
@@ -5577,7 +5577,7 @@ static void matprod_trans2_sub_xrowscols (double * MATPROD_RESTRICT x,
           T = _mm_loadu_pd(t);
           T = _mm_add_pd (T, _mm_mul_pd(_mm_loadu_pd(r),cast128(B1)));
           T = _mm_add_pd (T, _mm_mul_pd(_mm_loadu_pd(r+n),cast128(B2)));
-          _mm_store_pd(t,T);
+          _mm_storeA_pd(t,T);
           r += 2;
           t += 2;
         }
