@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Check correctness of output against blas1 output.
+
+diff blas1.out $1 | grep -v "[crs]" | grep -v -- "--"
