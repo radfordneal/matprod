@@ -1,4 +1,4 @@
 #!/bin/bash
 
 time ../run-blas-linux
-time ../run-blas-linux-par
+time ../run-blas-linux-par 2
