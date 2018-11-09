@@ -1,7 +1,7 @@
 gcc -g -std=gnu99 -O3 -ffp-contract=off -msse2 -mfpmath=sse
  
-commit 7af6fe5c06e89bce30d80014474458ba88a962da
+commit 0114bbb86d1b45cbf9c666e1d0182f2417976038
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Jan 7 10:10:56 2018 -0500
+Date:   Thu Nov 8 18:20:06 2018 -0500
 
-    add SSE/AVX code for handling last odd column in matprod_mat_mat_sub_xrowscols
+    results for skylake

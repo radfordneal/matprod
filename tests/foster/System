@@ -1,12 +1,12 @@
 Dell Precision 530 workstation
 2 x Intel Xeon (Foster) @ 1.7 GHz
-2 GBytes RDRAM
+1 GBytes RDRAM
 
 Ubuntu 14.04.5
 gcc 4.8.4
 
 /---------------------------------------------\
-| Machine (2015MB)                            |
+| Machine (1001MB)                            |
 |                                             |
 | /------------------\  /------------------\  |
 | | Socket P#0       |  | Socket P#6       |  |
@@ -57,5 +57,5 @@ gcc 4.8.4
 |                                             |
 | Indexes: physical                           |
 |                                             |
-| Date: Sun Dec 24 18:53:16 2017              |
+| Date: Thu Nov  8 18:24:42 2018              |
 \---------------------------------------------/
