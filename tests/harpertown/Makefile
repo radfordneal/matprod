@@ -1,6 +1,6 @@
 # Makefile for Harpertown processors running OS X El Capitan.
 
-CC=gcc-7
+CC=gcc-8
 
 CFLAGS=$(CFLAGSi64)
 
