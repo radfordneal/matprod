@@ -1,7 +1,7 @@
-gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
+gcc-8 -g -std=gnu99 -O3 -ffp-contract=off -mavx -mtune=ivybridge
  
-commit 1fcf30767933e1c473cc0a3a59c057be85cf7ef0
+commit 57fc7ff60ff7f8bb87d9d8b49e721b7600421fda
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Mon Mar 5 11:25:55 2018 -0500
+Date:   Fri Nov 9 13:53:34 2018 -0500
 
-    tweak DOUBLES_IN_LLC
+    more results for foster
