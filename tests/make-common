@@ -20,7 +20,7 @@
 # -----------------------------------------------------------------------------
 
 # A Makefile that includes this file must set the following as appropriate
-# (with examples shown):
+# after including this file (with examples shown):
 #
 # CC=gcc-7                # Compiler to use, must be gcc look-alike for CFLAGS
 #
@@ -29,7 +29,7 @@
 # ALIGN=-DALIGN=32        # Typically 32 for AVX, 16 for SSE2
 # ALOFF=-DALIGN_OFFSET=8  # If ALIGN is 32, could test with 16 and 24 as well
 #
-# and optionally may set the following:
+# and optionally may set the following before including this file:
 #
 # OPT=...                 # Possibly set to something different than below.
 # matprod-extra-progs=... # Possibly set to a subset of those below.
