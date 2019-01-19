@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Run all matprod tests, except matprod-norestrict.
+
+for i in matprod matprod-off \
+         matprod-noalign matprod-off-noalign; do
+  if test -f ${i}-test; then
+    echo RUNNING TESTS FOR $i
+    ../run-tests $i >& $i.out
+    ../tim $i
+  fi
+done

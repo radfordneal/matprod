@@ -1,0 +1,7 @@
+gcc -g -std=gnu99 -O3 -ffp-contract=off
+ 
+commit 27e4530036fc4bec4b9e831fe73357509a4d04cc
+Author: Radford Neal <radfordneal@gmail.com>
+Date:   Fri Jan 18 20:23:09 2019 -0500
+
+    clarifying comments in make-common

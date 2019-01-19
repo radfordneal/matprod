@@ -1,5 +1,9 @@
 # Makefile for PowerPC  processors running linux
 
+matprod-extra-progs?=
+
+include ../make-common
+
 CC=gcc
 
 CFLAGS=$(CFLAGSgen)
@@ -7,6 +11,4 @@ CFLAGS=$(CFLAGSgen)
 ALIGN=-DALIGN=16
 ALOFF=-DALIGN_OFFSET=8
 
-matprod-extra-progs?=
 
-include ../make-common
