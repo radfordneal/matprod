@@ -2,7 +2,7 @@
 
 include ../make-common
 
-CC=gcc-7
+CC=gcc
 
 CFLAGS=$(CFLAGSavx2)
 

@@ -2,8 +2,8 @@ ZOTAC ZBOX C1520 nano
 Intel Core i3-4020Y @ 1.5 GHz
 8 GBytes RAM (one DIMM)
 
-Fedora 26
-gcc 7.2.1
+Fedora 29
+gcc 8.2.1
 
 /-----------------------------------------------------------------------------\
 | Machine (7905MB)                                                            |

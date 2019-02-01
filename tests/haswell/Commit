@@ -1,7 +1,8 @@
-gcc-7 -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
+gcc -g -std=gnu99 -O3 -ffp-contract=off -mavx2 -mtune=skylake
  
-commit 3edbb39f40078e50391df9399c9bab40605f4f1f
+commit d9ed922f7988f55b41c114f1b4fd71feea7e1de9
+Merge: b3670c4 ba05a96
 Author: Radford Neal <radfordneal@gmail.com>
-Date:   Sun Mar 4 15:28:38 2018 -0500
+Date:   Sat Jan 19 12:10:33 2019 -0500
 
-    results for sandybridge
+    Merge branch 'master' of https://github.com/radfordneal/matprod
